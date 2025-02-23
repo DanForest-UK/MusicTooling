@@ -1,35 +1,42 @@
-import React, { useState } from 'react';
-import { View, Button, Text } from 'react-native';
-import { NativeModules } from 'react-native';
-
-console.log("Native Modules: ", NativeModules);
+import React, { useState } from "react";
+import { View, Text, Button, FlatList } from "react-native";
+import { NativeModules } from "react-native";
 
 const { FileScannerModule } = NativeModules;
 
-const App = () => {
-    const [fileList, setFileList] = useState<string[]>([]);
+type FileInfo = {
+    Name: string;
+    Size: number;
+    Path: string;
+};
 
-    const handleScanFiles = async () => {
+const App = () => {
+    const [files, setFiles] = useState<FileInfo[]>([]);
+
+    const scanFiles = async () => {
         try {
-            const result: string[] = await FileScannerModule.ScanFiles();
-            setFileList(result); // Update state with the returned list
+            const result: FileInfo[] = await FileScannerModule.ScanFiles();
+            setFiles(result);
         } catch (error) {
-            console.error('Error scanning files:', error);
+            console.error("Error scanning files:", error);
         }
     };
 
     return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Button title="Scan files" onPress={handleScanFiles} />
+        <View style={{ padding: 20 }}>
+            <Button title="Scan files" onPress={scanFiles} />
 
-            {/* Display the file list */}
-            {fileList.length > 0 && (
-                <View style={{ marginTop: 20 }}>
-                    {fileList.map((file, index) => (
-                        <Text key={index} style={{ marginBottom: 5 }}>{file}</Text>
-                    ))}
-                </View>
-            )}
+            <FlatList
+                data={files}
+                keyExtractor={(item) => item.Path}
+                renderItem={({ item }) => (
+                    <View style={{ marginVertical: 10, padding: 10, backgroundColor: "#ddd" }}>
+                        <Text>Name: {item.Name}</Text>
+                        <Text>Size: {item.Size} bytes</Text>
+                        <Text>Path: {item.Path}</Text>
+                    </View>
+                )}
+            />
         </View>
     );
 };
