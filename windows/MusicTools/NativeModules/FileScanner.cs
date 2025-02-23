@@ -4,21 +4,21 @@ using System.Threading.Tasks;
 
 namespace MusicTools.NativeModules
 {
-    [ReactModule]
+    [ReactModule("FileScannerModule")]
     public sealed class FileScanner
     {
         [ReactMethod("ScanFiles")]
-        public async Task<string> ScanFilesAsync()
+        public async Task<string[]> ScanFilesAsync()
         {
             try
             {
                 // Simulate file scanning logic (replace with real implementation)
                 await Task.Delay(1000);
-                return "Files Scanned Successfully!";
+                return new string[] { "Files Scanned Successfully!", "Here is another" };
             }
             catch (Exception ex)
             {
-                return $"Error: {ex.Message}";
+                return new string[] { ex.Message };
             }
         }
     }

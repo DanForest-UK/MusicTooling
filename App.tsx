@@ -1,22 +1,35 @@
-import React from 'react';
-import { Button, NativeModules, View, Text } from 'react-native';
+import React, { useState } from 'react';
+import { View, Button, Text } from 'react-native';
+import { NativeModules } from 'react-native';
 
-const { FileScanner } = NativeModules; // Import the native module
+console.log("Native Modules: ", NativeModules);
+
+const { FileScannerModule } = NativeModules;
 
 const App = () => {
-    const scanFiles = async () => {
+    const [fileList, setFileList] = useState<string[]>([]);
+
+    const handleScanFiles = async () => {
         try {
-            const result = await FileScanner.ScanFiles(); // Call the C# function
-            console.log("Scan Result:", result);
+            const result: string[] = await FileScannerModule.ScanFiles();
+            setFileList(result); // Update state with the returned list
         } catch (error) {
-            console.error("Error scanning files:", error);
+            console.error('Error scanning files:', error);
         }
     };
 
     return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 20, marginBottom: 10 }}>React Native Windows</Text>
-            <Button title="Scan Files" onPress={scanFiles} />
+            <Button title="Scan files" onPress={handleScanFiles} />
+
+            {/* Display the file list */}
+            {fileList.length > 0 && (
+                <View style={{ marginTop: 20 }}>
+                    {fileList.map((file, index) => (
+                        <Text key={index} style={{ marginBottom: 5 }}>{file}</Text>
+                    ))}
+                </View>
+            )}
         </View>
     );
 };
