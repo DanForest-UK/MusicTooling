@@ -1,8 +1,8 @@
-.vs/
-
 # OSX
 #
 .DS_Store
+
+.vs/
 
 # Xcode
 #
