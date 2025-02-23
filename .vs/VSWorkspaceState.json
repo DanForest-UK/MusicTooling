@@ -1,6 +1,9 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\windows",
+    "\\windows\\MusicTools"
   ],
+  "SelectedNode": "\\windows\\MusicTools\\MusicTools.csproj",
   "PreviewInSolutionExplorer": false
 }
