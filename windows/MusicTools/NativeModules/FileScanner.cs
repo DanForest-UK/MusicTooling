@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Windows.Storage;
 using Microsoft.ReactNative;
 using Microsoft.ReactNative.Managed;
+using System.IO;
 
 namespace MusicTooling
 {
@@ -20,15 +21,26 @@ namespace MusicTooling
         [ReactMethod("ScanFiles")]
         public async Task<IList<FileInfo>> ScanFilesAsync()
         {
+            string filePath = @"C:\Dan\Dropbox\Dropbox\[NewMusic]\new 16";
+
             try
             {
-                List<FileInfo> files = new List<FileInfo>
+                var list = new List<FileInfo>();
+                foreach (var song in Directory.GetFiles(filePath, "*.mp3", SearchOption.AllDirectories))
                 {
-                    new FileInfo { Name = "File1.mp3", Size = 123456, Path = "C:/Music/File1.mp3" },
-                    new FileInfo { Name = "File2.mp3", Size = 234567, Path = "C:/Music/File2.mp3" }
-                };
-
-                return files;
+                    var file = TagLib.File.Create(song);
+                    list.Add(new FileInfo
+                    {
+                        Name = file.Tag.Title,
+                        Size = file.Length,
+                        Path = song
+                    });
+                }
+                return list;
+            }
+            catch (UnauthorizedAccessException exx)
+            {
+                throw new ReactException($"Access to: {filePath} is denied", exx);
             }
             catch (Exception ex)
             {
