@@ -15,6 +15,7 @@ namespace MusicTooling
 {
     public class FileInfo
     {
+        public string Id { get; set; }
         public string Name { get; set; }
         public long Size { get; set; }
         public string Path { get; set; }
@@ -75,6 +76,7 @@ namespace MusicTooling
                         var tagFile = TagLib.File.Create(new StreamFileAbstraction(file.Name, stream));
                         list.Add(new FileInfo
                         {
+                            Id = Guid.NewGuid().ToString(),
                             Name = tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
                             Size = 10,
                             Path = tagFile.Tag.Album.ValueOrNone().IfNone("[No album]")

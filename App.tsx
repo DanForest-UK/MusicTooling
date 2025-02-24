@@ -5,6 +5,7 @@ import { NativeModules } from "react-native";
 const { FileScannerModule } = NativeModules;
 
 type FileInfo = {
+    Id: string;
     Name: string;
     Size: number;
     Path: string;
@@ -28,7 +29,7 @@ const App = () => {
 
             <FlatList
                 data={files}
-                keyExtractor={(item) => item.Path}
+                keyExtractor={(item) => item.Id}
                 renderItem={({ item }) => (
                     <View style={{ marginVertical: 10, padding: 10, backgroundColor: "#ddd" }}>
                         <Text>Name: {item.Name}</Text>
