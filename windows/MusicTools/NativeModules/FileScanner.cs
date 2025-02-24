@@ -9,6 +9,7 @@ using System.Diagnostics;
 using Windows.Security.Authorization.AppCapabilityAccess;
 using TagLib.Jpeg;
 using Windows.Storage.Streams;
+using MusicTools;
 
 namespace MusicTooling
 {
@@ -74,9 +75,9 @@ namespace MusicTooling
                         var tagFile = TagLib.File.Create(new StreamFileAbstraction(file.Name, stream));
                         list.Add(new FileInfo
                         {
-                            Name = tagFile.Tag.Title,
+                            Name = tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
                             Size = 10,
-                            Path = tagFile.Tag.Album
+                            Path = tagFile.Tag.Album.ValueOrNone().IfNone("[No album]")
                         });
                     }                   
                 }
