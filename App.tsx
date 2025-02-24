@@ -7,7 +7,7 @@ const { FileScannerModule } = NativeModules;
 type FileInfo = {
     Id: string;
     Name: string;
-    Size: number;
+    Artist: string;
     Path: string;
 };
 
@@ -32,8 +32,8 @@ const App = () => {
                 keyExtractor={(item) => item.Id}
                 renderItem={({ item }) => (
                     <View style={{ marginVertical: 10, padding: 10, backgroundColor: "#ddd" }}>
-                        <Text>Name: {item.Name}</Text>
-                        <Text>Size: {item.Size} bytes</Text>
+                        <Text>Artist: {item.Artist}</Text>
+                        <Text>Title: {item.Name}</Text>
                         <Text>Path: {item.Path}</Text>
                     </View>
                 )}

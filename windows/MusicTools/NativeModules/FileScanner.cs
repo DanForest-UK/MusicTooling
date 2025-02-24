@@ -18,8 +18,8 @@ namespace MusicTooling
     {
         public string Id { get; set; }
         public string Name { get; set; }
-        public long Size { get; set; }
         public string Path { get; set; }
+        public string Artist { get; set; }
     }
 
     public class StreamFileAbstraction : TagLib.File.IFileAbstraction
@@ -82,8 +82,8 @@ namespace MusicTooling
                             {
                                 Id = Guid.NewGuid().ToString(),
                                 Name = tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
-                                Size = 10,
-                                Path = mp3.Path
+                                Path = mp3.Path,
+                                Artist = tagFile.Tag.AlbumArtists.HeadOrNone().IfNone("[No artist]")
                             });
                         }
                     }
