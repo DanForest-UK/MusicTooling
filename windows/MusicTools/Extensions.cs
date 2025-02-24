@@ -6,6 +6,12 @@ using System.Text;
 using System.Threading.Tasks;
 using static LanguageExt.Prelude;
 
+// Allows use of record types
+namespace System.Runtime.CompilerServices
+{
+    internal static class IsExternalInit { }
+}
+
 namespace MusicTools
 {
     public static class Extensions

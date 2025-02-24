@@ -6,11 +6,11 @@ import { styles } from './styles'; // Import styles from external file
 const { FileScannerModule } = NativeModules;
 
 const App = () => {
-    const [files, setFiles] = useState<FileInfo[]>([]);
+    const [files, setFiles] = useState<SongInfo[]>([]);
 
     const scanFiles = async () => {
         try {
-            const result: FileInfo[] = await FileScannerModule.ScanFiles();
+            const result: SongInfo[] = await FileScannerModule.ScanFiles();
             setFiles(result);
         } catch (error) {
             console.error('Error scanning files:', error);

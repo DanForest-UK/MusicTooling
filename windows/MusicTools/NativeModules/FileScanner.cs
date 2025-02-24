@@ -11,18 +11,10 @@ using TagLib.Jpeg;
 using Windows.Storage.Streams;
 using MusicTools;
 using System.Linq;
+using LanguageExt;
 
 namespace MusicTooling
 {
-    public class FileInfo
-    {
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public string Path { get; set; }
-        public string Artist { get; set; }
-        public string Album { get; set; }
-    }
-
     public class StreamFileAbstraction : TagLib.File.IFileAbstraction
     {
         private readonly Stream _stream;
@@ -45,13 +37,11 @@ namespace MusicTooling
         }
     }
 
-
-
     [ReactModule("FileScannerModule")]
     public sealed class FileScanner
     {
         [ReactMethod("ScanFiles")]
-        public async Task<IList<FileInfo>> ScanFilesAsync()
+        public async Task<IList<SongInfo>> ScanFilesAsync()
         {
             string path = @"C:\Dan\Dropbox\Dropbox\[Music]\[Folk]\[Acapella]";
 
@@ -63,7 +53,7 @@ namespace MusicTooling
    
             try
             {
-                var list = new List<FileInfo>();
+                var list = new List<SongInfo>();
                 var mp3Files = await GetFilesWithExtensionAsync(path, ".mp3");
                 mp3Files.Iter(async file => await AddFileInfo(file.Path, list));
 
@@ -79,7 +69,7 @@ namespace MusicTooling
             }
         }
 
-        async Task AddFileInfo(string path, List<FileInfo> list)
+        async Task AddFileInfo(string path, List<SongInfo> list)
         {
             try
             {
@@ -91,15 +81,13 @@ namespace MusicTooling
                 {
                     // Use TagLib to read metadata
                     var tagFile = TagLib.File.Create(new StreamFileAbstraction(file.Name, stream));
-                    list.Add(new FileInfo
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Name = tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
-                        Path = path,
-                        Artist = (tagFile.Tag.AlbumArtists.HeadOrNone() ||
+                    list.Add(new SongInfo(
+                        Id: Guid.NewGuid().ToString(),
+                        Name: tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
+                        Path: path,
+                        Artist: (tagFile.Tag.AlbumArtists.HeadOrNone() ||
                                   tagFile.Tag.Artists.HeadOrNone()).IfNone("[No artist]"),
-                        Album = tagFile.Tag.Album.ValueOrNone().IfNone("[No album]")
-                    });
+                        Album: tagFile.Tag.Album.ValueOrNone().IfNone("[No album]")));                   
                 }
             }
             catch (Exception ex)
