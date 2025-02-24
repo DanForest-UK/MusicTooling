@@ -63,8 +63,7 @@ namespace MusicTooling
                         Id: Guid.NewGuid().ToString(),
                         Name: tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
                         Path: path,
-                        Artist: (tagFile.Tag.AlbumArtists.HeadOrNone() ||
-                                  tagFile.Tag.Artists.HeadOrNone()).IfNone("[No artist]"),
+                        Artist: tagFile.Tag.AlbumArtists.Union(tagFile.Tag.Artists).ToArray(),
                         Album: tagFile.Tag.Album.ValueOrNone().IfNone("[No album]")));                   
                 }
             }

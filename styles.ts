@@ -6,6 +6,7 @@ export const styles = StyleSheet.create({
     },
     listContainer: {
         padding: 3,
+        paddingRight: 10,
     },
     fileItem: {
         marginVertical: 10,

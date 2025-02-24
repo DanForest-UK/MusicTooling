@@ -27,7 +27,9 @@ const App = () => {
                 keyExtractor={(item) => item.Id}
                 renderItem={({ item }) => (
                     <View style={styles.fileItem}>
-                        <Text style={styles.fileText}>Artist: {item.Artist}</Text>
+                        <Text style={styles.fileText}>
+                            Artist: {item.Artist.length > 0 ? item.Artist.join(', ') : '[No artist]'}
+                        </Text>
                         <Text style={styles.fileText}>Title: {item.Name}</Text>
                         <Text style={styles.fileText}>Album: {item.Album}</Text>
                         <Text style={styles.fileText}>Path: {item.Path}</Text>
