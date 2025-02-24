@@ -5,6 +5,10 @@ using Windows.Storage;
 using Microsoft.ReactNative;
 using Microsoft.ReactNative.Managed;
 using System.IO;
+using System.Diagnostics;
+using Windows.Security.Authorization.AppCapabilityAccess;
+using TagLib.Jpeg;
+using Windows.Storage.Streams;
 
 namespace MusicTooling
 {
@@ -15,32 +19,72 @@ namespace MusicTooling
         public string Path { get; set; }
     }
 
+    public class StreamFileAbstraction : TagLib.File.IFileAbstraction
+    {
+        private readonly Stream _stream;
+
+        public StreamFileAbstraction(string name, Stream stream)
+        {
+            Name = name;
+            _stream = stream;
+        }
+
+        public string Name { get; }
+
+        public Stream ReadStream => _stream;
+
+        public Stream WriteStream => throw new NotSupportedException("This file abstraction is read-only.");
+
+        public void CloseStream(Stream stream)
+        {
+            stream?.Dispose();
+        }
+    }
+
     [ReactModule("FileScannerModule")]
     public sealed class FileScanner
     {
         [ReactMethod("ScanFiles")]
         public async Task<IList<FileInfo>> ScanFilesAsync()
         {
-            string filePath = @"C:\Dan\Dropbox\Dropbox\[NewMusic]\new 16";
+            string path = @"C:\Dan\Dropbox\Dropbox\[NewMusic]\new 20\[1969] The Open Mind";
 
+            var status = AppCapability.Create("broadFileSystemAccess").CheckAccess();
+            if (status != AppCapabilityAccessStatus.Allowed)
+            {
+                throw new ReactException("File access needs to be granted for this app in Privacy & Security -> File system");
+            }
+   
             try
             {
                 var list = new List<FileInfo>();
-                foreach (var song in Directory.GetFiles(filePath, "*.mp3", SearchOption.AllDirectories))
+
+                StorageFolder folder = await StorageFolder.GetFolderFromPathAsync(path);
+                var files = await folder.GetFilesAsync();
+                foreach (var song in files)
                 {
-                    var file = TagLib.File.Create(song);
-                    list.Add(new FileInfo
+
+                    StorageFile file = await StorageFile.GetFileFromPathAsync(song.Path);
+
+                    // Open the file as a stream
+                    using (IRandomAccessStream randomStream = await file.OpenAsync(FileAccessMode.Read))
+                    using (Stream stream = randomStream.AsStreamForRead()) // Convert IRandomAccessStream to .NET Stream
                     {
-                        Name = file.Tag.Title,
-                        Size = file.Length,
-                        Path = song
-                    });
+                        // Use TagLib to read metadata
+                        var tagFile = TagLib.File.Create(new StreamFileAbstraction(file.Name, stream));
+                        list.Add(new FileInfo
+                        {
+                            Name = tagFile.Tag.Title,
+                            Size = 10,
+                            Path = tagFile.Tag.Album
+                        });
+                    }                   
                 }
                 return list;
             }
             catch (UnauthorizedAccessException exx)
             {
-                throw new ReactException($"Access to: {filePath} is denied", exx);
+                throw new ReactException($"Access to: {path} is denied", exx);
             }
             catch (Exception ex)
             {

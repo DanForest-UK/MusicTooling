@@ -4,6 +4,7 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap mp">
 
   <Identity
@@ -14,8 +15,8 @@
   <mp:PhoneIdentity PhoneProductId="77a20e3b-9c22-4b52-882b-3355f3d51393" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>Calculator</DisplayName>
-    <PublisherDisplayName>CN=React Native Windows Sample</PublisherDisplayName>
+    <DisplayName>Music Tools</DisplayName>
+    <PublisherDisplayName>Dan Forest</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -46,5 +47,6 @@
 
   <Capabilities>
     <Capability Name="internetClient" />
+     <rescap:Capability Name="broadFileSystemAccess"/>
   </Capabilities>
 </Package>
