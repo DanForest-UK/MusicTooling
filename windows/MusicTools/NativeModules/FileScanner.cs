@@ -28,13 +28,11 @@ namespace MusicTooling
             string path = @"C:\Dan\Dropbox\Dropbox\[Music]\[Folk]\[Acapella]";
 
             React.AssertFileAccess();
+
             var resutls = await ScanFiles.ScanFilesAsync();
 
             return resutls.Match(
-                Right: list =>
-                {
-                    return list.ToList();
-                },
+                Right: list => list.ToList(),               
                 Left: error => throw new ReactException(error.Message)
             );
         }
