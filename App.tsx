@@ -1,25 +1,36 @@
 import React, { useState } from 'react';
-import { View, Text, Button, FlatList } from 'react-native';
+import { View, Text, Button, FlatList, ActivityIndicator } from 'react-native';
 import { NativeModules } from 'react-native';
-import { styles } from './styles'; // Import styles from external file
+import { styles } from './styles';
 
 const { FileScannerModule } = NativeModules;
 
 const App = () => {
     const [files, setFiles] = useState<SongInfo[]>([]);
+    const [loading, setLoading] = useState(false);
 
     const scanFiles = async () => {
+        setLoading(true);
+
         try {
             const result: SongInfo[] = await FileScannerModule.ScanFiles();
             setFiles(result);
         } catch (error) {
             console.error('Error scanning files:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <View style={styles.container}>
-            <Button title="Scan files" onPress={scanFiles} />
+            <Button title='Scan files' onPress={scanFiles} disabled={loading} />
+            {loading && (
+                <View style={styles.loadingOverlay}>
+                    <ActivityIndicator size='large' color='#0000ff' />
+                    <Text style={styles.loadingText}>Scanning files...</Text>
+                </View>
+            )}
 
             <FlatList
                 data={files}
@@ -39,7 +50,5 @@ const App = () => {
         </View>
     );
 };
-
-
 
 export default App;
