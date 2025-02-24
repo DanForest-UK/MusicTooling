@@ -10,6 +10,7 @@ using Windows.Security.Authorization.AppCapabilityAccess;
 using TagLib.Jpeg;
 using Windows.Storage.Streams;
 using MusicTools;
+using System.Linq;
 
 namespace MusicTooling
 {
@@ -43,13 +44,15 @@ namespace MusicTooling
         }
     }
 
+
+
     [ReactModule("FileScannerModule")]
     public sealed class FileScanner
     {
         [ReactMethod("ScanFiles")]
         public async Task<IList<FileInfo>> ScanFilesAsync()
         {
-            string path = @"C:\Dan\Dropbox\Dropbox\[NewMusic]\new 20\[1969] The Open Mind";
+            string path = @"C:\Dan\Dropbox\Dropbox\[NewMusic]";
 
             var status = AppCapability.Create("broadFileSystemAccess").CheckAccess();
             if (status != AppCapabilityAccessStatus.Allowed)
@@ -61,27 +64,33 @@ namespace MusicTooling
             {
                 var list = new List<FileInfo>();
 
-                StorageFolder folder = await StorageFolder.GetFolderFromPathAsync(path);
-                var files = await folder.GetFilesAsync();
-                foreach (var song in files)
+                var mp3Files = await GetFilesWithExtensionAsync(path, ".mp3");
+
+                foreach (var mp3 in mp3Files)
                 {
-
-                    StorageFile file = await StorageFile.GetFileFromPathAsync(song.Path);
-
-                    // Open the file as a stream
-                    using (IRandomAccessStream randomStream = await file.OpenAsync(FileAccessMode.Read))
-                    using (Stream stream = randomStream.AsStreamForRead()) // Convert IRandomAccessStream to .NET Stream
+                    try
                     {
-                        // Use TagLib to read metadata
-                        var tagFile = TagLib.File.Create(new StreamFileAbstraction(file.Name, stream));
-                        list.Add(new FileInfo
+                        var file = await StorageFile.GetFileFromPathAsync(mp3.Path);
+
+                        // Open the file as a stream
+                        using (IRandomAccessStream randomStream = await file.OpenAsync(FileAccessMode.Read))
+                        using (Stream stream = randomStream.AsStreamForRead()) // Convert IRandomAccessStream to .NET Stream
                         {
-                            Id = Guid.NewGuid().ToString(),
-                            Name = tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
-                            Size = 10,
-                            Path = tagFile.Tag.Album.ValueOrNone().IfNone("[No album]")
-                        });
-                    }                   
+                            // Use TagLib to read metadata
+                            var tagFile = TagLib.File.Create(new StreamFileAbstraction(file.Name, stream));
+                            list.Add(new FileInfo
+                            {
+                                Id = Guid.NewGuid().ToString(),
+                                Name = tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
+                                Size = 10,
+                                Path = tagFile.Tag.Album.ValueOrNone().IfNone("[No album]")
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error reading metadata for {mp3.Path}: {ex.Message}");
+                    }
                 }
                 return list;
             }
@@ -92,6 +101,31 @@ namespace MusicTooling
             catch (Exception ex)
             {
                 throw new ReactException("ScanFilesError", ex);
+            }
+        }
+
+        public async Task<List<StorageFile>> GetFilesWithExtensionAsync(string folderPath, string extension)
+        {
+            List<StorageFile> files = new List<StorageFile>();
+            StorageFolder rootFolder = await StorageFolder.GetFolderFromPathAsync(folderPath);
+
+            await GetFilesRecursively(rootFolder, extension, files);
+            return files;
+        }
+
+        private async Task GetFilesRecursively(StorageFolder folder, string extension, List<StorageFile> files)
+        {
+            // Get all files in the current folder with the specified extension
+            var foundFiles = await folder.GetFilesAsync();
+            files.AddRange(foundFiles.Where(file => file.FileType.Equals(extension, StringComparison.OrdinalIgnoreCase)));
+
+            // Get all subfolders
+            var subfolders = await folder.GetFoldersAsync();
+
+            // Recursively process each subfolder
+            foreach (var subfolder in subfolders)
+            {
+                await GetFilesRecursively(subfolder, extension, files);
             }
         }
     }
