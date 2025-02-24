@@ -36,6 +36,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.ReactNative.Manag
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicTools.Core", "MusicTools.Core\MusicTools.Core.csproj", "{A689F173-278C-455B-9D14-A9803F2A698B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicTools.Logic", "MusicTools.Logic\MusicTools.Logic.csproj", "{47FDEF01-6547-4936-8057-22AE5FA9A9CF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -162,6 +164,18 @@ Global
 		{A689F173-278C-455B-9D14-A9803F2A698B}.Release|x64.Build.0 = Release|Any CPU
 		{A689F173-278C-455B-9D14-A9803F2A698B}.Release|x86.ActiveCfg = Release|Any CPU
 		{A689F173-278C-455B-9D14-A9803F2A698B}.Release|x86.Build.0 = Release|Any CPU
+		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Debug|x64.Build.0 = Debug|Any CPU
+		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Debug|x86.Build.0 = Debug|Any CPU
+		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Release|ARM64.Build.0 = Release|Any CPU
+		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Release|x64.ActiveCfg = Release|Any CPU
+		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Release|x64.Build.0 = Release|Any CPU
+		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Release|x86.ActiveCfg = Release|Any CPU
+		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

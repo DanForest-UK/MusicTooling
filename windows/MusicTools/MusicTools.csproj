@@ -106,11 +106,11 @@
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
     <Compile Include="NativeModules\FileScanner.cs" />
+    <Compile Include="NativeModules\React.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AutolinkedNativeModules.g.cs" />
     <Compile Include="ReactPackageProvider.cs" />
     <Compile Include="Tal.cs" />
-    <Compile Include="Types.cs" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">
@@ -159,6 +159,10 @@
     <ProjectReference Include="..\MusicTools.Core\MusicTools.Core.csproj">
       <Project>{a689f173-278c-455b-9d14-a9803f2a698b}</Project>
       <Name>MusicTools.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\MusicTools.Logic\MusicTools.Logic.csproj">
+      <Project>{47fdef01-6547-4936-8057-22ae5fa9a9cf}</Project>
+      <Name>MusicTools.Logic</Name>
     </ProjectReference>
   </ItemGroup>
   <ImportGroup Label="ReactNativeWindowsTargets">

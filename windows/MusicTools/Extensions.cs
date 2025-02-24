@@ -11,13 +11,5 @@ using static LanguageExt.Prelude;
 
 namespace MusicTools
 {
-    public static class Extensions
-    {
-        public static Option<string> ValueOrNone(this string value) =>
-            value.HasValue()
-                ? Some(value)
-                : None;
-
-        public static bool HasValue(this string value) => !string.IsNullOrWhiteSpace(value);
-    }
+    
 }

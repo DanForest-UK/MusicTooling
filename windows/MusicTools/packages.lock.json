@@ -53,6 +53,14 @@
         "resolved": "2.3.0",
         "contentHash": "Qo4z6ZjnIfbR3Us1Za5M2vQ97OWZPmODvVmepxZ8XW0UIVLGdO2T63/N3b23kCcyiwuIe0TQvMEQG8wUCCD1mA=="
       },
+      "LanguageExt.Sys": {
+        "type": "Transitive",
+        "resolved": "4.4.9",
+        "contentHash": "NZEsyEGzHdwsxS5yPF5OPC+t7RjzD1hwmY/YYXfW/t5m3NO1l5PAijwYkALjWluxMgObPm8TDdqDzYUkGUQgPA==",
+        "dependencies": {
+          "LanguageExt.Core": "4.4.9"
+        }
+      },
       "Microsoft.Bcl.AsyncInterfaces": {
         "type": "Transitive",
         "resolved": "7.0.0",
@@ -459,7 +467,19 @@
         }
       },
       "musictools.core": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "LanguageExt.Core": "[4.4.9, )"
+        }
+      },
+      "musictools.logic": {
+        "type": "Project",
+        "dependencies": {
+          "LanguageExt.Core": "[4.4.9, )",
+          "LanguageExt.Sys": "[4.4.9, )",
+          "MusicTools.Core": "[1.0.0, )",
+          "TagLibSharp": "[2.3.0, )"
+        }
       },
       "reactcommon": {
         "type": "Project",

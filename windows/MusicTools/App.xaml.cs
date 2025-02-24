@@ -1,4 +1,7 @@
 using Microsoft.ReactNative;
+using MusicTooling;
+using MusicTools.Logic;
+using MusicTools.NativeModules;
 using Windows.ApplicationModel.Activation;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -9,6 +12,11 @@ namespace MusicTools
     {
         public App()
         {
+            // Dependency injection
+            Runtime.GetFilesWithExtensionAsync = React.GetFilesWithExtensionAsync;
+            Runtime.ReadSongInfo = ReadTag.ReadSongInfo;
+            Runtime.WithStream = React.WithStream;
+
 #if BUNDLE
             JavaScriptBundleFile = "index.windows";
             InstanceSettings.UseFastRefresh = false;
