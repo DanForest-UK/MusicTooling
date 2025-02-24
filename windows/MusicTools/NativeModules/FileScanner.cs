@@ -83,7 +83,7 @@ namespace MusicTooling
                                 Id = Guid.NewGuid().ToString(),
                                 Name = tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
                                 Size = 10,
-                                Path = tagFile.Tag.Album.ValueOrNone().IfNone("[No album]")
+                                Path = mp3.Path
                             });
                         }
                     }
