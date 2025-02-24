@@ -1,7 +1,7 @@
-type ScannedFile = {
-    fileName: string;
-    filePath: string;
-    fileSize: number;
-    artist: string;
-    title: string;
+type FileInfo = {
+    Id: string;
+    Name: string;
+    Artist: string;
+    Path: string;
+    Album: string;
 };

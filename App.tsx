@@ -4,13 +4,6 @@ import { NativeModules } from "react-native";
 
 const { FileScannerModule } = NativeModules;
 
-type FileInfo = {
-    Id: string;
-    Name: string;
-    Artist: string;
-    Path: string;
-};
-
 const App = () => {
     const [files, setFiles] = useState<FileInfo[]>([]);
 
@@ -35,6 +28,7 @@ const App = () => {
                     <View style={{ marginVertical: 10, padding: 10, backgroundColor: "#8B4513", borderRadius: 5 }}>
                         <Text style={{ color: "white" }}>Artist: {item.Artist}</Text>
                         <Text style={{ color: "white" }}>Title: {item.Name}</Text>
+                        <Text style={{ color: "white" }}>Album: {item.Album}</Text>
                         <Text style={{ color: "white" }}>Path: {item.Path}</Text>
                     </View>
                 )}

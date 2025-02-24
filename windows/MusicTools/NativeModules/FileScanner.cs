@@ -20,6 +20,7 @@ namespace MusicTooling
         public string Name { get; set; }
         public string Path { get; set; }
         public string Artist { get; set; }
+        public string Album { get; set; }
     }
 
     public class StreamFileAbstraction : TagLib.File.IFileAbstraction
@@ -63,36 +64,9 @@ namespace MusicTooling
             try
             {
                 var list = new List<FileInfo>();
-
                 var mp3Files = await GetFilesWithExtensionAsync(path, ".mp3");
+                mp3Files.Iter(async file => await AddFileInfo(file.Path, list));
 
-                foreach (var mp3 in mp3Files)
-                {
-                    try
-                    {
-                        var file = await StorageFile.GetFileFromPathAsync(mp3.Path);
-
-                        // Open the file as a stream
-                        using (IRandomAccessStream randomStream = await file.OpenAsync(FileAccessMode.Read))
-                        using (Stream stream = randomStream.AsStreamForRead()) // Convert IRandomAccessStream to .NET Stream
-                        {
-                            // Use TagLib to read metadata
-                            var tagFile = TagLib.File.Create(new StreamFileAbstraction(file.Name, stream));
-                            list.Add(new FileInfo
-                            {
-                                Id = Guid.NewGuid().ToString(),
-                                Name = tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
-                                Path = mp3.Path,
-                                Artist = (tagFile.Tag.AlbumArtists.HeadOrNone() || 
-                                          tagFile.Tag.Artists.HeadOrNone()).IfNone("[No artist]")
-                            });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Error reading metadata for {mp3.Path}: {ex.Message}");
-                    }
-                }
                 return list;
             }
             catch (UnauthorizedAccessException exx)
@@ -105,25 +79,51 @@ namespace MusicTooling
             }
         }
 
-        public async Task<List<StorageFile>> GetFilesWithExtensionAsync(string folderPath, string extension)
+        async Task AddFileInfo(string path, List<FileInfo> list)
         {
-            List<StorageFile> files = new List<StorageFile>();
-            StorageFolder rootFolder = await StorageFolder.GetFolderFromPathAsync(folderPath);
+            try
+            {
+                var file = await StorageFile.GetFileFromPathAsync(path);
 
+                // Open the file as a stream
+                using (IRandomAccessStream randomStream = await file.OpenAsync(FileAccessMode.Read))
+                using (Stream stream = randomStream.AsStreamForRead()) // Convert IRandomAccessStream to .NET Stream
+                {
+                    // Use TagLib to read metadata
+                    var tagFile = TagLib.File.Create(new StreamFileAbstraction(file.Name, stream));
+                    list.Add(new FileInfo
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Name = tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
+                        Path = path,
+                        Artist = (tagFile.Tag.AlbumArtists.HeadOrNone() ||
+                                  tagFile.Tag.Artists.HeadOrNone()).IfNone("[No artist]"),
+                        Album = tagFile.Tag.Album.ValueOrNone().IfNone("[No album]")
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                // todo we want to return a list of errors
+                Debug.WriteLine($"Error reading metadata for {path}: {ex.Message}");
+            }
+        }
+
+        async Task<List<StorageFile>> GetFilesWithExtensionAsync(string folderPath, string extension)
+        {
+            var files = new List<StorageFile>();
+            var rootFolder = await StorageFolder.GetFolderFromPathAsync(folderPath);
             await GetFilesRecursively(rootFolder, extension, files);
             return files;
         }
 
-        private async Task GetFilesRecursively(StorageFolder folder, string extension, List<StorageFile> files)
+        async Task GetFilesRecursively(StorageFolder folder, string extension, List<StorageFile> files)
         {
-            // Get all files in the current folder with the specified extension
             var foundFiles = await folder.GetFilesAsync();
             files.AddRange(foundFiles.Where(file => file.FileType.Equals(extension, StringComparison.OrdinalIgnoreCase)));
 
-            // Get all subfolders
             var subfolders = await folder.GetFoldersAsync();
 
-            // Recursively process each subfolder
             foreach (var subfolder in subfolders)
             {
                 await GetFilesRecursively(subfolder, extension, files);
