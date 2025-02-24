@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, Button, FlatList, StyleSheet } from 'react-native';
+import { View, Text, Button, FlatList } from 'react-native';
 import { NativeModules } from 'react-native';
+import { styles } from './styles'; // Import styles from external file
 
 const { FileScannerModule } = NativeModules;
 
@@ -37,22 +38,6 @@ const App = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        padding: 20,
-    },
-    listContainer: {
-        padding: 3,
-    },
-    fileItem: {
-        marginVertical: 10,
-        padding: 10,
-        backgroundColor: '#8B4513',
-        borderRadius: 5,
-    },
-    fileText: {
-        color: 'white',
-    },
-});
+
 
 export default App;
