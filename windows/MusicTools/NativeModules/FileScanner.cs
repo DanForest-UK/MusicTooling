@@ -52,7 +52,7 @@ namespace MusicTooling
         [ReactMethod("ScanFiles")]
         public async Task<IList<FileInfo>> ScanFilesAsync()
         {
-            string path = @"C:\Dan\Dropbox\Dropbox\[NewMusic]";
+            string path = @"C:\Dan\Dropbox\Dropbox\[Music]\[Folk]\[Acapella]";
 
             var status = AppCapability.Create("broadFileSystemAccess").CheckAccess();
             if (status != AppCapabilityAccessStatus.Allowed)
@@ -83,7 +83,8 @@ namespace MusicTooling
                                 Id = Guid.NewGuid().ToString(),
                                 Name = tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
                                 Path = mp3.Path,
-                                Artist = tagFile.Tag.AlbumArtists.HeadOrNone().IfNone("[No artist]")
+                                Artist = (tagFile.Tag.AlbumArtists.HeadOrNone() || 
+                                          tagFile.Tag.Artists.HeadOrNone()).IfNone("[No artist]")
                             });
                         }
                     }

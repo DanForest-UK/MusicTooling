@@ -29,12 +29,13 @@ const App = () => {
 
             <FlatList
                 data={files}
+                contentContainerStyle={{ padding: 3 }} 
                 keyExtractor={(item) => item.Id}
                 renderItem={({ item }) => (
-                    <View style={{ marginVertical: 10, padding: 10, backgroundColor: "#ddd" }}>
-                        <Text>Artist: {item.Artist}</Text>
-                        <Text>Title: {item.Name}</Text>
-                        <Text>Path: {item.Path}</Text>
+                    <View style={{ marginVertical: 10, padding: 10, backgroundColor: "#8B4513", borderRadius: 5 }}>
+                        <Text style={{ color: "white" }}>Artist: {item.Artist}</Text>
+                        <Text style={{ color: "white" }}>Title: {item.Name}</Text>
+                        <Text style={{ color: "white" }}>Path: {item.Path}</Text>
                     </View>
                 )}
             />
