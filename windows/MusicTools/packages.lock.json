@@ -458,6 +458,9 @@
           "Microsoft.ReactNative": "[1.0.0, )"
         }
       },
+      "musictools.core": {
+        "type": "Project"
+      },
       "reactcommon": {
         "type": "Project",
         "dependencies": {

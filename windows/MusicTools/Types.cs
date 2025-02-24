@@ -8,8 +8,6 @@ using System.Threading.Tasks;
 
 namespace MusicTools
 {
-    public record SongInfo(string Id, string Name, string Path, string[] Artist, string Album);
-
     /// <summary>
     /// Implements the file abstraction from the taglib library so opening files as a stream
     /// through react native file access methods is possible

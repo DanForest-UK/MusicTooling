@@ -12,6 +12,8 @@ using Windows.Storage.Streams;
 using MusicTools;
 using System.Linq;
 using LanguageExt;
+using MusicTools.Core;
+using static MusicTools.Core.Types;
 
 namespace MusicTooling
 {

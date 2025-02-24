@@ -155,6 +155,12 @@
   <ItemGroup>
     <None Include="packages.lock.json" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MusicTools.Core\MusicTools.Core.csproj">
+      <Project>{a689f173-278c-455b-9d14-a9803f2a698b}</Project>
+      <Name>MusicTools.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
   <ImportGroup Label="ReactNativeWindowsTargets">
     <Import Project="$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.Uwp.CSharpApp.targets" Condition="Exists('$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.Uwp.CSharpApp.targets')" />
   </ImportGroup>
