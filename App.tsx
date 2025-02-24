@@ -24,7 +24,7 @@ const App = () => {
 
     return (
         <View style={styles.container}>
-            <Button title='Scan files' onPress={scanFiles} disabled={loading} />
+            <Button title="Scan files" onPress={scanFiles} disabled={loading} />
             {loading && (
                 <View style={styles.loadingOverlay}>
                     <ActivityIndicator size='large' color='#0000ff' />
