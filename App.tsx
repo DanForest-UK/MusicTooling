@@ -54,12 +54,20 @@ const App = () => {
                 keyExtractor={(item) => item.Id}
                 renderItem={({ item }) => (
                     <View style={styles.fileItem}>
-                        <Text style={styles.fileText}>
-                            Artist: {item.Artist?.length ? item.Artist.join(', ') : '[No artist]'}
-                        </Text>
-                        <Text style={styles.fileText}>Title: {item.Name}</Text>
-                        <Text style={styles.fileText}>Album: {item.Album}</Text>
-                        <Text style={styles.fileText}>Path: {item.Path}</Text>
+                        <View style={styles.fileTextContainer}>
+                            <Text style={styles.fileText}>
+                                Artist: {item.Artist?.length ? item.Artist.join(', ') : '[No artist]'}
+                            </Text>
+                        </View>
+                        <View style={styles.fileTextContainer}>
+                            <Text style={styles.fileText}>Title: {item.Name}</Text>
+                        </View>
+                        <View style={styles.fileTextContainer}>
+                            <Text style={styles.fileText}>Album: {item.Album}</Text>
+                        </View>
+                        <View style={styles.fileTextContainer}>
+                            <Text style={styles.fileText}>Path: {item.Path}</Text>
+                        </View>
                     </View>
                 )}
             />

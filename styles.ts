@@ -13,8 +13,14 @@ export const styles = StyleSheet.create({
     fileItem: {
         marginVertical: 10,
         padding: 10,
-        backgroundColor: '#8B4513',
+        backgroundColor: '#374151',
         borderRadius: 5,
+    },
+    fileTextContainer: {
+        padding: 5,
+        marginVertical: 2,
+        backgroundColor: '#4B5563',
+        borderRadius: 3,
     },
     fileText: {
         color: 'white',
