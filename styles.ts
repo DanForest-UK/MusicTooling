@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
     container: {
+        flex: 1,  // Ensure container takes full available space
         padding: 20,
     },
     listContainer: {
@@ -16,5 +17,31 @@ export const styles = StyleSheet.create({
     },
     fileText: {
         color: 'white',
+    },
+    activityIndicator: {
+        marginTop: 20,
+        alignSelf: 'center',
+    },
+    emptyText: {
+        marginTop: 20,
+        fontSize: 16,
+        color: 'gray',
+        textAlign: 'center',
+        fontStyle: 'italic',
+    },
+    loadingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 18,
+        color: '#ffffff',
     },
 });
