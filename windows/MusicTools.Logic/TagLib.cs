@@ -15,12 +15,43 @@ namespace MusicTools.Logic
         {
             // Use TagLib to read metadata
             var tagFile = TagLib.File.Create(new StreamFileAbstraction(Path.GetFileName(path), stream));
+            // todo refactor into get rating method
+            var id3v2Tag = tagFile.GetTag(TagLib.TagTypes.Id3v2) as TagLib.Id3v2.Tag;
+            int rating = 0;
+
+            if (id3v2Tag != null)
+            {
+                var frameSet = id3v2Tag.GetFrames<TagLib.Id3v2.PopularimeterFrame>();
+
+                if (frameSet.Any())
+                {
+                    int maxRating = frameSet.Max(f => f.Rating);
+
+                    // Convert 0-255 rating to a 0-5 scale
+                    rating = maxRating switch
+                    {
+                        >= 255 => 5,  // 255 is always 5 stars
+                        >= 192 => 4,  // 192-254 is 4 stars
+                        >= 128 => 3,  // 128-191 is 3 stars
+                        >= 64 => 2,  // 64-127 is 2 stars
+                        >= 1 => 1,  // 1-63 is 1 star
+                        _ => 0   // 0 means no rating
+                    };
+                }                
+            }
+            else
+            {
+                Console.WriteLine("No ID3v2 tag found.");
+                // todo log
+            }
+
             return new SongInfo(
                 Id: Guid.NewGuid().ToString(),
                 Name: tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
                 Path: path,
                 Artist: tagFile.Tag.AlbumArtists.Union(tagFile.Tag.Artists).ToArray(),
-                Album: tagFile.Tag.Album.ValueOrNone().IfNone("[No album]"));
+                Album: tagFile.Tag.Album.ValueOrNone().IfNone("[No album]"),
+                Rating: rating);
         }
 
         /// <summary>

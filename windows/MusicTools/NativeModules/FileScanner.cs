@@ -23,7 +23,7 @@ namespace MusicTooling
     public sealed class FileScanner
     {
         [ReactMethod("ScanFiles")]
-        public async Task<IList<SongInfo>> ScanFilesAsync()
+        public async Task<IList<SongInfo>> ScanFilesAsync(int minRating)
         {
             string path = @"C:\Dan\Dropbox\Dropbox\[Music]\[Folk]\[Acapella]";
 
@@ -32,7 +32,7 @@ namespace MusicTooling
             var resutls = await ScanFiles.ScanFilesAsync();
 
             return resutls.Match(
-                Right: list => list.ToList(),               
+                Right: list => list.Where(song => song.Rating >= minRating).ToList(),               
                 Left: error => throw new ReactException(error.Message)
             );
         }

@@ -5,7 +5,7 @@ namespace MusicTools.Core
 {
     public static class Types
     {
-        public record SongInfo(string Id, string Name, string Path, string[] Artist, string Album);
+        public record SongInfo(string Id, string Name, string Path, string[] Artist, string Album, int Rating);
     }
 
     public static class AppErrors

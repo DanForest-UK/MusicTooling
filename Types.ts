@@ -4,4 +4,5 @@ type SongInfo = {
     Artist: string[];
     Path: string;
     Album: string;
+    Rating: number;
 };

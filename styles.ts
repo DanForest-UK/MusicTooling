@@ -51,5 +51,29 @@ export const styles = StyleSheet.create({
         fontSize: 18,
         color: '#ffffff',
     },
+    controlsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    buttonWrapper: {
+        flex: 1,
+        marginRight: 10,
+    },
+    pickerLabel: {
+        fontSize: 16,
+        color: 'white',
+        marginRight: 10,
+    },
+    picker: {
+        height: 40,
+        width: 150,
+        color: 'white',
+        backgroundColor: '#4B5563', // Same as fileTextContainer for consistency
+        borderRadius: 5,
+        paddingHorizontal: 10,
+    },
+
 });
 
