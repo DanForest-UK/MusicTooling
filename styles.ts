@@ -2,8 +2,9 @@ import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
     container: {
-        flex: 1,  // Ensure container takes full available space
+        flex: 1,
         padding: 20,
+        paddingVertical: 10,
     },
     listContainer: {
         padding: 3,
@@ -45,3 +46,4 @@ export const styles = StyleSheet.create({
         color: '#ffffff',
     },
 });
+

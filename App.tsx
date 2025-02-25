@@ -11,6 +11,7 @@ const App = () => {
     const [hasScanned, setHasScanned] = useState(false); // Start as false
 
     const scanFiles = async () => {
+        if (loading) { return; } // Prevent duplicate scans
         setLoading(true);
 
         try {
