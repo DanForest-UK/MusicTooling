@@ -61,6 +61,21 @@ export const styles = StyleSheet.create({
         flex: 1,
         marginRight: 10,
     },
+    starsContainer: {
+        flexDirection: 'row',
+        marginLeft: 5, // Adjust spacing from the label
+    },
+
+    starIcon: {
+        fontSize: 16, // Slightly smaller size
+        color: '#F4D03F', // Pastel yellow
+        marginHorizontal: 2, // Small spacing between stars
+    },
+
+    ratingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     pickerLabel: {
         fontSize: 16,
         color: 'white',

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Button, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { NativeModules } from 'react-native';
+import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import { styles } from './styles';
 
 const { FileScannerModule } = NativeModules;
@@ -13,7 +14,7 @@ const App = () => {
     const [minRating, setMinRating] = useState('0');
 
     const scanFiles = async () => {
-        if (loading) { return; }
+        if (loading) return;
         setLoading(true);
 
         try {
@@ -31,13 +32,23 @@ const App = () => {
         }
     };
 
+    const renderStars = (rating: number) => {
+        return (
+            <View style={styles.starsContainer}>
+                {[...Array(rating)].map((_, index) => (
+                    <FontAwesomeIcon key={index} name="star" style={styles.starIcon} />
+                ))}
+            </View>
+        );
+    };
+
     return (
         <View style={styles.container}>
             <View style={styles.controlsContainer}>
                 <View style={styles.buttonWrapper}>
                     <Button
                         title="Scan files"
-                        onPress={() => scanFiles(minRating)}
+                        onPress={() => scanFiles()}
                         disabled={loading}
                         color={loading ? '#A9A9A9' : '#007AFF'}
                     />
@@ -86,7 +97,10 @@ const App = () => {
                             <Text style={styles.fileText}>Album: {item.Album}</Text>
                         </View>
                         <View style={styles.fileTextContainer}>
-                            <Text style={styles.fileText}>Rating: {item.Rating}</Text>
+                            <View style={styles.ratingRow}>
+                                <Text style={styles.fileText}>Rating:</Text>
+                                {renderStars(item.Rating)}
+                            </View>
                         </View>
                         <View style={styles.fileTextContainer}>
                             <Text style={styles.fileText}>Path: {item.Path}</Text>
