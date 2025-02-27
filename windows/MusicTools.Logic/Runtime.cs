@@ -14,7 +14,7 @@ namespace MusicTools.Logic
     public static class Runtime
     {
         public static Func<string, string, Task<Seq<string>>> GetFilesWithExtensionAsync = (_, _1)  => throw new NotImplementedException();
-        public static Func<string, Stream, SongInfo> ReadSongInfo = (_, _1) => throw new NotImplementedException();
-        public static Func<string, Func<Stream, Task>, Task> WithStream = (_, _1) => throw new NotImplementedException();
+        public static Func<string, Stream, SongInfo> ReadSongInfo = (_, _) => throw new NotImplementedException();
+        public static Func<string, Func<Stream, Task>, Task> WithStream = (_, _) => throw new NotImplementedException();
     }
 }
