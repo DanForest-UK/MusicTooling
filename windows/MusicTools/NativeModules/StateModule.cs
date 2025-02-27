@@ -54,7 +54,7 @@ namespace MusicTools.NativeModules
         }
 
         // todo do we need this
-        private void OnStateChanged(object sender, AppStateData state)
+        private void OnStateChanged(object sender, AppModel state)
         {
             try
             {
