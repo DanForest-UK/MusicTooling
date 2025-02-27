@@ -5,7 +5,7 @@ import { NativeModules } from 'react-native';
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import { styles } from './styles';
 // Import the interfaces
-import { AppState, SongInfo } from './types';
+import { AppModel, SongInfo } from './types';
 
 const { FileScannerModule, StateModule } = NativeModules;
 
@@ -18,7 +18,7 @@ const App = () => {
     const [hasScanned, setHasScanned] = useState(false);
 
     // App state from C# backend - now with explicit type annotation
-    const [appState, setAppState] = useState<AppState>({ songs: [], minimumRating: 0 });
+    const [appState, setAppState] = useState<AppModel>({ songs: [], minimumRating: 0 });
 
     // Initialize and poll for state changes
     useEffect(() => {
@@ -53,7 +53,7 @@ const App = () => {
                 console.log('Songs property not found in state!');
             }
 
-            setAppState(state as AppState);
+            setAppState(state as AppModel);
         } catch (error) {
             console.error('Error fetching state:', error);
         }

@@ -1,47 +1,39 @@
 ﻿using LanguageExt;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using static MusicTools.Core.Types;
+using System;
 
 namespace MusicTools.Core
 {
     public static class ObservableState
     {
-        private static readonly object _lock = new object();
-        private static AppStateData _appState = new AppStateData(new SongInfo[0], 0);
+        static readonly object sync = new();
+        static AppModel state = new AppModel(new SongInfo[0], 0);
 
         // Event that fires when state changes
-        public static event EventHandler<AppStateData> StateChanged;
+        public static event EventHandler<AppModel>? StateChanged;
 
         // Current state (read-only from outside)
-        public static AppStateData Current
-        {
-            get { return _appState; }
-        }
+        public static AppModel Current =>
+            state;
 
         // Update entire state
-        public static void Update(AppStateData newState)
+        public static void Update(AppModel newState)
         {
-            lock (_lock)
+            lock (sync)
             {
-                if (!_appState.Equals(newState))
+                if (!state.Equals(newState))
                 {
-                    _appState = newState;
-                    StateChanged?.Invoke(null, _appState);
+                    state = newState;
+                    StateChanged?.Invoke(null, state);
                 }
             }
         }
 
         // Helper methods for specific state updates
-        public static void SetMinimumRating(int rating)
-        {
-            Update(_appState with { MinimumRating = rating });
-        }
+        public static void SetMinimumRating(int rating) =>
+            Update(state with { MinimumRating = rating });
 
-        public static void SetSongs(Seq<SongInfo> songs)
-        {
-            Update(_appState with { Songs = songs.ToArray() });
-        }
+        public static void SetSongs(Seq<SongInfo> songs) =>
+            Update(state with { Songs = songs.ToArray() });
     }
 }

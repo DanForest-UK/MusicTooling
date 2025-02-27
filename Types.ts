@@ -8,7 +8,7 @@ export interface SongInfo {
     path: string;
 }
 
-export interface AppState {
+export interface AppModel {
     songs: SongInfo[];
     minimumRating: number;
 }
