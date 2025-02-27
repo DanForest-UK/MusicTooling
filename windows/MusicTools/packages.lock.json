@@ -47,6 +47,23 @@
           "Microsoft.Web.WebView2": "1.0.1264.42"
         }
       },
+      "Newtonsoft.Json": {
+        "type": "Direct",
+        "requested": "[13.0.3, )",
+        "resolved": "13.0.3",
+        "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
+      },
+      "ReactiveProperty": {
+        "type": "Direct",
+        "requested": "[9.7.0, )",
+        "resolved": "9.7.0",
+        "contentHash": "Chm/sEmnOjNZ8mKrB1wguJfrKaGy/7KSvs6uij+LMzlgb6Ozq7x8/dJYrWutdk3IUUl/EsjaCIMAPOLl5FRDOA==",
+        "dependencies": {
+          "ReactiveProperty.Core": "9.7.0",
+          "System.ComponentModel.Annotations": "5.0.0",
+          "System.Reactive": "6.0.1"
+        }
+      },
       "TagLibSharp": {
         "type": "Direct",
         "requested": "[2.3.0, )",
@@ -116,6 +133,14 @@
         "contentHash": "st47PosZSHrjECdjeIzZQbzivYBJFv6P2nv4cj2ypdI204DO+vZ7l5raGMiX4eXMJ53RfOIg+/s4DHVZ54Nu2A==",
         "dependencies": {
           "Microsoft.NETCore.Platforms": "1.1.0"
+        }
+      },
+      "ReactiveProperty.Core": {
+        "type": "Transitive",
+        "resolved": "9.7.0",
+        "contentHash": "RPjkQD0d0uMF7fC9t9EY1anF+HzwGsx+EXYWq0BHah5Y2pQZbQ/szOPYhsGdu0JsawiknlubC6hIE2rTokWWYQ==",
+        "dependencies": {
+          "System.ComponentModel.Annotations": "5.0.0"
         }
       },
       "runtime.win10-arm.Microsoft.Net.Native.Compiler": {
@@ -194,6 +219,11 @@
           "Microsoft.NETCore.Targets": "1.1.0",
           "System.Runtime": "4.3.0"
         }
+      },
+      "System.ComponentModel.Annotations": {
+        "type": "Transitive",
+        "resolved": "5.0.0",
+        "contentHash": "dMkqfy2el8A8/I76n2Hi1oBFEbG1SfxD2l5nhwXV3XjlnOmwxJlQbYpJH4W51odnU9sARCSAgv7S3CyAFMkpYg=="
       },
       "System.Diagnostics.Contracts": {
         "type": "Transitive",
@@ -290,6 +320,14 @@
         "contentHash": "XIWiDvKPXaTveaB7HVganDlOCRoj03l+jrwNvcge/t8vhGYKvqV+dMv6G4SAX2NoNmN0wZfVPTAlFwZcZvVOUw==",
         "dependencies": {
           "System.Runtime.CompilerServices.Unsafe": "4.5.3"
+        }
+      },
+      "System.Reactive": {
+        "type": "Transitive",
+        "resolved": "6.0.1",
+        "contentHash": "rHaWtKDwCi9qJ3ObKo8LHPMuuwv33YbmQi7TcUK1C264V3MFnOr5Im7QgCTdLniztP3GJyeiSg5x8NqYJFqRmg==",
+        "dependencies": {
+          "System.Threading.Tasks.Extensions": "4.5.4"
         }
       },
       "System.Reflection": {
@@ -485,6 +523,12 @@
         "type": "Project",
         "dependencies": {
           "Folly": "[1.0.0, )"
+        }
+      },
+      "reactnativepicker": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.ReactNative": "[1.0.0, )"
         }
       }
     },

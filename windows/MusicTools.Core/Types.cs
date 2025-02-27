@@ -1,10 +1,12 @@
-﻿using LanguageExt.Common;
+﻿using LanguageExt;
+using LanguageExt.Common;
 using System;
 
 namespace MusicTools.Core
 {
     public static class Types
     {
+        public record AppStateData(SongInfo[] Songs, int MinimumRating);
         public record SongInfo(string Id, string Name, string Path, string[] Artist, string Album, int Rating);
     }
 
