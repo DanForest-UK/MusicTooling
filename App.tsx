@@ -38,22 +38,7 @@ const App = () => {
     const fetchCurrentState = async () => {
         try {
             const stateJson = await StateModule.GetCurrentState();
-            console.log('Raw state JSON:', stateJson);
-
-            const state = JSON.parse(stateJson);
-            console.log('All props in state:', Object.keys(state));
-
-            if (state.songs) {
-                console.log('Songs array length:', state.songs.length);
-                if (state.songs.length > 0) {
-                    console.log('First song props:', Object.keys(state.songs[0]));
-                    console.log('Sample song:', state.songs[0]);
-                }
-            } else {
-                console.log('Songs property not found in state!');
-            }
-
-            setAppState(state as AppModel);
+             setAppState(JSON.parse(stateJson) as AppModel);
         } catch (error) {
             console.error('Error fetching state:', error);
         }

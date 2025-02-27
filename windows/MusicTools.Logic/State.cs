@@ -2,7 +2,7 @@
 using static MusicTools.Core.Types;
 using System;
 
-namespace MusicTools.Core
+namespace MusicTools.Logic
 {
     public static class ObservableState
     {

@@ -9,13 +9,14 @@ using Newtonsoft.Json.Serialization;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
+using MusicTools.Logic;
 
 namespace MusicTools.NativeModules
 {
     [ReactModule("StateModule")]
     public sealed class StateModule : IDisposable
     {
-        private ReactContext _reactContext;
+        private ReactContext reactContext;
 
         // Static JsonSerializerSettings with a custom contract resolver
         private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
@@ -28,66 +29,35 @@ namespace MusicTools.NativeModules
         public StateModule()
         {
             ObservableState.StateChanged += OnStateChanged;
-            Console.WriteLine("StateModule: Default constructor called");
         }
 
         // Initialize will be called by the React Native runtime
         [ReactInitializer]
         public void Initialize(ReactContext reactContext)
         {
-            _reactContext = reactContext;
-            Console.WriteLine("StateModule: Initialize called with ReactContext");
+            this.reactContext = reactContext;
         }
 
         [ReactMethod("addListener")]
         public void AddListener(string eventName)
         {
             // No-op implementation - just needs to exist for React Native
-            Console.WriteLine($"StateModule: addListener called for {eventName}");
         }
 
         [ReactMethod("removeListeners")]
         public void RemoveListeners(int count)
         {
             // No-op implementation - just needs to exist for React Native
-            Console.WriteLine($"StateModule: removeListeners called with count {count}");
         }
 
         // todo do we need this
         private void OnStateChanged(object sender, AppModel state)
-        {
-            try
-            {
-                if ((object)_reactContext != null)
-                {
-                    Console.WriteLine("StateModule: State changed, will update on next GetCurrentState call");
-                }
-                else
-                {
-                    Console.WriteLine("StateModule: Cannot handle state change - ReactContext is null");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in OnStateChanged: {ex.Message}");
-            }
-        }
+        {}
 
         [ReactMethod("GetCurrentState")]
-        public async Task<string> GetCurrentState()
-        {
-            var state = ObservableState.Current;
+        public async Task<string> GetCurrentState() =>
+            JsonConvert.SerializeObject(ObservableState.Current, _jsonSettings);
 
-            Console.WriteLine($"GetCurrentState: Songs count: {state.Songs?.Length ?? 0}");
-
-            // Serialize with our custom contract resolver
-            string jsonResult = JsonConvert.SerializeObject(state, _jsonSettings);
-
-            // Print serialized JSON to verify property names
-            Console.WriteLine($"GetCurrentState: Serialized JSON: {jsonResult.Substring(0, Math.Min(200, jsonResult.Length))}");
-
-            return jsonResult;
-        }
 
         [ReactMethod("SetMinimumRating")]
         public void SetMinimumRating(int rating)
