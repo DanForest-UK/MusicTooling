@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, Button, FlatList, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { View, Text, Button, FlatList, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { NativeModules } from 'react-native';
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
@@ -18,12 +18,27 @@ const App = () => {
     const [hasScanned, setHasScanned] = useState(false);
 
     // App state from C# backend
-    const [appState, setAppState] = useState<AppModel>({ songs: [], minimumRating: 0 });
+    const [appState, setAppState] = useState<AppModel>({
+        songs: [],
+        chosenSongs: [],
+        minimumRating: 0
+    });
 
     // Reference to track the interval for cleanup
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Fetch current state from native module - define before useEffect
+    // Calculate filtered songs in the frontend using useMemo with Set optimization
+    const filteredSongs = useMemo(() => {
+        // Convert chosenSongs array to a Set for O(1) lookups
+        const chosenSongsSet = new Set(appState.chosenSongs);
+
+        return appState.songs.filter(song =>
+            song.rating >= appState.minimumRating &&
+            chosenSongsSet.has(song.id)
+        );
+    }, [appState.songs, appState.chosenSongs, appState.minimumRating]);
+
+    // Fetch current state from native module
     const fetchCurrentState = useCallback(async () => {
         try {
             const stateJson = await StateModule.GetCurrentState();
@@ -37,7 +52,7 @@ const App = () => {
         }
     }, [appState]);
 
-    // Set up polling for state changes - after fetchCurrentState is defined
+    // Set up polling for state changes
     useEffect(() => {
         // Get initial state
         fetchCurrentState();
@@ -73,6 +88,9 @@ const App = () => {
     const handleRatingChange = (rating: string) =>
         StateModule.SetMinimumRating(parseInt(rating, 10));
 
+    const toggleSongSelection = (songId: string) =>
+        StateModule.ToggleSongSelection(songId);
+
     const renderStars = (rating: number) => (
         <View style={styles.starsContainer}>
             {[...Array(rating)].map((_, index) => (
@@ -81,30 +99,50 @@ const App = () => {
         </View>
     );
 
-    const renderSongItem = ({ item }: { item: SongInfo }) => (
-        <View style={styles.fileItem}>
-            <View style={styles.fileTextContainer}>
-                <Text style={styles.fileText}>
-                    Artist: {item.artist?.length ? item.artist.join(', ') : '[No artist]'}
-                </Text>
-            </View>
-            <View style={styles.fileTextContainer}>
-                <Text style={styles.fileText}>Title: {item.name}</Text>
-            </View>
-            <View style={styles.fileTextContainer}>
-                <Text style={styles.fileText}>Album: {item.album}</Text>
-            </View>
-            <View style={styles.fileTextContainer}>
-                <View style={styles.ratingRow}>
-                    <Text style={styles.fileText}>Rating:</Text>
-                    {renderStars(item.rating)}
+    const renderSongItem = ({ item }: { item: SongInfo }) => {
+        const isSelected = appState.chosenSongs.includes(item.id);
+
+        return (
+            <View style={styles.fileItem}>
+                <View style={styles.fileHeaderContainer}>
+                    <TouchableOpacity
+                        style={styles.checkboxContainer}
+                        onPress={() => toggleSongSelection(item.id)}
+                    >
+                        <FontAwesomeIcon
+                            name={isSelected ? "check-square-o" : "square-o"}
+                            style={[styles.checkboxIcon, isSelected ? styles.checkboxIconChecked : null]}
+                        />
+                        <Text style={styles.fileHeaderText}>
+                            {isSelected ? 'Selected' : 'Not Selected'}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
+                <TouchableOpacity onPress={() => toggleSongSelection(item.id)}>
+                    <View style={styles.fileTextContainer}>
+                        <Text style={styles.fileText}>
+                            Artist: {item.artist?.length ? item.artist.join(', ') : '[No artist]'}
+                        </Text>
+                    </View>
+                    <View style={styles.fileTextContainer}>
+                        <Text style={styles.fileText}>Title: {item.name}</Text>
+                    </View>
+                    <View style={styles.fileTextContainer}>
+                        <Text style={styles.fileText}>Album: {item.album}</Text>
+                    </View>
+                    <View style={styles.fileTextContainer}>
+                        <View style={styles.ratingRow}>
+                            <Text style={styles.fileText}>Rating:</Text>
+                            {renderStars(item.rating)}
+                        </View>
+                    </View>
+                    <View style={styles.fileTextContainer}>
+                        <Text style={styles.fileText}>Path: {item.path}</Text>
+                    </View>
+                </TouchableOpacity>
             </View>
-            <View style={styles.fileTextContainer}>
-                <Text style={styles.fileText}>Path: {item.path}</Text>
-            </View>
-        </View>
-    );
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -132,6 +170,15 @@ const App = () => {
                 </Picker>
             </View>
 
+            <View style={styles.statsContainer}>
+                <Text style={styles.statsText}>
+                    Showing {filteredSongs.length} of {appState.songs.length} songs
+                </Text>
+                <Text style={styles.statsText}>
+                    {appState.chosenSongs.length} songs selected
+                </Text>
+            </View>
+
             {loading && (
                 <View style={styles.loadingOverlay}>
                     <ActivityIndicator style={styles.activityIndicator} size={100} color="#0000ff" />
@@ -139,12 +186,12 @@ const App = () => {
                 </View>
             )}
 
-            {hasScanned && appState.songs?.length === 0 && !loading && (
-                <Text style={styles.emptyText}>No files found.</Text>
+            {hasScanned && filteredSongs.length === 0 && !loading && (
+                <Text style={styles.emptyText}>No files found matching your criteria.</Text>
             )}
 
             <FlatList
-                data={appState.songs}
+                data={filteredSongs}
                 contentContainerStyle={styles.listContainer}
                 keyExtractor={item => item.id}
                 renderItem={renderSongItem}

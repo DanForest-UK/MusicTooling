@@ -30,7 +30,7 @@ namespace MusicTools.NativeModules
         /// Default constructor for React Native code generation
         /// </summary>
         public StateModule()
-        {}
+        { }
 
         /// <summary>
         /// Initialize method called by React Native runtime
@@ -38,7 +38,7 @@ namespace MusicTools.NativeModules
         [ReactInitializer]
         public void Initialize(ReactContext reactContext) =>
             this.reactContext = reactContext;
-  
+
         /// <summary>
         /// Returns the current application state as JSON
         /// </summary>
@@ -62,6 +62,31 @@ namespace MusicTools.NativeModules
         [ReactMethod("SetMinimumRating")]
         public void SetMinimumRating(int rating) =>
             ObservableState.SetMinimumRating(rating);
+
+        /// <summary>
+        /// Toggles the selection of a song
+        /// </summary>
+        [ReactMethod("ToggleSongSelection")]
+        public void ToggleSongSelection(string songId) =>
+            ObservableState.ToggleSongSelection(songId);
+
+        /// <summary>
+        /// Sets all chosen songs
+        /// </summary>
+        [ReactMethod("SetChosenSongs")]
+        public void SetChosenSongs(string chosenSongsJson)
+        {
+            try
+            {
+                var songIds = JsonConvert.DeserializeObject<string[]>(chosenSongsJson);
+                if (songIds != null)
+                    ObservableState.SetChosenSongs(songIds);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error setting chosen songs: {ex.Message}");
+            }
+        }
 
         /// <summary>
         /// Cleanup resources when component is disposed

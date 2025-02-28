@@ -16,11 +16,28 @@ export const styles = StyleSheet.create({
         backgroundColor: '#374151',
         borderRadius: 5,
     },
+    fileItemSelected: {
+        borderWidth: 2,
+        borderColor: '#60A5FA',
+    },
     fileTextContainer: {
         padding: 5,
         marginVertical: 2,
         backgroundColor: '#4B5563',
         borderRadius: 3,
+    },
+    fileHeaderContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 5,
+        marginBottom: 5,
+        backgroundColor: '#2D3748',
+        borderRadius: 3,
+    },
+    fileHeaderText: {
+        color: 'white',
+        fontWeight: 'bold',
+        marginLeft: 10,
     },
     fileText: {
         color: 'white',
@@ -63,15 +80,13 @@ export const styles = StyleSheet.create({
     },
     starsContainer: {
         flexDirection: 'row',
-        marginLeft: 5, // Adjust spacing from the label
+        marginLeft: 5,
     },
-
     starIcon: {
-        fontSize: 16, // Slightly smaller size
-        color: '#F4D03F', // Pastel yellow
-        marginHorizontal: 2, // Small spacing between stars
+        fontSize: 16,
+        color: '#F4D03F',
+        marginHorizontal: 2,
     },
-
     ratingRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -85,10 +100,34 @@ export const styles = StyleSheet.create({
         height: 40,
         width: 150,
         color: 'white',
-        backgroundColor: '#4B5563', // Same as fileTextContainer for consistency
+        backgroundColor: '#4B5563',
         borderRadius: 5,
         paddingHorizontal: 10,
     },
-
+    songSwitch: {
+        transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
+    },
+    statsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+        padding: 8,
+        backgroundColor: '#2D3748',
+        borderRadius: 5,
+    },
+    statsText: {
+        color: 'white',
+        fontSize: 12,
+    },
+    checkboxContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    checkboxIcon: {
+        fontSize: 20,
+        color: '#9CA3AF',
+    },
+    checkboxIconChecked: {
+        color: '#60A5FA',
+    },
 });
-

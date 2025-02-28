@@ -10,5 +10,6 @@ export interface SongInfo {
 
 export interface AppModel {
     songs: SongInfo[];
+    chosenSongs: string[];
     minimumRating: number;
 }

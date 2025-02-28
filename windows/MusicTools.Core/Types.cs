@@ -6,7 +6,8 @@ namespace MusicTools.Core
 {
     public static class Types
     {
-        public record AppModel(SongInfo[] Songs, int MinimumRating);
+        // Records for application state with ChosenSongs after Songs
+        public record AppModel(SongInfo[] Songs, string[] ChosenSongs, int MinimumRating);
         public record SongInfo(string Id, string Name, string Path, string[] Artist, string Album, int Rating);
     }
 
