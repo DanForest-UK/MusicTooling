@@ -1,55 +1,60 @@
 ﻿using LanguageExt;
 using static MusicTools.Core.Types;
 using System;
+using static LanguageExt.Prelude;
 
 namespace MusicTools.Logic
 {
+    /// <summary>
+    /// Manages application state using an immutable Atom container
+    /// </summary>
     public static class ObservableState
     {
-        static readonly object sync = new();
-        static AppModel state = new AppModel(new SongInfo[0], 0);
+        // Thread safe and atomic management of state
+        static readonly Atom<AppModel> stateAtom = Atom(new AppModel(new SongInfo[0], 0));
 
         // Event that fires when state changes
         public static event EventHandler<AppModel>? StateChanged;
 
-        // Current state (read-only from outside)
-        public static AppModel Current =>
-            state;
+        /// <summary>
+        /// Current application state (read-only access)
+        /// </summary>
+        public static AppModel Current => stateAtom.Value;
 
         /// <summary>
-        /// Updates entire application state
+        /// Updates the entire application state atomically
         /// </summary>
         public static void Update(AppModel newState)
         {
-            lock (sync)
+            // Compare-and-swap the atom value, then fire event if changed
+            stateAtom.Swap(oldState =>
             {
-                if (!state.Equals(newState))
+                // Only update if values are different
+                if (!oldState.Equals(newState))
                 {
-                    var oldState = state;
-                    state = newState;
-
-                    // Ensure we're not triggering with null state
-                    if (StateChanged != null)
+                    try
                     {
-                        try
-                        {
-                            StateChanged(null, state);
-                        }
-                        catch (Exception ex)
-                        {
-                            // Log exception but don't crash
-                            System.Diagnostics.Debug.WriteLine($"Error in state change notification: {ex.Message}");
-                        }
+                        StateChanged?.Invoke(null, newState);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error in state change notification: {ex.Message}");
                     }
                 }
-            }
+                return newState;
+            });
         }
 
-        // Helper methods for specific state updates
+        /// <summary>
+        /// Sets the minimum rating filter
+        /// </summary>
         public static void SetMinimumRating(int rating) =>
-            Update(state with { MinimumRating = rating });
+            stateAtom.Swap(state => state with { MinimumRating = rating });
 
+        /// <summary>
+        /// Sets the song collection
+        /// </summary>
         public static void SetSongs(Seq<SongInfo> songs) =>
-            Update(state with { Songs = songs.ToArray() });
+            stateAtom.Swap(state => state with { Songs = songs.ToArray() });
     }
 }
