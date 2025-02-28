@@ -16,80 +16,77 @@ namespace MusicTools.NativeModules
     [ReactModule("StateModule")]
     public sealed class StateModule : IDisposable
     {
-        private ReactContext reactContext;
+        // Field to hold the React context
+        ReactContext reactContext;
 
         // Static JsonSerializerSettings with a custom contract resolver
-        private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
+        static readonly JsonSerializerSettings jsonSettings = new JsonSerializerSettings
         {
             ContractResolver = new ForceCamelCasePropertyNamesContractResolver(),
             NullValueHandling = NullValueHandling.Include
         };
 
-        // Default parameterless constructor for React Native code gen
+        /// <summary>
+        /// Default constructor for React Native code generation
+        /// </summary>
         public StateModule()
-        {
-            ObservableState.StateChanged += OnStateChanged;
-        }
-
-        // Initialize will be called by the React Native runtime
-        [ReactInitializer]
-        public void Initialize(ReactContext reactContext)
-        {
-            this.reactContext = reactContext;
-        }
-
-        [ReactMethod("addListener")]
-        public void AddListener(string eventName)
-        {
-            // No-op implementation - just needs to exist for React Native
-        }
-
-        [ReactMethod("removeListeners")]
-        public void RemoveListeners(int count)
-        {
-            // No-op implementation - just needs to exist for React Native
-        }
-
-        // todo do we need this
-        private void OnStateChanged(object sender, AppModel state)
         {}
 
+        /// <summary>
+        /// Initialize method called by React Native runtime
+        /// </summary>
+        [ReactInitializer]
+        public void Initialize(ReactContext reactContext) =>
+            this.reactContext = reactContext;
+  
+        /// <summary>
+        /// Returns the current application state as JSON
+        /// </summary>
         [ReactMethod("GetCurrentState")]
-        public async Task<string> GetCurrentState() =>
-            JsonConvert.SerializeObject(ObservableState.Current, _jsonSettings);
-
-
-        [ReactMethod("SetMinimumRating")]
-        public void SetMinimumRating(int rating)
+        public Task<string> GetCurrentState()
         {
-            ObservableState.SetMinimumRating(rating);
+            try
+            {
+                return Task.FromResult(JsonConvert.SerializeObject(ObservableState.Current, jsonSettings));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting state: {ex.Message}");
+                return Task.FromResult("{}");
+            }
         }
 
+        /// <summary>
+        /// Updates the minimum rating filter
+        /// </summary>
+        [ReactMethod("SetMinimumRating")]
+        public void SetMinimumRating(int rating) =>
+            ObservableState.SetMinimumRating(rating);
+
+        /// <summary>
+        /// Cleanup resources when component is disposed
+        /// </summary>
         public void Dispose()
         {
-            ObservableState.StateChanged -= OnStateChanged;
+            // Nothing to dispose
         }
     }
 
     /// <summary>
     /// Enhanced contract resolver that forces camelCase property names, 
-    /// even when standard CamelCasePropertyNamesContractResolver isn't working
-    /// with certain types like records.
+    /// even for record types where the standard resolver often fails
     /// </summary>
     public class ForceCamelCasePropertyNamesContractResolver : DefaultContractResolver
     {
-        private readonly CamelCaseNamingStrategy _namingStrategy = new CamelCaseNamingStrategy();
+        readonly CamelCaseNamingStrategy namingStrategy = new CamelCaseNamingStrategy();
 
         protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
         {
-            // Get properties from base implementation
-            IList<JsonProperty> properties = base.CreateProperties(type, memberSerialization);
+            var properties = base.CreateProperties(type, memberSerialization);
 
             // Force camelCase for all property names
             foreach (var prop in properties)
-            {
-                prop.PropertyName = _namingStrategy.GetPropertyName(prop.PropertyName, false);
-            }
+                prop.PropertyName = namingStrategy.GetPropertyName(prop.PropertyName, false);
 
             return properties;
         }

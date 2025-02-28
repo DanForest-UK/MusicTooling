@@ -14,12 +14,14 @@ using Windows.Storage;
 
 namespace MusicTools.Logic
 {
-
     public static class ScanFiles
     {
+        /// <summary>
+        /// Scans for music files and returns song information
+        /// </summary>
         public async static Task<Either<Error, Seq<SongInfo>>> ScanFilesAsync()
         {
-            string path = @"C:\Dan\Dropbox\Dropbox\[Music]\[Folk]\[Acapella]";
+            var path = @"C:\Dan\Dropbox\Dropbox\[Music]\[Folk]\[Acapella]";
 
             try
             {
@@ -39,19 +41,20 @@ namespace MusicTools.Logic
             }
         }
 
+        /// <summary>
+        /// Adds song metadata for a file to the collection
+        /// </summary>
         static async Task AddFileInfo(string path, List<SongInfo> list)
         {
             try
             {
                 await Runtime.WithStream(path, async stream =>
-                    await Task.Run(() => list.Add(Runtime.ReadSongInfo(path, stream))));               
+                    await Task.Run(() => list.Add(Runtime.ReadSongInfo(path, stream))));
             }
             catch (Exception ex)
             {
-                // todo we want to return a list of errors
                 Debug.WriteLine($"Error reading metadata for {path}: {ex.Message}");
             }
         }
-
     }
 }

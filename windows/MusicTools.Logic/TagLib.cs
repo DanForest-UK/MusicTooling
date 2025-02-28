@@ -11,13 +11,15 @@ namespace MusicTools.Logic
 {
     public static class ReadTag
     {
+        /// <summary>
+        /// Reads metadata from an audio file stream
+        /// </summary>
         public static SongInfo ReadSongInfo(string path, Stream stream)
         {
             // Use TagLib to read metadata
             var tagFile = TagLib.File.Create(new StreamFileAbstraction(Path.GetFileName(path), stream));
-            // todo refactor into get rating method
             var id3v2Tag = tagFile.GetTag(TagLib.TagTypes.Id3v2) as TagLib.Id3v2.Tag;
-            int rating = 0;
+            var rating = 0;
 
             if (id3v2Tag != null)
             {
@@ -25,9 +27,8 @@ namespace MusicTools.Logic
 
                 if (frameSet.Any())
                 {
-                    int maxRating = frameSet.Max(f => f.Rating);
+                    var maxRating = frameSet.Max(f => f.Rating);
 
-                    // Convert 0-255 rating to a 0-5 scale
                     rating = maxRating switch
                     {
                         >= 255 => 5,  // 255 is always 5 stars
@@ -37,21 +38,18 @@ namespace MusicTools.Logic
                         >= 1 => 1,  // 1-63 is 1 star
                         _ => 0   // 0 means no rating
                     };
-                }                
+                }
             }
             else
-            {
                 Console.WriteLine("No ID3v2 tag found.");
-                // todo log
-            }
 
             return new SongInfo(
-                Id: Guid.NewGuid().ToString(),
-                Name: tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
-                Path: path,
-                Artist: tagFile.Tag.AlbumArtists.Union(tagFile.Tag.Artists).ToArray(),
-                Album: tagFile.Tag.Album.ValueOrNone().IfNone("[No album]"),
-                Rating: rating);
+                Guid.NewGuid().ToString(),
+                tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
+                path,
+                tagFile.Tag.AlbumArtists.Union(tagFile.Tag.Artists).ToArray(),
+                tagFile.Tag.Album.ValueOrNone().IfNone("[No album]"),
+                rating);
         }
 
         /// <summary>
@@ -60,7 +58,7 @@ namespace MusicTools.Logic
         /// </summary>
         public class StreamFileAbstraction : TagLib.File.IFileAbstraction
         {
-            private readonly Stream _stream;
+            readonly Stream _stream;
 
             public StreamFileAbstraction(string name, Stream stream)
             {
@@ -74,10 +72,8 @@ namespace MusicTools.Logic
 
             public Stream WriteStream => throw new NotSupportedException("This file abstraction is read-only.");
 
-            public void CloseStream(Stream stream)
-            {
+            public void CloseStream(Stream stream) =>
                 stream?.Dispose();
-            }
         }
     }
 }

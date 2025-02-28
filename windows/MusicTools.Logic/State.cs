@@ -16,15 +16,31 @@ namespace MusicTools.Logic
         public static AppModel Current =>
             state;
 
-        // Update entire state
+        /// <summary>
+        /// Updates entire application state
+        /// </summary>
         public static void Update(AppModel newState)
         {
             lock (sync)
             {
                 if (!state.Equals(newState))
                 {
+                    var oldState = state;
                     state = newState;
-                    StateChanged?.Invoke(null, state);
+
+                    // Ensure we're not triggering with null state
+                    if (StateChanged != null)
+                    {
+                        try
+                        {
+                            StateChanged(null, state);
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log exception but don't crash
+                            System.Diagnostics.Debug.WriteLine($"Error in state change notification: {ex.Message}");
+                        }
+                    }
                 }
             }
         }

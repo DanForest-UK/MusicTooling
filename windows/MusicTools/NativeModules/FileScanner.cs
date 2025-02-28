@@ -15,10 +15,13 @@ namespace MusicTooling
     [ReactModule("FileScannerModule")]
     public sealed class FileScanner
     {
+        /// <summary>
+        /// React method that scans for music files and updates application state with filtered songs
+        /// </summary>
         [ReactMethod("ScanFiles")]
         public async Task ScanFilesAsync()
         {
-            string path = @"C:\Dan\Dropbox\Dropbox\[Music]\[Folk]\[Acapella]";
+            var path = @"C:\Dan\Dropbox\Dropbox\[Music]\[Folk]\[Acapella]";
             React.AssertFileAccess();
 
             try
@@ -26,12 +29,13 @@ namespace MusicTooling
                 var results = await ScanFiles.ScanFilesAsync();
 
                 results.Match(
-                    Right: list => {
-                        var filteredList = list.Where(song => song.Rating >= ObservableState.Current.MinimumRating);
+                    Right: list =>
+                    {
+                        var filteredList = from song in list
+                                           where song.Rating >= ObservableState.Current.MinimumRating
+                                           select song;
 
-                        // Update state with new songs - this will trigger UI update
                         ObservableState.SetSongs(filteredList);
-
                         return unit;
                     },
                     Left: error => throw new ReactException(error.Message)

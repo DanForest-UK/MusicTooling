@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, Button, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { NativeModules } from 'react-native';
@@ -10,46 +10,53 @@ import { AppModel, SongInfo } from './types';
 const { FileScannerModule, StateModule } = NativeModules;
 
 // The polling interval in milliseconds
-const POLLING_INTERVAL = 1000; // 1 second
+const POLLING_INTERVAL = 500; // Poll every 500ms
 
 const App = () => {
     // Local UI state
     const [loading, setLoading] = useState(false);
     const [hasScanned, setHasScanned] = useState(false);
 
-    // App state from C# backend - now with explicit type annotation
+    // App state from C# backend
     const [appState, setAppState] = useState<AppModel>({ songs: [], minimumRating: 0 });
 
-    // Initialize and poll for state changes
+    // Reference to track the interval for cleanup
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Fetch current state from native module - define before useEffect
+    const fetchCurrentState = useCallback(async () => {
+        try {
+            const stateJson = await StateModule.GetCurrentState();
+            const newState = JSON.parse(stateJson) as AppModel;
+
+            // Only update state if something changed (to avoid unnecessary renders)
+            if (JSON.stringify(newState) !== JSON.stringify(appState))
+                setAppState(newState);
+        } catch (error) {
+            console.error('Error fetching state:', error);
+        }
+    }, [appState]);
+
+    // Set up polling for state changes - after fetchCurrentState is defined
     useEffect(() => {
         // Get initial state
         fetchCurrentState();
 
-        // Set up polling for state changes
-        const intervalId = setInterval(fetchCurrentState, POLLING_INTERVAL);
+        // Set up polling interval
+        intervalRef.current = setInterval(fetchCurrentState, POLLING_INTERVAL);
 
-        // Cleanup interval on unmount
+        // Cleanup on unmount
         return () => {
-            clearInterval(intervalId);
+            if (intervalRef.current)
+                clearInterval(intervalRef.current);
         };
-    }, []);
-
-    // Function to fetch current state from native module with improved debugging
-    const fetchCurrentState = async () => {
-        try {
-            const stateJson = await StateModule.GetCurrentState();
-             setAppState(JSON.parse(stateJson) as AppModel);
-        } catch (error) {
-            console.error('Error fetching state:', error);
-        }
-    };
+    }, [fetchCurrentState]);
 
     const scanFiles = async () => {
         if (loading) return;
         setLoading(true);
 
         try {
-            // No need to pass minimumRating - it's already in the state
             await FileScannerModule.ScanFiles();
         } catch (error: any) {
             Alert.alert(
@@ -59,29 +66,21 @@ const App = () => {
         } finally {
             setLoading(false);
             setHasScanned(true);
-            // Fetch latest state after scan
             fetchCurrentState();
         }
     };
 
-    const handleRatingChange = (rating: string) => {
-        // Update rating in state when picker changes
+    const handleRatingChange = (rating: string) =>
         StateModule.SetMinimumRating(parseInt(rating, 10));
-        // Fetch latest state after rating change
-        fetchCurrentState();
-    };
 
-    const renderStars = (rating: number) => {
-        return (
-            <View style={styles.starsContainer}>
-                {[...Array(rating)].map((_, index) => (
-                    <FontAwesomeIcon key={index} name="star" style={styles.starIcon} />
-                ))}
-            </View>
-        );
-    };
+    const renderStars = (rating: number) => (
+        <View style={styles.starsContainer}>
+            {[...Array(rating)].map((_, index) => (
+                <FontAwesomeIcon key={index} name="star" style={styles.starIcon} />
+            ))}
+        </View>
+    );
 
-    // This explicitly uses the SongInfo interface to fix the linting warning
     const renderSongItem = ({ item }: { item: SongInfo }) => (
         <View style={styles.fileItem}>
             <View style={styles.fileTextContainer}>
@@ -147,7 +146,7 @@ const App = () => {
             <FlatList
                 data={appState.songs}
                 contentContainerStyle={styles.listContainer}
-                keyExtractor={(item) => item.id}
+                keyExtractor={item => item.id}
                 renderItem={renderSongItem}
             />
         </View>
