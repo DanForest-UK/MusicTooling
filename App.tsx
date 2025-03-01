@@ -21,7 +21,7 @@ const App = () => {
     const [appState, setAppState] = useState<AppModel>({
         songs: [],
         chosenSongs: [],
-        minimumRating: 0
+        minimumRating: 0,
     });
 
     // Reference to track the interval for cleanup
@@ -41,8 +41,9 @@ const App = () => {
             const newState = JSON.parse(stateJson) as AppModel;
 
             // Only update state if something changed (to avoid unnecessary renders)
-            if (JSON.stringify(newState) !== JSON.stringify(appState))
+            if (JSON.stringify(newState) !== JSON.stringify(appState)) {
                 setAppState(newState);
+            }
         } catch (error) {
             console.error('Error fetching state:', error);
         }
@@ -58,13 +59,12 @@ const App = () => {
 
         // Cleanup on unmount
         return () => {
-            if (intervalRef.current)
-                clearInterval(intervalRef.current);
+            if (intervalRef.current) { clearInterval(intervalRef.current); }
         };
     }, [fetchCurrentState]);
 
     const scanFiles = async () => {
-        if (loading) return;
+        if (loading) { return; }
         setLoading(true);
 
         try {
@@ -84,8 +84,11 @@ const App = () => {
     const handleRatingChange = (rating: string) =>
         StateModule.SetMinimumRating(parseInt(rating, 10));
 
-    const toggleSongSelection = (songId: string) =>
-        StateModule.ToggleSongSelection(songId);
+    const toggleSongSelection = async (songId: string) => {
+        await StateModule.ToggleSongSelection(songId);
+        // Immediately fetch the updated state to reflect the change
+        fetchCurrentState();
+    };
 
     const renderStars = (rating: number) => (
         <View style={styles.starsContainer}>
@@ -106,7 +109,7 @@ const App = () => {
                         onPress={() => toggleSongSelection(item.id)}
                     >
                         <FontAwesomeIcon
-                            name={isSelected ? "check-square-o" : "square-o"}
+                            name={isSelected ? 'check-square-o' : 'square-o'}
                             style={[styles.checkboxIcon, isSelected ? styles.checkboxIconChecked : null]}
                         />
                         <Text style={styles.fileHeaderText}>
