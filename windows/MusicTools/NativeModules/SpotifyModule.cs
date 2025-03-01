@@ -46,42 +46,59 @@ namespace MusicTools.NativeModules
         /// Gets the Spotify authorization URL for the authentication flow
         /// </summary>
         [ReactMethod("GetAuthUrl")]
-        public string GetAuthUrl()
+        public void GetAuthUrl(IReactPromise<string> promise)
         {
-            EnsureInitialized();
-            return _spotifyApi.GetAuthorizationUrl();
+            try
+            {
+                EnsureInitialized();
+                promise.Resolve(_spotifyApi.GetAuthorizationUrl());
+            }
+            catch (Exception ex)
+            {
+                promise.Reject(new ReactError { Message = ex.Message });
+            }
         }
 
         /// <summary>
-        /// Starts listening for the OAuth callback - no callback parameter
+        /// Starts listening for the OAuth callback
         /// </summary>
         [ReactMethod("StartAuthListener")]
-        public async Task<string> StartAuthListenerAsync()
+        public void StartAuthListener(IReactPromise<string> promise)
         {
-            EnsureInitialized();
-
             try
             {
+                EnsureInitialized();
+
                 // If already listening, return success
                 if (_isListening)
                 {
-                    return JsonConvert.SerializeObject(new { success = true, message = "Auth listener already started" });
+                    promise.Resolve(JsonConvert.SerializeObject(new { success = true, message = "Auth listener already started" }));
+                    return;
                 }
 
                 _cancellationTokenSource = new CancellationTokenSource();
                 _authCodeCompletionSource = new TaskCompletionSource<string>();
 
                 // Start HTTP listener
-                await StartHttpListenerAsync(_cancellationTokenSource.Token);
-                _isListening = true;
-
-                // Return immediately with success
-                return JsonConvert.SerializeObject(new { success = true, message = "Auth listener started" });
+                Task.Run(async () =>
+                {
+                    try
+                    {
+                        await StartHttpListenerAsync(_cancellationTokenSource.Token);
+                        _isListening = true;
+                        promise.Resolve(JsonConvert.SerializeObject(new { success = true, message = "Auth listener started" }));
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error starting HTTP listener: {ex.Message}");
+                        promise.Reject(new ReactError { Message = ex.Message });
+                    }
+                });
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error in StartAuthListener: {ex.Message}");
-                return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
+                promise.Reject(new ReactError { Message = ex.Message });
             }
         }
 
@@ -89,48 +106,61 @@ namespace MusicTools.NativeModules
         /// Waits for authentication to complete
         /// </summary>
         [ReactMethod("WaitForAuthentication")]
-        public async Task<string> WaitForAuthenticationAsync()
+        public void WaitForAuthentication(IReactPromise<string> promise)
         {
             try
             {
                 if (!_isListening)
                 {
-                    return JsonConvert.SerializeObject(new { success = false, error = "Auth listener not started" });
+                    promise.Resolve(JsonConvert.SerializeObject(new { success = false, error = "Auth listener not started" }));
+                    return;
                 }
 
-                // Wait for auth code or timeout after 3 minutes
-                var timeoutTask = Task.Delay(TimeSpan.FromMinutes(3));
-                var completedTask = await Task.WhenAny(_authCodeCompletionSource.Task, timeoutTask);
-
-                if (completedTask == timeoutTask)
-                {
-                    return JsonConvert.SerializeObject(new
+                Task.Run(async () => {
+                    try
                     {
-                        success = false,
-                        error = "Authentication timed out. Please try again."
-                    });
-                }
+                        // Wait for auth code or timeout after 3 minutes
+                        var timeoutTask = Task.Delay(TimeSpan.FromMinutes(3));
+                        var completedTask = await Task.WhenAny(_authCodeCompletionSource.Task, timeoutTask);
 
-                // Get the auth code
-                var authCode = await _authCodeCompletionSource.Task;
+                        if (completedTask == timeoutTask)
+                        {
+                            promise.Resolve(JsonConvert.SerializeObject(new
+                            {
+                                success = false,
+                                error = "Authentication timed out. Please try again."
+                            }));
+                            return;
+                        }
 
-                // Exchange code for token
-                var result = await _spotifyApi.GetAccessTokenAsync(authCode);
+                        // Get the auth code
+                        var authCode = await _authCodeCompletionSource.Task;
 
-                _isListening = false;
+                        // Exchange code for token
+                        var result = await _spotifyApi.GetAccessTokenAsync(authCode);
 
-                return result.Match(
-                    Right: success => {
-                        _isAuthenticated = true;
-                        return JsonConvert.SerializeObject(new { success = true });
-                    },
-                    Left: error => JsonConvert.SerializeObject(new { success = false, error = error })
-                );
+                        _isListening = false;
+
+                        result.Match(
+                            Right: success => {
+                                _isAuthenticated = true;
+                                promise.Resolve(JsonConvert.SerializeObject(new { success = true }));
+                            },
+                            Left: error => {
+                                promise.Resolve(JsonConvert.SerializeObject(new { success = false, error = error }));
+                            }
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        promise.Reject(new ReactError { Message = ex.Message });
+                    }
+                });
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error in WaitForAuthentication: {ex.Message}");
-                return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
+                promise.Reject(new ReactError { Message = ex.Message });
             }
         }
 
@@ -138,20 +168,36 @@ namespace MusicTools.NativeModules
         /// Checks if authentication has completed
         /// </summary>
         [ReactMethod("CheckAuthStatus")]
-        public string CheckAuthStatus()
+        public void CheckAuthStatus(IReactPromise<string> promise)
         {
-            return JsonConvert.SerializeObject(new { isAuthenticated = _isAuthenticated });
+            try
+            {
+                promise.Resolve(JsonConvert.SerializeObject(new { isAuthenticated = _isAuthenticated }));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in CheckAuthStatus: {ex.Message}");
+                promise.Reject(new ReactError { Message = ex.Message });
+            }
         }
 
         /// <summary>
         /// Stops the authentication listener
         /// </summary>
         [ReactMethod("StopAuthListener")]
-        public void StopAuthListener()
+        public void StopAuthListener(IReactPromise<string> promise)
         {
-            _cancellationTokenSource?.Cancel();
-            _isListening = false;
-            StopHttpListener();
+            try
+            {
+                _cancellationTokenSource?.Cancel();
+                _isListening = false;
+                StopHttpListener();
+                promise.Resolve(JsonConvert.SerializeObject(new { success = true }));
+            }
+            catch (Exception ex)
+            {
+                promise.Reject(new ReactError { Message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -286,59 +332,72 @@ namespace MusicTools.NativeModules
         /// Searches for and likes songs on Spotify
         /// </summary>
         [ReactMethod("LikeSongs")]
-        public async Task<string> LikeSongsAsync(string chosenSongsJson)
+        public void LikeSongs(string chosenSongsJson, IReactPromise<string> promise)
         {
-            EnsureInitialized();
             try
             {
+                EnsureInitialized();
+
                 var chosenSongs = JsonConvert.DeserializeObject<SongInfo[]>(chosenSongsJson);
                 if (chosenSongs == null || !chosenSongs.Any())
                 {
-                    return JsonConvert.SerializeObject(new { success = false, error = "No songs provided" });
+                    promise.Resolve(JsonConvert.SerializeObject(new { success = false, error = "No songs provided" }));
+                    return;
                 }
 
-                var errors = new List<SpotifyErrors.SpotifyError>();
-
-                foreach (var song in chosenSongs)
-                {
-                    // Search for the song
-                    var searchResult = await _spotifyApi.SearchSongAsync(song.Name, song.Artist);
-
-                    await searchResult.Match(
-                        Right: async track => {
-                            // Like the song if found
-                            var likeResult = await _spotifyApi.LikeSongAsync(track.Id);
-                            likeResult.Match(
-                                Right: _ => { },
-                                Left: error => errors.Add(error)
-                            );
-                        },
-                        Left: error => {
-                            errors.Add(error);
-                            return Task.CompletedTask;
-                        }
-                    );
-
-                    // Add a small delay to avoid hitting rate limits
-                    await Task.Delay(200);
-                }
-
-                if (errors.Any())
-                {
-                    return JsonConvert.SerializeObject(new
+                Task.Run(async () => {
+                    try
                     {
-                        success = false,
-                        partialSuccess = errors.Count < chosenSongs.Length,
-                        errors = errors
-                    });
-                }
+                        var errors = new List<SpotifyErrors.SpotifyError>();
 
-                return JsonConvert.SerializeObject(new { success = true });
+                        foreach (var song in chosenSongs)
+                        {
+                            // Search for the song
+                            var searchResult = await _spotifyApi.SearchSongAsync(song.Name, song.Artist);
+
+                            await searchResult.Match(
+                                Right: async track => {
+                                    // Like the song if found
+                                    var likeResult = await _spotifyApi.LikeSongAsync(track.Id);
+                                    likeResult.Match(
+                                        Right: _ => { },
+                                        Left: error => errors.Add(error)
+                                    );
+                                },
+                                Left: error => {
+                                    errors.Add(error);
+                                    return Task.CompletedTask;
+                                }
+                            );
+
+                            // Add a small delay to avoid hitting rate limits
+                            await Task.Delay(200);
+                        }
+
+                        if (errors.Any())
+                        {
+                            promise.Resolve(JsonConvert.SerializeObject(new
+                            {
+                                success = false,
+                                partialSuccess = errors.Count < chosenSongs.Length,
+                                errors = errors
+                            }));
+                        }
+                        else
+                        {
+                            promise.Resolve(JsonConvert.SerializeObject(new { success = true }));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        promise.Reject(new ReactError { Message = ex.Message });
+                    }
+                });
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error in LikeSongs: {ex.Message}");
-                return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
+                promise.Reject(new ReactError { Message = ex.Message });
             }
         }
 
@@ -346,66 +405,79 @@ namespace MusicTools.NativeModules
         /// Follows artists from chosen songs on Spotify
         /// </summary>
         [ReactMethod("FollowArtists")]
-        public async Task<string> FollowArtistsAsync(string chosenSongsJson)
+        public void FollowArtists(string chosenSongsJson, IReactPromise<string> promise)
         {
-            EnsureInitialized();
             try
             {
+                EnsureInitialized();
+
                 var chosenSongs = JsonConvert.DeserializeObject<SongInfo[]>(chosenSongsJson);
                 if (chosenSongs == null || !chosenSongs.Any())
                 {
-                    return JsonConvert.SerializeObject(new { success = false, error = "No songs provided" });
+                    promise.Resolve(JsonConvert.SerializeObject(new { success = false, error = "No songs provided" }));
+                    return;
                 }
 
-                // Extract distinct artist names from the songs
-                var distinctArtists = chosenSongs
-                    .SelectMany(s => s.Artist)
-                    .Where(a => !string.IsNullOrWhiteSpace(a))
-                    .Distinct()
-                    .ToList();
-
-                var errors = new List<SpotifyErrors.SpotifyError>();
-
-                foreach (var artistName in distinctArtists)
-                {
-                    // Search for the artist
-                    var searchResult = await _spotifyApi.SearchArtistAsync(artistName);
-
-                    await searchResult.Match(
-                        Right: async artist => {
-                            // Follow the artist if found
-                            var followResult = await _spotifyApi.FollowArtistAsync(artist.Id);
-                            followResult.Match(
-                                Right: _ => { },
-                                Left: error => errors.Add(error)
-                            );
-                        },
-                        Left: error => {
-                            errors.Add(error);
-                            return Task.CompletedTask;
-                        }
-                    );
-
-                    // Add a small delay to avoid hitting rate limits
-                    await Task.Delay(200);
-                }
-
-                if (errors.Any())
-                {
-                    return JsonConvert.SerializeObject(new
+                Task.Run(async () => {
+                    try
                     {
-                        success = false,
-                        partialSuccess = errors.Count < distinctArtists.Count,
-                        errors = errors
-                    });
-                }
+                        // Extract distinct artist names from the songs
+                        var distinctArtists = chosenSongs
+                            .SelectMany(s => s.Artist)
+                            .Where(a => !string.IsNullOrWhiteSpace(a))
+                            .Distinct()
+                            .ToList();
 
-                return JsonConvert.SerializeObject(new { success = true });
+                        var errors = new List<SpotifyErrors.SpotifyError>();
+
+                        foreach (var artistName in distinctArtists)
+                        {
+                            // Search for the artist
+                            var searchResult = await _spotifyApi.SearchArtistAsync(artistName);
+
+                            await searchResult.Match(
+                                Right: async artist => {
+                                    // Follow the artist if found
+                                    var followResult = await _spotifyApi.FollowArtistAsync(artist.Id);
+                                    followResult.Match(
+                                        Right: _ => { },
+                                        Left: error => errors.Add(error)
+                                    );
+                                },
+                                Left: error => {
+                                    errors.Add(error);
+                                    return Task.CompletedTask;
+                                }
+                            );
+
+                            // Add a small delay to avoid hitting rate limits
+                            await Task.Delay(200);
+                        }
+
+                        if (errors.Any())
+                        {
+                            promise.Resolve(JsonConvert.SerializeObject(new
+                            {
+                                success = false,
+                                partialSuccess = errors.Count < distinctArtists.Count,
+                                errors = errors
+                            }));
+                        }
+                        else
+                        {
+                            promise.Resolve(JsonConvert.SerializeObject(new { success = true }));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        promise.Reject(new ReactError { Message = ex.Message });
+                    }
+                });
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error in FollowArtists: {ex.Message}");
-                return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
+                promise.Reject(new ReactError { Message = ex.Message });
             }
         }
 

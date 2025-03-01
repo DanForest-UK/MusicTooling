@@ -22,93 +22,92 @@ const SpotifyIntegration: React.FC<SpotifyIntegrationProps> = ({ appState }) => 
     const [isAuthenticating, setIsAuthenticating] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [errors, setErrors] = useState<SpotifyError[]>([]);
-    const [authCheckInterval, setAuthCheckInterval] = useState<NodeJS.Timeout | null>(null);
 
-    // Cleanup on unmount
+    // Initial check on component mount
     useEffect(() => {
-        return () => {
-            if (authCheckInterval) {
-                clearInterval(authCheckInterval);
-            }
-
+        const checkAuth = async () => {
             try {
-                SpotifyModule.StopAuthListener();
+                const result = await SpotifyModule.CheckAuthStatus();
+                const response = JSON.parse(result);
+                if (response.isAuthenticated) {
+                    setIsAuthenticated(true);
+                }
+            } catch (error) {
+                // Silent fail on initial check
+                console.log('Initial auth check failed:', error);
+            }
+        };
+
+        checkAuth();
+
+        // Cleanup on unmount
+        return () => {
+            try {
+                SpotifyModule.StopAuthListener().catch(error => {
+                    console.error('Error stopping auth listener:', error);
+                });
             } catch (error) {
                 console.error('Error stopping auth listener:', error);
             }
         };
-    }, [authCheckInterval]);
-
-    // Function to poll for authentication status
-    const startAuthStatusPolling = () => {
-        // Clear any existing interval
-        if (authCheckInterval) {
-            clearInterval(authCheckInterval);
-        }
-
-        // Start a new polling interval
-        const intervalId = setInterval(async () => {
-            try {
-                const result = await SpotifyModule.WaitForAuthentication();
-                const response = JSON.parse(result);
-
-                // Stop polling
-                clearInterval(intervalId);
-                setAuthCheckInterval(null);
-
-                setIsAuthenticating(false);
-
-                if (response.success) {
-                    setIsAuthenticated(true);
-                    Alert.alert('Success', 'Spotify authentication successful!');
-                } else {
-                    Alert.alert('Error', `Authentication failed: ${response.error?.message || 'Unknown error'}`);
-                }
-            } catch (error) {
-                console.error('Error checking auth status:', error);
-            }
-        }, 2000); // Check every 2 seconds
-
-        setAuthCheckInterval(intervalId);
-    };
+    }, []);
 
     const handleAuthenticate = async () => {
         try {
             setIsAuthenticating(true);
+            setErrors([]);
 
             // Step 1: Get the auth URL
-            const authUrl = await SpotifyModule.GetAuthUrl();
-            if (!authUrl) {
-                Alert.alert('Error', 'Failed to generate Spotify authentication URL.');
+            try {
+                const authUrl = await SpotifyModule.GetAuthUrl();
+                console.log('Got auth URL:', authUrl);
+
+                // Step 2: Start the auth listener
+                try {
+                    const startResult = await SpotifyModule.StartAuthListener();
+                    console.log('StartAuthListener result:', startResult);
+
+                    // Step 3: Open the auth URL in the browser
+                    const supported = await Linking.canOpenURL(authUrl);
+                    if (!supported) {
+                        Alert.alert('Error', 'Cannot open Spotify authentication URL');
+                        setIsAuthenticating(false);
+                        return;
+                    }
+
+                    // Open the URL
+                    await Linking.openURL(authUrl);
+
+                    // Step 4: Wait for authentication
+                    try {
+                        const result = await SpotifyModule.WaitForAuthentication();
+                        const response = JSON.parse(result);
+
+                        setIsAuthenticating(false);
+
+                        if (response.success) {
+                            setIsAuthenticated(true);
+                            Alert.alert('Success', 'Spotify authentication successful!');
+                        } else {
+                            Alert.alert('Error', `Authentication failed: ${response.error?.message || 'Unknown error'}`);
+                        }
+                    } catch (error) {
+                        console.error('Wait for auth error:', error);
+                        setIsAuthenticating(false);
+                        Alert.alert('Error', `Authentication failed: ${error}`);
+                    }
+                } catch (error) {
+                    console.error('Start auth listener error:', error);
+                    Alert.alert('Error', `Failed to start authentication listener: ${error}`);
+                    setIsAuthenticating(false);
+                }
+            } catch (error) {
+                console.error('Get auth URL error:', error);
+                Alert.alert('Error', `Failed to get authentication URL: ${error}`);
                 setIsAuthenticating(false);
-                return;
             }
-
-            // Step 2: Start the auth listener (no callback)
-            const startListenerResult = await SpotifyModule.StartAuthListener();
-            const startListenerResponse = JSON.parse(startListenerResult);
-
-            if (!startListenerResponse.success) {
-                Alert.alert('Error', `Failed to start authentication listener: ${startListenerResponse.error || 'Unknown error'}`);
-                setIsAuthenticating(false);
-                return;
-            }
-
-            // Step 3: Open the auth URL in the browser
-            const supported = await Linking.canOpenURL(authUrl);
-            if (!supported) {
-                Alert.alert('Error', 'Cannot open Spotify authentication URL');
-                setIsAuthenticating(false);
-                return;
-            }
-
-            // Start polling for auth status before opening URL
-            startAuthStatusPolling();
-
-            // Open the URL
-            await Linking.openURL(authUrl);
-
         } catch (error) {
+            console.error('General auth error:', error);
             setIsAuthenticating(false);
             Alert.alert('Error', `Failed to start authentication: ${error}`);
         }
