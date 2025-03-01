@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, Text, Button, FlatList, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, Button, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { NativeModules } from 'react-native';
-import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import { styles } from './styles';
 // Import the interfaces
-import { AppModel, SongInfo } from './types';
+import { AppModel } from './types';
+// Import the SongItem component
+import SongItem from './SongItem';
 
 const { FileScannerModule, StateModule } = NativeModules;
 
@@ -34,7 +35,6 @@ const App = () => {
         );
     }, [appState.songs, appState.minimumRating]);
 
-    // Fetch current state from native module
     // Fetch current state from native module
     const fetchCurrentState = useCallback(async () => {
         try {
@@ -94,59 +94,6 @@ const App = () => {
         fetchCurrentState();
     };
 
-    const renderStars = (rating: number) => (
-        <View style={styles.starsContainer}>
-            {[...Array(rating)].map((_, index) => (
-                <FontAwesomeIcon key={index} name="star" style={styles.starIcon} />
-            ))}
-        </View>
-    );
-
-    const renderSongItem = ({ item }: { item: SongInfo }) => {
-        const isSelected = appState.chosenSongs.includes(item.id);
-
-        return (
-            <View style={styles.fileItem}>
-                <View style={styles.fileHeaderContainer}>
-                    <TouchableOpacity
-                        style={styles.checkboxContainer}
-                        onPress={() => toggleSongSelection(item.id)}
-                    >
-                        <FontAwesomeIcon
-                            name={isSelected ? 'check-square-o' : 'square-o'}
-                            style={[styles.checkboxIcon, isSelected ? styles.checkboxIconChecked : null]}
-                        />
-                        <Text style={styles.fileHeaderText}>
-                            {isSelected ? 'Selected' : 'Not Selected'}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-                <TouchableOpacity onPress={() => toggleSongSelection(item.id)}>
-                    <View style={styles.fileTextContainer}>
-                        <Text style={styles.fileText}>
-                            Artist: {item.artist?.length ? item.artist.join(', ') : '[No artist]'}
-                        </Text>
-                    </View>
-                    <View style={styles.fileTextContainer}>
-                        <Text style={styles.fileText}>Title: {item.name}</Text>
-                    </View>
-                    <View style={styles.fileTextContainer}>
-                        <Text style={styles.fileText}>Album: {item.album}</Text>
-                    </View>
-                    <View style={styles.fileTextContainer}>
-                        <View style={styles.ratingRow}>
-                            <Text style={styles.fileText}>Rating:</Text>
-                            {renderStars(item.rating)}
-                        </View>
-                    </View>
-                    <View style={styles.fileTextContainer}>
-                        <Text style={styles.fileText}>Path: {item.path}</Text>
-                    </View>
-                </TouchableOpacity>
-            </View>
-        );
-    };
-
     return (
         <View style={styles.container}>
             <View style={styles.controlsContainer}>
@@ -197,7 +144,13 @@ const App = () => {
                 data={filteredSongs}
                 contentContainerStyle={styles.listContainer}
                 keyExtractor={item => item.id}
-                renderItem={renderSongItem}
+                renderItem={({ item }) => (
+                    <SongItem
+                        item={item}
+                        isSelected={appState.chosenSongs.includes(item.id)}
+                        onToggle={toggleSongSelection}
+                    />
+                )}
             />
         </View>
     );
