@@ -11,6 +11,28 @@ namespace MusicTools.Core
         public record SongInfo(Guid Id, string Name, string Path, string[] Artist, string Album, int Rating);
     }
 
+    public static class SpotifyErrors
+    {
+        // Base record for all Spotify errors
+        public record SpotifyError(string ErrorCode, string Message, string ResourceId);
+
+        // Specific error types 
+        public record SongNotFound(string Title, string[] Artists, string ErrorMessage)
+            : SpotifyError("SONG_NOT_FOUND", $"Could not find song: {Title} by {string.Join(", ", Artists)}", Title);
+
+        public record ArtistNotFound(string ArtistName, string ErrorMessage)
+            : SpotifyError("ARTIST_NOT_FOUND", $"Could not find artist: {ArtistName}", ArtistName);
+
+        public record AuthenticationError(string ErrorMessage)
+            : SpotifyError("AUTH_ERROR", $"Authentication failed: {ErrorMessage}", "auth");
+
+        public record RateLimitError(string Resource, int RetryAfterSeconds)
+            : SpotifyError("RATE_LIMIT", $"Rate limit exceeded for {Resource}. Retry after {RetryAfterSeconds} seconds", Resource);
+
+        public record ApiError(string Resource, int StatusCode, string ErrorMessage)
+            : SpotifyError("API_ERROR", $"API error ({StatusCode}): {ErrorMessage}", Resource);
+    }
+
     public static class AppErrors
     {
         public const int DisplayErrorCode = 303;

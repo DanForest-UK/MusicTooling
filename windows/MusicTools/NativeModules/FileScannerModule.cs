@@ -10,10 +10,10 @@ using System.Linq;
 using MusicTools.NativeModules;
 using static LanguageExt.Prelude;
 
-namespace MusicTooling
+namespace MusicTools.NativeModules
 {
     [ReactModule("FileScannerModule")]
-    public sealed class FileScanner
+    public sealed class FileScannerModule
     {
         /// <summary>
         /// React method that scans for music files and updates application state with filtered songs

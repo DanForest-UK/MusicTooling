@@ -1,5 +1,5 @@
 using Microsoft.ReactNative;
-using MusicTooling;
+using MusicTools;
 using MusicTools.Logic;
 using MusicTools.NativeModules;
 using Windows.ApplicationModel.Activation;

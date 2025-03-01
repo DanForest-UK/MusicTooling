@@ -500,7 +500,8 @@
       "microsoft.reactnative.managed": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.NETCore.UniversalWindowsPlatform": "[6.2.14, )"
+          "Microsoft.NETCore.UniversalWindowsPlatform": "[6.2.14, )",
+          "Microsoft.ReactNative": "[1.0.0, )"
         }
       },
       "musictools.core": {
@@ -515,6 +516,7 @@
           "LanguageExt.Core": "[4.4.9, )",
           "LanguageExt.Sys": "[4.4.9, )",
           "MusicTools.Core": "[1.0.0, )",
+          "Newtonsoft.Json": "[13.0.3, )",
           "TagLibSharp": "[2.3.0, )"
         }
       },

@@ -9,6 +9,7 @@ export const styles = StyleSheet.create({
     listContainer: {
         padding: 3,
         paddingRight: 10,
+        paddingBottom: 80, // Add padding at bottom for Spotify integration
     },
     fileItem: {
         marginVertical: 10,
@@ -130,4 +131,98 @@ export const styles = StyleSheet.create({
     checkboxIconChecked: {
         color: '#60A5FA',
     },
+
+    // Spotify integration styles
+    spotifyContainer: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        padding: 15,
+        backgroundColor: '#282828',
+        borderTopLeftRadius: 15,
+        borderTopRightRadius: 15,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.27,
+        shadowRadius: 4.65,
+        elevation: 6,
+        zIndex: 100,
+    },
+    spotifyHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    spotifyTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: 'white',
+    },
+    spotifyCloseButton: {
+        padding: 5,
+    },
+    spotifyCloseIcon: {
+        fontSize: 24,
+        color: '#9CA3AF',
+    },
+    spotifyButtonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 10,
+    },
+    spotifyButton: {
+        flex: 1,
+        backgroundColor: '#1DB954',
+        padding: 12,
+        borderRadius: 6,
+        alignItems: 'center',
+        marginHorizontal: 5,
+    },
+    spotifyButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
+    spotifyConnectText: {
+        color: '#1DB954',
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    spotifyErrorContainer: {
+        marginTop: 15,
+        backgroundColor: '#3E3E3E',
+        padding: 10,
+        borderRadius: 6,
+        maxHeight: 150,
+    },
+    spotifyErrorTitle: {
+        color: '#FF6B6B',
+        fontWeight: 'bold',
+        marginBottom: 5,
+    },
+    spotifyErrorItem: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#555',
+        paddingVertical: 5,
+    },
+    spotifyErrorCode: {
+        color: '#FF6B6B',
+        fontWeight: 'bold',
+    },
+    spotifyErrorMessage: {
+        color: 'white',
+        fontSize: 12,
+    },
+    spotifyOptionsButton: {
+        backgroundColor: '#1DB954',
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 4,
+    },
+    spotifyOptionsButtonText: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: 'bold',
+    }
 });
