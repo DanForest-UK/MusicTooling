@@ -3,6 +3,7 @@ using static MusicTools.Core.Types;
 using System;
 using System.Linq;
 using static LanguageExt.Prelude;
+using G = System.Collections.Generic;
 
 namespace MusicTools.Logic
 {
@@ -14,7 +15,7 @@ namespace MusicTools.Logic
         // Thread safe and atomic management of state
         static readonly Atom<AppModel> stateAtom = Atom(new AppModel(
             Songs: new SongInfo[0],
-            ChosenSongs: new string[0],
+            ChosenSongs: new Guid[0],
             MinimumRating: 0
         ));
 
@@ -77,16 +78,18 @@ namespace MusicTools.Logic
         /// <summary>
         /// Sets the chosen songs
         /// </summary>
-        public static void SetChosenSongs(string[] songIds) =>
+        public static void SetChosenSongs(Guid[] songIds) =>
             stateAtom.Swap(state => state with { ChosenSongs = songIds });
 
         /// <summary>
         /// Toggles the selection state of a song
         /// </summary>
-        public static void ToggleSongSelection(string songId)
+        public static void ToggleSongSelection(Guid songId)
         {
             stateAtom.Swap(state => {
-                var currentChosen = toHashSet(state.ChosenSongs);
+
+                // Mutable hash set for fast add/remove
+                var currentChosen = new G.HashSet<Guid>(state.ChosenSongs);
 
                 if (currentChosen.Contains(songId))
                     currentChosen.Remove(songId);

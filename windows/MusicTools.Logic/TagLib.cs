@@ -44,7 +44,7 @@ namespace MusicTools.Logic
                 Console.WriteLine("No ID3v2 tag found.");
 
             return new SongInfo(
-                Guid.NewGuid().ToString(),
+                Guid.NewGuid(),
                 tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
                 path,
                 tagFile.Tag.AlbumArtists.Union(tagFile.Tag.Artists).ToArray(),
