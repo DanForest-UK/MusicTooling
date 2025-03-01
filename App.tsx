@@ -35,19 +35,23 @@ const App = () => {
     }, [appState.songs, appState.minimumRating]);
 
     // Fetch current state from native module
+    // Fetch current state from native module
     const fetchCurrentState = useCallback(async () => {
         try {
             const stateJson = await StateModule.GetCurrentState();
             const newState = JSON.parse(stateJson) as AppModel;
 
-            // Only update state if something changed (to avoid unnecessary renders)
-            if (JSON.stringify(newState) !== JSON.stringify(appState)) {
-                setAppState(newState);
-            }
+            // Update state without referencing the current appState in the callback
+            setAppState(prevState => {
+                // Only update if something changed
+                return JSON.stringify(newState) !== JSON.stringify(prevState)
+                    ? newState
+                    : prevState;
+            });
         } catch (error) {
             console.error('Error fetching state:', error);
         }
-    }, [appState]);
+    }, []); // Remove appState dependency
 
     // Set up polling for state changes
     useEffect(() => {
