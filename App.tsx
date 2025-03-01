@@ -27,16 +27,12 @@ const App = () => {
     // Reference to track the interval for cleanup
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Calculate filtered songs in the frontend using useMemo with Set optimization
+    // Calculate filtered songs in the frontend - only filter by rating
     const filteredSongs = useMemo(() => {
-        // Convert chosenSongs array to a Set for O(1) lookups
-        const chosenSongsSet = new Set(appState.chosenSongs);
-
         return appState.songs.filter(song =>
-            song.rating >= appState.minimumRating &&
-            chosenSongsSet.has(song.id)
+            song.rating >= appState.minimumRating
         );
-    }, [appState.songs, appState.chosenSongs, appState.minimumRating]);
+    }, [appState.songs, appState.minimumRating]);
 
     // Fetch current state from native module
     const fetchCurrentState = useCallback(async () => {
