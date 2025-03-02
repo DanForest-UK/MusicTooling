@@ -183,6 +183,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <None Include="packages.lock.json" />
+    <None Include="spotifySettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="spotifySettingsExample.json" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MusicTools.Core\MusicTools.Core.csproj">

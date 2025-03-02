@@ -54,7 +54,6 @@ export const useSpotifyIntegration = (appState: AppModel) => {
     const handleAuthCallbackUrl = useCallback((url: string) => {
         console.log('Auth callback URL received:', url);
 
-        // Replace the URL parsing code in handleAuthCallbackUrl with this:
         if (url.startsWith('musictools://auth/callback')) {
             try {
                 // Try to extract the code parameter using regex
@@ -78,17 +77,14 @@ export const useSpotifyIntegration = (appState: AppModel) => {
         }
     }, [completeAuthentication, handleAuthError]);
 
-    // Check for stored auth URI (our fallback mechanism)
+    // Check for stored auth URI (fallback mechanism for if eg the app is in the background)
     const checkStoredUri = useCallback(async () => {
         try {
-            if (SpotifyModule && typeof SpotifyModule.GetStoredAuthUri === 'function') {
-                const storedUri = await SpotifyModule.GetStoredAuthUri();
-                if (storedUri) {
-                    console.log('Found stored auth URI:', storedUri);
-                    handleAuthCallbackUrl(storedUri);
-                    // Clear the stored URI
-                    SpotifyModule.ClearStoredAuthUri();
-                }
+            const storedUri = await SpotifyModule.GetStoredAuthUri();
+            if (storedUri) {
+                console.log('Found stored auth URI:', storedUri);
+                handleAuthCallbackUrl(storedUri);
+                SpotifyModule.ClearStoredAuthUri();
             }
         } catch (error) {
             console.log('Error checking stored auth URI:', error);
@@ -107,11 +103,8 @@ export const useSpotifyIntegration = (appState: AppModel) => {
 
         // Add event listener, using a try-catch to handle different API versions
         try {
-            // Try with addListener first (newer versions)
-            if (typeof Linking.addListener === 'function') {
+            // Try with addListener first, alternatives attempted below the catch block
                 subscription = Linking.addListener('url', handleUrl);
-            }
-            // If the above doesn't exist or fails, the catch block will try alternatives
         } catch (e) {
             console.log('Error setting up link listener, trying alternative:', e);
         }
@@ -123,7 +116,6 @@ export const useSpotifyIntegration = (appState: AppModel) => {
             }
         });
 
-        // todo need to understand this better
         // Check for stored URI immediately and after a delay
         checkStoredUri();
         const timeoutId = setTimeout(checkStoredUri, 2000);
@@ -145,7 +137,7 @@ export const useSpotifyIntegration = (appState: AppModel) => {
         // Cleanup
         return () => {
             // Clean up subscription if it exists
-            if (subscription && typeof subscription.remove === 'function') {
+            if (subscription) {
                 subscription.remove();
             }
 

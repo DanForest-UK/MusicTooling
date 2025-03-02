@@ -44,31 +44,6 @@ namespace MusicTools
             InitializeComponent();
         }
 
-        private void AddFirewallException()
-        {
-            try
-            {
-                Process process = new Process();
-                ProcessStartInfo startInfo = new ProcessStartInfo
-                {
-                    FileName = "netsh",
-                    Arguments = "advfirewall firewall add rule name=\"Spotify Auth Callback\" dir=in action=allow protocol=TCP localport=8888",
-                    Verb = "runas",
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                };
-                process.StartInfo = startInfo;
-                process.Start();
-                process.WaitForExit();
-                Debug.WriteLine("Added firewall rule for port 8888");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Failed to add firewall rule: {ex.Message}");
-                // Continue anyway, as the rule might already exist or we don't have sufficient privileges
-            }
-        }
-
         /// <summary>
         /// Entry point
         /// </summary>
@@ -114,7 +89,7 @@ namespace MusicTools
             }
             else
             {
-                // Handle other activation types as before
+                // Handle other activation types
                 if (preActivationContent == null && Window.Current != null)
                 {
                     // Display the initial content

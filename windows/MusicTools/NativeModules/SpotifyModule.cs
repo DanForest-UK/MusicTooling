@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using static MusicTools.Core.Types;
 using LanguageExt.Common;
+using System.IO;
 
 namespace MusicTools.NativeModules
 {
@@ -19,6 +20,28 @@ namespace MusicTools.NativeModules
         readonly SpotifyApi spotifyApi;
         bool isInitialised = false;
         bool isAuthenticated = false;
+        public const string spotifyAuthUriKey = "spotifyAuthUri";
+        public const string redirectUrl = "musictools://auth/callback";  
+
+        /// <summary>
+        /// Load settings from file, includes client ID and secret so not included in repo
+        /// Please see 'exampleSpotifySettings.json' - fill out and rename to 'spotifySettings.json'
+        /// </summary>
+        /// <returns></returns>
+        private SpotifySettings LoadSettings()
+        {
+            try
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "spotifySettings.json");
+                string json = File.ReadAllText(path);
+                return JsonConvert.DeserializeObject<SpotifySettings>(json);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error loading settings: {ex.Message}");
+                return new SpotifySettings("",""); // Return empty settings
+            }
+        }
 
         /// <summary>
         /// Initializes a new instance of the SpotifyModule class
@@ -27,14 +50,8 @@ namespace MusicTools.NativeModules
         {
             try
             {
-                // Todo, store securely in configuration
-                string clientId = "a53ac9883ecd4a4da3f3b40c7588585c";
-                string clientSecret = "9aac6c7555934655b601e4598f4b715b";
-
-                // Use a custom protocol scheme for redirect to our app
-                var redirectUri = "musictools://auth/callback";
-
-                spotifyApi = new SpotifyApi(clientId, clientSecret, redirectUri);
+                var settings = LoadSettings();    
+                spotifyApi = new SpotifyApi(settings.ClientId, settings.ClientSecret, redirectUrl);
                 isInitialised = true;
             }
             catch (Exception ex)
@@ -114,7 +131,6 @@ namespace MusicTools.NativeModules
             }
         }
 
-        // todo ask for explanation
         /// <summary>
         /// Gets any stored auth URI from application settings
         /// </summary>
@@ -123,7 +139,7 @@ namespace MusicTools.NativeModules
         {
             try
             {
-                if (Windows.Storage.ApplicationData.Current.LocalSettings.Values.TryGetValue("spotifyAuthUri", out object uriString) && uriString is string uri)                
+                if (Windows.Storage.ApplicationData.Current.LocalSettings.Values.TryGetValue(spotifyAuthUriKey, out object uriString) && uriString is string uri)                
                     return Task.FromResult(uri);                
 
                 return Task.FromResult(string.Empty);
@@ -144,9 +160,9 @@ namespace MusicTools.NativeModules
             try
             {
                 var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-                if (localSettings.Values.ContainsKey("spotifyAuthUri"))
+                if (localSettings.Values.ContainsKey(spotifyAuthUriKey))
                 {
-                    localSettings.Values.Remove("spotifyAuthUri");
+                    localSettings.Values.Remove(spotifyAuthUriKey);
                 }
                 return Task.FromResult("success");
             }

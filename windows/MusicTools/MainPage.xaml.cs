@@ -1,11 +1,14 @@
 using Microsoft.ReactNative;
+using MusicTools.NativeModules;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Storage;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -13,6 +16,8 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using static LanguageExt.Prelude;
+using MusicTools.Core;
 
 namespace MusicTools
 {
@@ -36,42 +41,24 @@ namespace MusicTools
             base.OnNavigatedTo(e);
 
             // If we have a URI string from protocol activation, store it
-            if (e.Parameter is string uriString && !string.IsNullOrEmpty(uriString))
-            {
-                StoreAuthUri(uriString);
-            }
+            if (e.Parameter is string uriString && uriString.HasValue())
+                StoreAuthUri(uriString);            
         }
 
         /// <summary>
         /// Handles protocol activation from App.xaml.cs
         /// </summary>
-        public void HandleProtocolActivation(Uri uri)
+        public void HandleProtocolActivation(Uri uri) 
         {
             if (uri != null)
-            {
                 StoreAuthUri(uri.ToString());
-            }
         }
 
         /// <summary>
         /// Store the auth URI for React Native to access later
         /// </summary>
-        private void StoreAuthUri(string uriString)
-        {
-            try
-            {
-                // For debugging
-                System.Diagnostics.Debug.WriteLine($"Received URI: {uriString}");
-
-                // Store in application settings
-                Windows.Storage.ApplicationData.Current.LocalSettings.Values["spotifyAuthUri"] = uriString;
-
-                System.Diagnostics.Debug.WriteLine("URI stored in application settings");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error storing URI: {ex.Message}");
-            }
-        }
+        private void StoreAuthUri(string uriString) =>
+            Try(() => ApplicationData.Current.LocalSettings.Values[SpotifyModule.spotifyAuthUriKey] = uriString)
+                .IfFail(ex => Debug.WriteLine($"Error storing URI: {ex.Message}"));      
     }
 }

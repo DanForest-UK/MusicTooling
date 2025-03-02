@@ -9,6 +9,7 @@ namespace MusicTools.Core
         // Records for application state with ChosenSongs after Songs
         public record AppModel(SongInfo[] Songs, Guid[] ChosenSongs, int MinimumRating);
         public record SongInfo(Guid Id, string Name, string Path, string[] Artist, string Album, int Rating);
+        public record SpotifySettings(string ClientId, string ClientSecret);
     }
 
     public static class SpotifyErrors
