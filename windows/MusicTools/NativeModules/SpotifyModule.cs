@@ -9,15 +9,16 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using static MusicTools.Core.Types;
+using LanguageExt.Common;
 
 namespace MusicTools.NativeModules
 {
     [ReactModule("SpotifyModule")]
     public sealed class SpotifyModule
     {
-        private readonly SpotifyApi _spotifyApi;
-        private bool _isInitialized = false;
-        private bool _isAuthenticated = false;
+        readonly SpotifyApi spotifyApi;
+        bool isInitialised = false;
+        bool isAuthenticated = false;
 
         /// <summary>
         /// Initializes a new instance of the SpotifyModule class
@@ -26,15 +27,15 @@ namespace MusicTools.NativeModules
         {
             try
             {
-                // These values should be stored securely in configuration
+                // Todo, store securely in configuration
                 string clientId = "a53ac9883ecd4a4da3f3b40c7588585c";
                 string clientSecret = "9aac6c7555934655b601e4598f4b715b";
 
                 // Use a custom protocol scheme for redirect to our app
-                string redirectUri = "musictools://auth/callback";
+                var redirectUri = "musictools://auth/callback";
 
-                _spotifyApi = new SpotifyApi(clientId, clientSecret, redirectUri);
-                _isInitialized = true;
+                spotifyApi = new SpotifyApi(clientId, clientSecret, redirectUri);
+                isInitialised = true;
             }
             catch (Exception ex)
             {
@@ -51,8 +52,7 @@ namespace MusicTools.NativeModules
             try
             {
                 EnsureInitialized();
-                var authUrl = _spotifyApi.GetAuthorizationUrl();
-                return Task.FromResult(authUrl);
+                return Task.FromResult(spotifyApi.GetAuthorizationUrl());
             }
             catch (Exception ex)
             {
@@ -65,20 +65,9 @@ namespace MusicTools.NativeModules
         /// Checks if authentication has completed
         /// </summary>
         [ReactMethod("CheckAuthStatus")]
-        public Task<string> CheckAuthStatus()
-        {
-            try
-            {
-                var result = new { isAuthenticated = _isAuthenticated };
-                return Task.FromResult(JsonConvert.SerializeObject(result));
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error in CheckAuthStatus: {ex.Message}");
-                return Task.FromResult("{}");
-            }
-        }
-
+        public Task<bool> CheckAuthStatus() =>
+            Task.FromResult(isAuthenticated);
+      
         /// <summary>
         /// Exchanges authorization code for an access token
         /// </summary>
@@ -89,33 +78,24 @@ namespace MusicTools.NativeModules
             {
                 EnsureInitialized();
 
-                if (string.IsNullOrEmpty(code))
-                {
-                    var errorResult = new { success = false, error = "No authorization code provided" };
-                    return Task.FromResult(JsonConvert.SerializeObject(errorResult));
-                }
+                if (!code.HasValue())
+                     return Task.FromResult(JsonConvert.SerializeObject(
+                        new { success = false, error = "No authorization code provided" }));                
 
                 return Task.Run(async () => {
                     try
                     {
                         // Exchange code for token
-                        var result = await _spotifyApi.GetAccessTokenAsync(code);
+                        var result = await spotifyApi.GetAccessTokenAsync(code);
 
-                        object response = null;
-                        result.Match(
-                            Right: success => {
-                                _isAuthenticated = true;
-                                response = new { success = true };
+                        var response = result.Match(
+                            Right: success =>
+                            {
+                                isAuthenticated = true;
+                                return new { success = true, error = SpotifyErrors.Empty };
                             },
-                            Left: error => {
-                                response = new { success = false, error = error };
-                            }
-                        );
+                            Left: error => new { success = false, error });
 
-                        if (response == null)
-                        {
-                            throw new ReactException("Error in ExchangeCodeForToken: response object is null");
-                        }
                         return JsonConvert.SerializeObject(response);
                     }
                     catch (Exception ex)
@@ -134,6 +114,7 @@ namespace MusicTools.NativeModules
             }
         }
 
+        // todo ask for explanation
         /// <summary>
         /// Gets any stored auth URI from application settings
         /// </summary>
@@ -142,11 +123,8 @@ namespace MusicTools.NativeModules
         {
             try
             {
-                var localSettings = Windows.Storage.ApplicationData.Current.LocalSettings;
-                if (localSettings.Values.TryGetValue("spotifyAuthUri", out object uriString) && uriString is string uri)
-                {
-                    return Task.FromResult(uri);
-                }
+                if (Windows.Storage.ApplicationData.Current.LocalSettings.Values.TryGetValue("spotifyAuthUri", out object uriString) && uriString is string uri)                
+                    return Task.FromResult(uri);                
 
                 return Task.FromResult(string.Empty);
             }
@@ -179,6 +157,8 @@ namespace MusicTools.NativeModules
             }
         }
 
+
+        // todo chosen songs hsould come from the state
         /// <summary>
         /// Searches for and likes songs on Spotify
         /// </summary>
@@ -204,12 +184,12 @@ namespace MusicTools.NativeModules
                         foreach (var song in chosenSongs)
                         {
                             // Search for the song
-                            var searchResult = await _spotifyApi.SearchSongAsync(song.Name, song.Artist);
+                            var searchResult = await spotifyApi.SearchSongAsync(song.Name, song.Artist);
 
                             await searchResult.Match(
                                 Right: async track => {
                                     // Like the song if found
-                                    var likeResult = await _spotifyApi.LikeSongAsync(track.Id);
+                                    var likeResult = await spotifyApi.LikeSongAsync(track.Id);
                                     likeResult.Match(
                                         Right: _ => { },
                                         Left: error => errors.Add(error)
@@ -290,12 +270,12 @@ namespace MusicTools.NativeModules
                         foreach (var artistName in distinctArtists)
                         {
                             // Search for the artist
-                            var searchResult = await _spotifyApi.SearchArtistAsync(artistName);
+                            var searchResult = await spotifyApi.SearchArtistAsync(artistName);
 
                             await searchResult.Match(
                                 Right: async artist => {
                                     // Follow the artist if found
-                                    var followResult = await _spotifyApi.FollowArtistAsync(artist.Id);
+                                    var followResult = await spotifyApi.FollowArtistAsync(artist.Id);
                                     followResult.Match(
                                         Right: _ => { },
                                         Left: error => errors.Add(error)
@@ -346,7 +326,7 @@ namespace MusicTools.NativeModules
 
         private void EnsureInitialized()
         {
-            if (!_isInitialized)
+            if (!isInitialised)
             {
                 throw new InvalidOperationException("SpotifyModule is not properly initialized");
             }

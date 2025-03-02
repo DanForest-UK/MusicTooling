@@ -16,6 +16,9 @@ namespace MusicTools.Core
         // Base record for all Spotify errors
         public record SpotifyError(string ErrorCode, string Message, string ResourceId);
 
+        // No error, useful in functional code with Either types
+        public static SpotifyError Empty => new SpotifyError("", "", "");
+
         // Specific error types 
         public record SongNotFound(string Title, string[] Artists, string ErrorMessage)
             : SpotifyError("SONG_NOT_FOUND", $"Could not find song: {Title} by {string.Join(", ", Artists)}", Title);

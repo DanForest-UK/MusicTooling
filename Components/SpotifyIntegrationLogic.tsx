@@ -123,6 +123,7 @@ export const useSpotifyIntegration = (appState: AppModel) => {
             }
         });
 
+        // todo need to understand this better
         // Check for stored URI immediately and after a delay
         checkStoredUri();
         const timeoutId = setTimeout(checkStoredUri, 2000);
@@ -130,9 +131,8 @@ export const useSpotifyIntegration = (appState: AppModel) => {
         // Initial auth status check
         const checkAuth = async () => {
             try {
-                const result = await SpotifyModule.CheckAuthStatus();
-                const response = JSON.parse(result);
-                if (response.isAuthenticated) {
+                const result: boolean = await SpotifyModule.CheckAuthStatus();
+                if (result) {
                     setIsAuthenticated(true);
                 }
             } catch (error) {

@@ -15,7 +15,6 @@ using static MusicTools.Core.Types;
 
 namespace MusicTools.Logic
 {
-    // Define a constant for TooManyRequests since it might not be available in your .NET version
     public static class SpotifyHttpStatusCodes
     {
         public const HttpStatusCode TooManyRequests = (HttpStatusCode)429;
