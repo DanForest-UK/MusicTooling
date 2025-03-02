@@ -14,9 +14,6 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 
-
-// The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
-
 namespace MusicTools
 {
     /// <summary>
@@ -29,6 +26,52 @@ namespace MusicTools
             this.InitializeComponent();
             var app = Application.Current as App;
             reactRootView.ReactNativeHost = app.Host;
+        }
+
+        /// <summary>
+        /// Handle URI navigation parameter when page is first navigated to
+        /// </summary>
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            base.OnNavigatedTo(e);
+
+            // If we have a URI string from protocol activation, store it
+            if (e.Parameter is string uriString && !string.IsNullOrEmpty(uriString))
+            {
+                StoreAuthUri(uriString);
+            }
+        }
+
+        /// <summary>
+        /// Handles protocol activation from App.xaml.cs
+        /// </summary>
+        public void HandleProtocolActivation(Uri uri)
+        {
+            if (uri != null)
+            {
+                StoreAuthUri(uri.ToString());
+            }
+        }
+
+        /// <summary>
+        /// Store the auth URI for React Native to access later
+        /// </summary>
+        private void StoreAuthUri(string uriString)
+        {
+            try
+            {
+                // For debugging
+                System.Diagnostics.Debug.WriteLine($"Received URI: {uriString}");
+
+                // Store in application settings
+                Windows.Storage.ApplicationData.Current.LocalSettings.Values["spotifyAuthUri"] = uriString;
+
+                System.Diagnostics.Debug.WriteLine("URI stored in application settings");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error storing URI: {ex.Message}");
+            }
         }
     }
 }

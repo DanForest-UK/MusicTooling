@@ -14,7 +14,9 @@ namespace MusicTools
     {
         public App()
         {
-            AddFirewallException();
+            // The firewall exception is no longer needed since we're not using a localhost server
+            // You can remove this if you're no longer using port 8888 for anything else
+            // AddFirewallException();
 
             // Dependency injection
             Runtime.GetFilesWithExtensionAsync = React.GetFilesWithExtensionAsync;
@@ -38,40 +40,35 @@ namespace MusicTools
 #endif
 
             Microsoft.ReactNative.Managed.AutolinkedNativeModules.RegisterAutolinkedNativeModulePackages(PackageProviders); // Includes any autolinked modules
-
             PackageProviders.Add(new ReactPackageProvider());
-
             InitializeComponent();
         }
 
- 
-
-            private void AddFirewallException()
+        private void AddFirewallException()
+        {
+            try
             {
-                try
+                Process process = new Process();
+                ProcessStartInfo startInfo = new ProcessStartInfo
                 {
-                    Process process = new Process();
-                    ProcessStartInfo startInfo = new ProcessStartInfo
-                    {
-                        FileName = "netsh",
-                        Arguments = "advfirewall firewall add rule name=\"Spotify Auth Callback\" dir=in action=allow protocol=TCP localport=8888",
-                        Verb = "runas",
-                        CreateNoWindow = true,
-                        UseShellExecute = false
-                    };
-                    process.StartInfo = startInfo;
-                    process.Start();
-                    process.WaitForExit();
-                    Debug.WriteLine("Added firewall rule for port 8888");
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Failed to add firewall rule: {ex.Message}");
-                    // Continue anyway, as the rule might already exist or we don't have sufficient privileges
-                }
+                    FileName = "netsh",
+                    Arguments = "advfirewall firewall add rule name=\"Spotify Auth Callback\" dir=in action=allow protocol=TCP localport=8888",
+                    Verb = "runas",
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+                process.StartInfo = startInfo;
+                process.Start();
+                process.WaitForExit();
+                Debug.WriteLine("Added firewall rule for port 8888");
             }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to add firewall rule: {ex.Message}");
+                // Continue anyway, as the rule might already exist or we don't have sufficient privileges
+            }
+        }
 
-     
         /// <summary>
         /// Entry point
         /// </summary>
@@ -84,17 +81,50 @@ namespace MusicTools
 
         /// <summary>
         /// Invoked when the application is activated by some means other than normal launching.
+        /// This handles protocol activation for Spotify callbacks.
         /// </summary>
-        protected override void OnActivated(Windows.ApplicationModel.Activation.IActivatedEventArgs e)
+        protected override void OnActivated(IActivatedEventArgs e)
         {
             var preActivationContent = Window.Current.Content;
             base.OnActivated(e);
-            if (preActivationContent == null && Window.Current != null)
+
+            // Handle protocol activation (for Spotify auth callback)
+            if (e.Kind == ActivationKind.Protocol)
             {
-                // Display the initial content
-                var frame = (Frame)Window.Current.Content;
-                frame.Navigate(typeof(MainPage), null);
+                var protocolArgs = e as ProtocolActivatedEventArgs;
+                if (protocolArgs != null)
+                {
+                    // This URI will contain the authorization code from Spotify
+                    var uri = protocolArgs.Uri;
+
+                    if (preActivationContent == null && Window.Current != null)
+                    {
+                        // Display the initial content
+                        var frame = (Frame)Window.Current.Content;
+                        // Pass the URI to the MainPage
+                        frame.Navigate(typeof(MainPage), uri.ToString());
+                    }
+                    else if (Window.Current.Content is Frame frame &&
+                             frame.Content is MainPage page)
+                    {
+                        // If we already have the MainPage, just pass the URI to it
+                        page.HandleProtocolActivation(uri);
+                    }
+                }
             }
+            else
+            {
+                // Handle other activation types as before
+                if (preActivationContent == null && Window.Current != null)
+                {
+                    // Display the initial content
+                    var frame = (Frame)Window.Current.Content;
+                    frame.Navigate(typeof(MainPage), null);
+                }
+            }
+
+            // Ensure the window is activated
+            Window.Current.Activate();
         }
     }
 }

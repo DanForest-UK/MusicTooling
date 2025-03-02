@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Alert, Linking } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { Alert, Linking, EmitterSubscription } from 'react-native';
 import { NativeModules } from 'react-native';
 import { AppModel } from '../types';
 
@@ -22,8 +22,112 @@ export const useSpotifyIntegration = (appState: AppModel) => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [errors, setErrors] = useState<SpotifyError[]>([]);
 
-    // Initial check on component mount
+    // Function to handle the auth code exchange - defined with useCallback
+    const completeAuthentication = useCallback(async (code: string) => {
+        try {
+            setIsAuthenticating(true);
+            const result = await SpotifyModule.ExchangeCodeForToken(code);
+            const response = JSON.parse(result);
+
+            setIsAuthenticating(false);
+
+            if (response.success) {
+                setIsAuthenticated(true);
+                Alert.alert('Success', 'Spotify authentication successful!');
+            } else {
+                Alert.alert('Error', `Token exchange failed: ${response.error?.message || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Token exchange error:', error);
+            setIsAuthenticating(false);
+            Alert.alert('Error', `Token exchange failed: ${error}`);
+        }
+    }, []);
+
+    // Handle authentication error - defined with useCallback
+    const handleAuthError = useCallback((error: string) => {
+        setIsAuthenticating(false);
+        Alert.alert('Authentication Error', `Spotify returned an error: ${error}`);
+    }, []);
+
+    // Function to handle the auth callback URL - defined with useCallback
+    const handleAuthCallbackUrl = useCallback((url: string) => {
+        console.log('Auth callback URL received:', url);
+
+        // Replace the URL parsing code in handleAuthCallbackUrl with this:
+        if (url.startsWith('musictools://auth/callback')) {
+            try {
+                // Try to extract the code parameter using regex
+                const codeMatch = url.match(/code=([^&]+)/);
+                if (codeMatch && codeMatch[1]) {
+                    const code = codeMatch[1];
+                    completeAuthentication(code);
+                } else {
+                    // Try to extract error parameter using regex
+                    const errorMatch = url.match(/error=([^&]+)/);
+                    if (errorMatch && errorMatch[1]) {
+                        const error = errorMatch[1];
+                        handleAuthError(error);
+                    } else {
+                        console.log('No code or error found in redirect URL');
+                    }
+                }
+            } catch (e) {
+                console.error('Error parsing callback URL:', e);
+            }
+        }
+    }, [completeAuthentication, handleAuthError]);
+
+    // Check for stored auth URI (our fallback mechanism)
+    const checkStoredUri = useCallback(async () => {
+        try {
+            if (SpotifyModule && typeof SpotifyModule.GetStoredAuthUri === 'function') {
+                const storedUri = await SpotifyModule.GetStoredAuthUri();
+                if (storedUri) {
+                    console.log('Found stored auth URI:', storedUri);
+                    handleAuthCallbackUrl(storedUri);
+                    // Clear the stored URI
+                    SpotifyModule.ClearStoredAuthUri();
+                }
+            }
+        } catch (error) {
+            console.log('Error checking stored auth URI:', error);
+        }
+    }, [handleAuthCallbackUrl]);
+
+    // Handle URL events (from deep linking)
     useEffect(() => {
+        // Event listener for URL events
+        const handleUrl = (event: { url: string }) => {
+            handleAuthCallbackUrl(event.url);
+        };
+
+        // Variable to hold the subscription
+        let subscription: EmitterSubscription | null = null;
+
+        // Add event listener, using a try-catch to handle different API versions
+        try {
+            // Try with addListener first (newer versions)
+            if (typeof Linking.addListener === 'function') {
+                subscription = Linking.addListener('url', handleUrl);
+            }
+            // If the above doesn't exist or fails, the catch block will try alternatives
+        } catch (e) {
+            console.log('Error setting up link listener, trying alternative:', e);
+        }
+
+        // Check if app was opened via URL
+        Linking.getInitialURL().then(initialUrl => {
+            if (initialUrl) {
+                handleAuthCallbackUrl(initialUrl);
+            }
+        });
+
+        // Check for stored URI immediately and after a delay
+        checkStoredUri();
+        const timeoutId = setTimeout(checkStoredUri, 2000);
+
+        // Initial auth status check
         const checkAuth = async () => {
             try {
                 const result = await SpotifyModule.CheckAuthStatus();
@@ -31,82 +135,58 @@ export const useSpotifyIntegration = (appState: AppModel) => {
                 if (response.isAuthenticated) {
                     setIsAuthenticated(true);
                 }
-            } catch (error: unknown) {
-                // Silent fail on initial check
+            } catch (error) {
                 console.log('Initial auth check failed:', error);
             }
         };
 
         checkAuth();
 
-        // Cleanup on unmount
+        // Cleanup
         return () => {
-            try {
-                SpotifyModule.StopAuthListener().catch((error: Error) => {
-                    console.error('Error stopping auth listener:', error);
-                });
-            } catch (error: unknown) {
-                console.error('Error stopping auth listener:', error);
+            // Clean up subscription if it exists
+            if (subscription && typeof subscription.remove === 'function') {
+                subscription.remove();
             }
+
+            clearTimeout(timeoutId);
         };
-    }, []);
+    }, [handleAuthCallbackUrl, checkStoredUri]);
 
     const handleAuthenticate = async () => {
         try {
             setIsAuthenticating(true);
             setErrors([]);
 
-            // Step 1: Get the auth URL
-            try {
-                const authUrl = await SpotifyModule.GetAuthUrl();
-                console.log('Got auth URL:', authUrl);
+            // Get the auth URL
+            const authUrl = await SpotifyModule.GetAuthUrl();
+            console.log('Got auth URL:', authUrl);
 
-                // Step 2: Start the auth listener
-                try {
-                    const startResult = await SpotifyModule.StartAuthListener();
-                    console.log('StartAuthListener result:', startResult);
-
-                    // Step 3: Open the auth URL in the browser
-                    const supported = await Linking.canOpenURL(authUrl);
-                    if (!supported) {
-                        Alert.alert('Error', 'Cannot open Spotify authentication URL');
-                        setIsAuthenticating(false);
-                        return;
-                    }
-
-                    // Open the URL
-                    await Linking.openURL(authUrl);
-
-                    // Step 4: Wait for authentication
-                    try {
-                        const result = await SpotifyModule.WaitForAuthentication();
-                        const response = JSON.parse(result);
-
-                        setIsAuthenticating(false);
-
-                        if (response.success) {
-                            setIsAuthenticated(true);
-                            Alert.alert('Success', 'Spotify authentication successful!');
-                        } else {
-                            Alert.alert('Error', `Authentication failed: ${response.error?.message || 'Unknown error'}`);
-                        }
-                    } catch (error: unknown) {
-                        console.error('Wait for auth error:', error);
-                        setIsAuthenticating(false);
-                        Alert.alert('Error', `Authentication failed: ${error}`);
-                    }
-                } catch (error: unknown) {
-                    console.error('Start auth listener error:', error);
-                    Alert.alert('Error', `Failed to start authentication listener: ${error}`);
-                    setIsAuthenticating(false);
-                }
-            } catch (error: unknown) {
-                console.error('Get auth URL error:', error);
-                Alert.alert('Error', `Failed to get authentication URL: ${error}`);
+            // Open the auth URL in browser
+            const supported = await Linking.canOpenURL(authUrl);
+            if (!supported) {
+                Alert.alert('Error', 'Cannot open Spotify authentication URL');
                 setIsAuthenticating(false);
+                return;
             }
-        } catch (error: unknown) {
-            console.error('General auth error:', error);
+
+            // Open the URL - the callback will be handled by our URL event listener
+            await Linking.openURL(authUrl);
+
+            // We'll set a timeout to clear the authenticating state if no callback is received
+            setTimeout(() => {
+                setIsAuthenticating(prevState => {
+                    if (prevState) {
+                        Alert.alert('Authentication Timeout',
+                            'Did not receive a response from Spotify. Please try again.');
+                        return false;
+                    }
+                    return prevState;
+                });
+            }, 60000); // 1 minute timeout
+
+        } catch (error) {
+            console.error('Authentication error:', error);
             setIsAuthenticating(false);
             Alert.alert('Error', `Failed to start authentication: ${error}`);
         }
@@ -144,7 +224,7 @@ export const useSpotifyIntegration = (appState: AppModel) => {
                 setErrors(response.errors || []);
                 Alert.alert('Error', 'Failed to like songs on Spotify. See details below.');
             }
-        } catch (error: unknown) {
+        } catch (error) {
             Alert.alert('Error', `An unexpected error occurred: ${error}`);
         } finally {
             setIsProcessing(false);
@@ -183,7 +263,7 @@ export const useSpotifyIntegration = (appState: AppModel) => {
                 setErrors(response.errors || []);
                 Alert.alert('Error', 'Failed to follow artists on Spotify. See details below.');
             }
-        } catch (error: unknown) {
+        } catch (error) {
             Alert.alert('Error', `An unexpected error occurred: ${error}`);
         } finally {
             setIsProcessing(false);
