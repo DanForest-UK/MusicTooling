@@ -15,5 +15,10 @@ namespace MusicTools.Core
 
         public static bool HasValue(this string? value) =>
             !string.IsNullOrWhiteSpace(value);
+
+        public static T IfNoneThrow<T>(this Option<T> option, Option<string> message = default) =>
+            option.Match(
+                Some: v => v,
+                None: () => throw new Exception(message.IfNone("Option was none")));
     }
 }
