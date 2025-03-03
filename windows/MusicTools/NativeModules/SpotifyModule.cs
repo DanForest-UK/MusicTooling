@@ -24,26 +24,6 @@ namespace MusicTools.NativeModules
         public const string redirectUrl = "musictools://auth/callback";  
 
         /// <summary>
-        /// Load settings from file, includes client ID and secret so not included in repo
-        /// Please see 'exampleSpotifySettings.json' - fill out and rename to 'spotifySettings.json'
-        /// </summary>
-        /// <returns></returns>
-        private SpotifySettings LoadSettings()
-        {
-            try
-            {
-                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "spotifySettings.json");
-                string json = File.ReadAllText(path);
-                return JsonConvert.DeserializeObject<SpotifySettings>(json);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error loading settings: {ex.Message}");
-                return new SpotifySettings("",""); // Return empty settings
-            }
-        }
-
-        /// <summary>
         /// Initializes a new instance of the SpotifyModule class
         /// </summary>
         public SpotifyModule()
@@ -57,6 +37,26 @@ namespace MusicTools.NativeModules
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error initializing SpotifyModule: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Load settings from file, includes client ID and secret so not included in repo
+        /// Please see 'exampleSpotifySettings.json' - fill out and rename to 'spotifySettings.json'
+        /// </summary>
+        /// <returns></returns>
+        private SpotifySettings LoadSettings()
+        {
+            try
+            {
+                var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "spotifySettings.json");
+                var json = File.ReadAllText(path);
+                return JsonConvert.DeserializeObject<SpotifySettings>(json);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error loading settings: {ex.Message}");
+                return new SpotifySettings("", ""); // Return empty settings
             }
         }
 
