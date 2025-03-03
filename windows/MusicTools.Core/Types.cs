@@ -1,15 +1,33 @@
 ﻿using LanguageExt;
 using LanguageExt.Common;
 using System;
+using System.Collections.Generic;
 
 namespace MusicTools.Core
 {
     public static class Types
     {
-        // Records for application state with ChosenSongs after Songs
+        // Records for application state
         public record AppModel(SongInfo[] Songs, Guid[] ChosenSongs, int MinimumRating);
         public record SongInfo(Guid Id, string Name, string Path, string[] Artist, string Album, int Rating);
         public record SpotifySettings(string ClientId, string ClientSecret);
+
+        // Spotify domain models
+        public record SpotifyTrack(
+            string Id,
+            string Name,
+            SpotifyArtist[] Artists,
+            SpotifyAlbum? Album,
+            string Uri);
+
+        public record SpotifyArtist(
+            string Id,
+            string Name,
+            string Uri);
+
+        public record SpotifyAlbum(
+            string Id,
+            string Name);
     }
 
     public static class SpotifyErrors

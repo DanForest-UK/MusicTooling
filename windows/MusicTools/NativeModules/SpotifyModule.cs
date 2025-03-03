@@ -11,6 +11,8 @@ using System.Diagnostics;
 using static MusicTools.Core.Types;
 using LanguageExt.Common;
 using System.IO;
+using static MusicTools.Core.Extensions;
+using System.Net;
 
 namespace MusicTools.NativeModules
 {
@@ -21,7 +23,7 @@ namespace MusicTools.NativeModules
         bool isInitialised = false;
         bool isAuthenticated = false;
         public const string spotifyAuthUriKey = "spotifyAuthUri";
-        public const string redirectUrl = "musictools://auth/callback";  
+        public const string redirectUrl = "musictools://auth/callback";
 
         /// <summary>
         /// Initializes a new instance of the SpotifyModule class
@@ -30,32 +32,56 @@ namespace MusicTools.NativeModules
         {
             try
             {
-                var settings = LoadSettings();    
+                var settings = LoadSettings();
                 spotifyApi = new SpotifyApi(settings.ClientId, settings.ClientSecret, redirectUrl);
                 isInitialised = true;
+                Debug.WriteLine("SpotifyModule initialized successfully");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error initializing SpotifyModule: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
             }
         }
 
         /// <summary>
-        /// Load settings from file, includes client ID and secret so not included in repo
-        /// Please see 'exampleSpotifySettings.json' - fill out and rename to 'spotifySettings.json'
+        /// Load settings from file, includes client ID and secret
         /// </summary>
-        /// <returns></returns>
         private SpotifySettings LoadSettings()
         {
             try
             {
                 var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "spotifySettings.json");
+                Debug.WriteLine($"Loading Spotify settings from: {path}");
+
+                if (!File.Exists(path))
+                {
+                    Debug.WriteLine("Warning: spotifySettings.json file does not exist!");
+                    return new SpotifySettings("", "");
+                }
+
                 var json = File.ReadAllText(path);
-                return JsonConvert.DeserializeObject<SpotifySettings>(json);
+                Debug.WriteLine("Spotify settings loaded");
+
+                var settings = JsonConvert.DeserializeObject<SpotifySettings>(json);
+                if (settings == null)
+                {
+                    Debug.WriteLine("Warning: Failed to deserialize Spotify settings");
+                    return new SpotifySettings("", "");
+                }
+
+                // Partially mask credentials in logs for security
+                var maskedClientId = settings.ClientId.Length > 4
+                    ? settings.ClientId.Substring(0, 4) + "..."
+                    : "Invalid ClientId";
+
+                Debug.WriteLine($"Loaded Spotify Client ID: {maskedClientId}");
+                return settings;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error loading settings: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
                 return new SpotifySettings("", ""); // Return empty settings
             }
         }
@@ -69,11 +95,14 @@ namespace MusicTools.NativeModules
             try
             {
                 EnsureInitialized();
-                return Task.FromResult(spotifyApi.GetAuthorizationUrl());
+                var url = spotifyApi.GetAuthorizationUrl();
+                Debug.WriteLine($"Generated Spotify auth URL (truncated): {url.Substring(0, Math.Min(50, url.Length))}...");
+                return Task.FromResult(url);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error getting auth URL: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
                 return Task.FromResult(string.Empty);
             }
         }
@@ -82,9 +111,12 @@ namespace MusicTools.NativeModules
         /// Checks if authentication has completed
         /// </summary>
         [ReactMethod("CheckAuthStatus")]
-        public Task<bool> CheckAuthStatus() =>
-            Task.FromResult(isAuthenticated);
-      
+        public Task<bool> CheckAuthStatus()
+        {
+            Debug.WriteLine($"CheckAuthStatus called, isAuthenticated: {isAuthenticated}");
+            return Task.FromResult(isAuthenticated);
+        }
+
         /// <summary>
         /// Exchanges authorization code for an access token
         /// </summary>
@@ -96,28 +128,43 @@ namespace MusicTools.NativeModules
                 EnsureInitialized();
 
                 if (!code.HasValue())
-                     return Task.FromResult(JsonConvert.SerializeObject(
-                        new { success = false, error = "No authorization code provided" }));                
+                {
+                    Debug.WriteLine("Error: No authorization code provided");
+                    return Task.FromResult(JsonConvert.SerializeObject(
+                        new { success = false, error = "No authorization code provided" }));
+                }
+
+                Debug.WriteLine($"Exchanging code (truncated): {code.Substring(0, Math.Min(10, code.Length))}...");
+
+                // Clean the code to prevent any URL encoding issues
+                // The code might have been already decoded or might need decoding
+                string trimmedCode = code.Trim();
 
                 return Task.Run(async () => {
                     try
                     {
-                        // Exchange code for token
-                        var result = await spotifyApi.GetAccessTokenAsync(code);
+                        // Now we have a clean code, we can exchange it for a token without delay
+                        Debug.WriteLine("Calling GetAccessTokenAsync");
+                        var result = await spotifyApi.GetAccessTokenAsync(trimmedCode);
 
                         var response = result.Match(
                             Right: success =>
                             {
                                 isAuthenticated = true;
+                                Debug.WriteLine("Authorization successful, user is authenticated!");
                                 return new { success = true, error = SpotifyErrors.Empty };
                             },
-                            Left: error => new { success = false, error });
+                            Left: error => {
+                                Debug.WriteLine($"Authorization failed: {error.Message}");
+                                return new { success = false, error };
+                            });
 
                         return JsonConvert.SerializeObject(response);
                     }
                     catch (Exception ex)
                     {
                         Debug.WriteLine($"Error exchanging code: {ex.Message}");
+                        Debug.WriteLine(ex.StackTrace);
                         var errorResult = new { success = false, error = ex.Message };
                         return JsonConvert.SerializeObject(errorResult);
                     }
@@ -126,6 +173,7 @@ namespace MusicTools.NativeModules
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error in ExchangeCodeForToken: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
                 var errorResult = new { success = false, error = ex.Message };
                 return Task.FromResult(JsonConvert.SerializeObject(errorResult));
             }
@@ -139,9 +187,13 @@ namespace MusicTools.NativeModules
         {
             try
             {
-                if (Windows.Storage.ApplicationData.Current.LocalSettings.Values.TryGetValue(spotifyAuthUriKey, out object uriString) && uriString is string uri)                
-                    return Task.FromResult(uri);                
+                if (Windows.Storage.ApplicationData.Current.LocalSettings.Values.TryGetValue(spotifyAuthUriKey, out object uriString) && uriString is string uri)
+                {
+                    Debug.WriteLine($"Found stored auth URI: {uri}");
+                    return Task.FromResult(uri);
+                }
 
+                Debug.WriteLine("No stored auth URI found");
                 return Task.FromResult(string.Empty);
             }
             catch (Exception ex)
@@ -163,7 +215,9 @@ namespace MusicTools.NativeModules
                 if (localSettings.Values.ContainsKey(spotifyAuthUriKey))
                 {
                     localSettings.Values.Remove(spotifyAuthUriKey);
+                    Debug.WriteLine("Cleared stored auth URI");
                 }
+
                 return Task.FromResult("success");
             }
             catch (Exception ex)
@@ -173,8 +227,6 @@ namespace MusicTools.NativeModules
             }
         }
 
-
-        // todo chosen songs hsould come from the state
         /// <summary>
         /// Searches for and likes songs on Spotify
         /// </summary>
@@ -192,6 +244,8 @@ namespace MusicTools.NativeModules
                     return Task.FromResult(JsonConvert.SerializeObject(errorResult));
                 }
 
+                Debug.WriteLine($"LikeSongs called with {chosenSongs.Length} songs");
+
                 return Task.Run(async () => {
                     try
                     {
@@ -199,19 +253,29 @@ namespace MusicTools.NativeModules
 
                         foreach (var song in chosenSongs)
                         {
+                            Debug.WriteLine($"Processing song: {song.Name} by {string.Join(", ", song.Artist)}");
+
                             // Search for the song
                             var searchResult = await spotifyApi.SearchSongAsync(song.Name, song.Artist);
 
                             await searchResult.Match(
                                 Right: async track => {
+                                    Debug.WriteLine($"Song found: {track.Name} (ID: {track.Id})");
+
                                     // Like the song if found
                                     var likeResult = await spotifyApi.LikeSongAsync(track.Id);
                                     likeResult.Match(
-                                        Right: _ => { },
-                                        Left: error => errors.Add(error)
+                                        Right: _ => {
+                                            Debug.WriteLine("Song liked successfully");
+                                        },
+                                        Left: error => {
+                                            Debug.WriteLine($"Error liking song: {error.Message}");
+                                            errors.Add(error);
+                                        }
                                     );
                                 },
                                 Left: error => {
+                                    Debug.WriteLine($"Error finding song: {error.Message}");
                                     errors.Add(error);
                                     return Task.CompletedTask;
                                 }
@@ -230,10 +294,13 @@ namespace MusicTools.NativeModules
                                 partialSuccess = errors.Count < chosenSongs.Length,
                                 errors = errors
                             };
+
+                            Debug.WriteLine($"Operation completed with {errors.Count} errors");
                         }
                         else
                         {
                             response = new { success = true };
+                            Debug.WriteLine("All songs liked successfully");
                         }
 
                         return JsonConvert.SerializeObject(response);
@@ -241,6 +308,7 @@ namespace MusicTools.NativeModules
                     catch (Exception ex)
                     {
                         Debug.WriteLine($"Error in LikeSongs task: {ex.Message}");
+                        Debug.WriteLine(ex.StackTrace);
                         var errorResult = new { success = false, error = ex.Message };
                         return JsonConvert.SerializeObject(errorResult);
                     }
@@ -271,33 +339,47 @@ namespace MusicTools.NativeModules
                     return Task.FromResult(JsonConvert.SerializeObject(errorResult));
                 }
 
+                Debug.WriteLine($"FollowArtists called with {chosenSongs.Length} songs");
+
                 return Task.Run(async () => {
                     try
                     {
                         // Extract distinct artist names from the songs
                         var distinctArtists = chosenSongs
                             .SelectMany(s => s.Artist)
-                            .Where(a => !string.IsNullOrWhiteSpace(a))
+                            .Where(a => a.HasValue())
                             .Distinct()
                             .ToList();
+
+                        Debug.WriteLine($"Found {distinctArtists.Count} distinct artists to follow");
 
                         var errors = new List<SpotifyErrors.SpotifyError>();
 
                         foreach (var artistName in distinctArtists)
                         {
+                            Debug.WriteLine($"Processing artist: {artistName}");
+
                             // Search for the artist
                             var searchResult = await spotifyApi.SearchArtistAsync(artistName);
 
                             await searchResult.Match(
                                 Right: async artist => {
+                                    Debug.WriteLine($"Artist found: {artist.Name} (ID: {artist.Id})");
+
                                     // Follow the artist if found
                                     var followResult = await spotifyApi.FollowArtistAsync(artist.Id);
                                     followResult.Match(
-                                        Right: _ => { },
-                                        Left: error => errors.Add(error)
+                                        Right: _ => {
+                                            Debug.WriteLine("Artist followed successfully");
+                                        },
+                                        Left: error => {
+                                            Debug.WriteLine($"Error following artist: {error.Message}");
+                                            errors.Add(error);
+                                        }
                                     );
                                 },
                                 Left: error => {
+                                    Debug.WriteLine($"Error finding artist: {error.Message}");
                                     errors.Add(error);
                                     return Task.CompletedTask;
                                 }
@@ -316,10 +398,13 @@ namespace MusicTools.NativeModules
                                 partialSuccess = errors.Count < distinctArtists.Count,
                                 errors = errors
                             };
+
+                            Debug.WriteLine($"Operation completed with {errors.Count} errors");
                         }
                         else
                         {
                             response = new { success = true };
+                            Debug.WriteLine("All artists followed successfully");
                         }
 
                         return JsonConvert.SerializeObject(response);
@@ -327,6 +412,7 @@ namespace MusicTools.NativeModules
                     catch (Exception ex)
                     {
                         Debug.WriteLine($"Error in FollowArtists task: {ex.Message}");
+                        Debug.WriteLine(ex.StackTrace);
                         var errorResult = new { success = false, error = ex.Message };
                         return JsonConvert.SerializeObject(errorResult);
                     }
@@ -344,6 +430,7 @@ namespace MusicTools.NativeModules
         {
             if (!isInitialised)
             {
+                Debug.WriteLine("SpotifyModule is not properly initialized");
                 throw new InvalidOperationException("SpotifyModule is not properly initialized");
             }
         }

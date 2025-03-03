@@ -1,74 +1,69 @@
-﻿using System;
+﻿using LanguageExt;
+using LanguageExt.Common;
+using MusicTools.Core;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Threading.Tasks;
-using LanguageExt;
-using LanguageExt.Common;
-using MusicTools.Core;
-using Newtonsoft.Json;
+using SpotifyAPI.Web;
 using static LanguageExt.Prelude;
 using static MusicTools.Core.Types;
+using System.Diagnostics;
 
 namespace MusicTools.Logic
 {
-    public static class SpotifyHttpStatusCodes
-    {
-        public const HttpStatusCode TooManyRequests = (HttpStatusCode)429;
-    }
-
     /// <summary>
-    /// Spotify API implementation
+    /// Spotify API implementation using SpotifyAPI.Web package
     /// </summary>
     public class SpotifyApi
     {
-        private readonly HttpClient _httpClient;
-        private string _accessToken = string.Empty;
-        private DateTime _tokenExpiry = DateTime.MinValue;
         private readonly string _clientId;
         private readonly string _clientSecret;
         private readonly string _redirectUri;
+        private SpotifyClient? _spotifyClient;
+        private DateTime _tokenExpiry = DateTime.MinValue;
 
         /// <summary>
         /// Initializes a new instance of the SpotifyApi class
         /// </summary>
         public SpotifyApi(string clientId, string clientSecret, string redirectUri)
         {
-            _httpClient = new HttpClient();
-            _httpClient.BaseAddress = new Uri("https://api.spotify.com/v1/");
             _clientId = clientId;
             _clientSecret = clientSecret;
+
+            // Ensure redirect URI is exactly as expected without any modifications
             _redirectUri = redirectUri;
+
+            Debug.WriteLine($"SpotifyApi initialized with redirectUri: {_redirectUri}");
         }
 
         /// <summary>
-        /// Gets the login URL for the Spotify authorization flow using PKCE
+        /// Gets the login URL for the Spotify authorization flow
         /// </summary>
         public string GetAuthorizationUrl()
         {
-            var scopes = new[]
+            // Create the login request with exact redirect URI
+            var loginRequest = new LoginRequest(
+                new Uri(_redirectUri),
+                _clientId,
+                LoginRequest.ResponseType.Code
+            )
             {
-                "user-library-read",
-                "user-library-modify",
-                "user-follow-modify",
-                "user-follow-read"
+                Scope = new List<string>
+                {
+                    Scopes.UserLibraryRead,
+                    Scopes.UserLibraryModify,
+                    Scopes.UserFollowModify,
+                    Scopes.UserFollowRead
+                }
             };
 
-            var scopeParam = string.Join(" ", scopes);
+            // Get the URI and log it for debugging
+            var authUri = loginRequest.ToUri().ToString();
+            Debug.WriteLine($"Generated auth URL: {authUri}");
 
-            // Generate a code challenge for PKCE 
-            // In a full implementation, you should generate and store a code verifier
-            // and create a code challenge from it.
-            // For simplicity, we're not implementing the full PKCE flow here.
-
-            return $"https://accounts.spotify.com/authorize" +
-                   $"?client_id={_clientId}" +
-                   $"&response_type=code" +
-                   $"&redirect_uri={Uri.EscapeDataString(_redirectUri)}" +
-                   $"&scope={Uri.EscapeDataString(scopeParam)}";
+            return authUri;
         }
 
         /// <summary>
@@ -78,57 +73,81 @@ namespace MusicTools.Logic
         {
             try
             {
-                var requestContent = new FormUrlEncodedContent(new[]
+                // Log the code received (truncated for security)
+                if (!string.IsNullOrEmpty(code) && code.Length > 4)
                 {
-                    new KeyValuePair<string, string>("grant_type", "authorization_code"),
-                    new KeyValuePair<string, string>("code", code),
-                    new KeyValuePair<string, string>("redirect_uri", _redirectUri),
-                    new KeyValuePair<string, string>("client_id", _clientId),
-                    new KeyValuePair<string, string>("client_secret", _clientSecret)
-                });
-
-                var response = await _httpClient.PostAsync("https://accounts.spotify.com/api/token", requestContent);
-                var content = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
+                    Debug.WriteLine($"Code received for exchange (first 4 chars): {code.Substring(0, 4)}..., length: {code.Length}");
+                }
+                else
                 {
-                    return new SpotifyErrors.AuthenticationError(content);
+                    Debug.WriteLine("Warning: Code received is null, empty, or too short");
                 }
 
-                var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(content);
-                if (tokenResponse == null)
-                {
-                    return new SpotifyErrors.AuthenticationError("Failed to parse token response");
-                }
+                // Ensure the code is not URL encoded again
+                // If it came from a URL, it might already be decoded
+                string decodedCode = WebUtility.UrlDecode(code);
 
-                _accessToken = tokenResponse.AccessToken;
-                _tokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn - 60); // Buffer of 60 seconds
+                // Use the decoded code only if it's different, otherwise use original
+                // This prevents double-decoding issues
+                string codeToUse = decodedCode != code ? decodedCode : code;
 
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+                Debug.WriteLine($"Using redirect URI for token exchange: {_redirectUri}");
+
+                // Create OAuth client and immediately exchange the code for a token
+                var oauth = new OAuthClient();
+
+                // Create the token request with exact parameters
+                var tokenRequest = new AuthorizationCodeTokenRequest(
+                    _clientId,
+                    _clientSecret,
+                    codeToUse,
+                    new Uri(_redirectUri)
+                );
+
+                // Exchange code for token immediately
+                var tokenResponse = await oauth.RequestToken(tokenRequest);
+
+                // Log success
+                Debug.WriteLine("Token exchange successful!");
+
+                // Create the Spotify client with the access token
+                _spotifyClient = new SpotifyClient(tokenResponse.AccessToken);
+
+                // Calculate token expiry (subtract 60 seconds as buffer)
+                _tokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn - 60);
 
                 return true;
             }
+            catch (APIException ex)
+            {
+                // Log detailed API exception information
+                Debug.WriteLine($"Spotify API Exception: {ex.Message}");
+                Debug.WriteLine($"Response status: {ex.Response?.StatusCode}");
+                Debug.WriteLine($"Response body: {ex.Response?.Body}");
+
+                return new SpotifyErrors.AuthenticationError(
+                    $"API Error: {ex.Message}, Status: {ex.Response?.StatusCode}, Body: {ex.Response?.Body}");
+            }
             catch (Exception ex)
             {
+                Debug.WriteLine($"Generic exception during token exchange: {ex.Message}");
+                Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+
                 return new SpotifyErrors.AuthenticationError(ex.Message);
             }
         }
 
         /// <summary>
-        /// Refreshes the access token if necessary
+        /// Ensures the Spotify client has a valid token
         /// </summary>
-        private async Task<Either<SpotifyErrors.SpotifyError, bool>> EnsureValidTokenAsync()
+        private Task<Either<SpotifyErrors.SpotifyError, bool>> EnsureValidTokenAsync()
         {
-            if (DateTime.UtcNow < _tokenExpiry && !string.IsNullOrEmpty(_accessToken))
-            {
-                return true;
-            }
+            if (_spotifyClient != null && DateTime.UtcNow < _tokenExpiry)
+                return Task.FromResult<Either<SpotifyErrors.SpotifyError, bool>>(true);
 
-            // In a real app, you would implement token refresh logic here
-            return new SpotifyErrors.AuthenticationError("Token expired and refresh not implemented");
+            return Task.FromResult<Either<SpotifyErrors.SpotifyError, bool>>(
+                new SpotifyErrors.AuthenticationError("Token expired or not initialized"));
         }
-
-        // The rest of your SpotifyAPI class methods remain unchanged
 
         /// <summary>
         /// Searches for a song on Spotify
@@ -137,38 +156,36 @@ namespace MusicTools.Logic
         {
             var tokenCheck = await EnsureValidTokenAsync();
             if (tokenCheck.IsLeft)
-            {
                 return tokenCheck.LeftToList().First();
-            }
 
             try
             {
-                var query = Uri.EscapeDataString($"track:{title} artist:{string.Join(" ", artists)}");
-                var response = await _httpClient.GetAsync($"search?q={query}&type=track&limit=1");
+                var query = $"track:{title} artist:{string.Join(" ", artists)}";
+                var searchRequest = new SearchRequest(SearchRequest.Types.Track, query);
+                var searchResponse = await _spotifyClient!.Search.Item(searchRequest);
 
-                if (response.StatusCode == SpotifyHttpStatusCodes.TooManyRequests &&
-                    response.Headers.TryGetValues("Retry-After", out var retryValues))
-                {
-                    int.TryParse(retryValues.FirstOrDefault(), out var retryAfter);
-                    return new SpotifyErrors.RateLimitError("search", retryAfter > 0 ? retryAfter : 60);
-                }
-
-                var content = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    return new SpotifyErrors.ApiError("search", (int)response.StatusCode, content);
-                }
-
-                var searchResult = JsonConvert.DeserializeObject<SearchResponse<SpotifyTrack>>(content);
-                var tracks = searchResult?.Tracks?.Items;
-
-                if (tracks == null || !tracks.Any())
-                {
+                if (searchResponse.Tracks.Items == null || !searchResponse.Tracks.Items.Any())
                     return new SpotifyErrors.SongNotFound(title, artists, "No tracks found matching criteria");
+
+                // Convert to our domain model
+                var spotifyTrack = searchResponse.Tracks.Items.First();
+                return ToSpotifyTrack(spotifyTrack);
+            }
+            catch (APIException ex) when (ex.Response?.StatusCode == (System.Net.HttpStatusCode)429)
+            {
+                // Handle rate limiting
+                var retryAfter = 60; // Default
+                if (ex.Response.Headers.TryGetValue("Retry-After", out var values) &&
+                    values.Any() && int.TryParse(values, out var seconds))
+                {
+                    retryAfter = seconds;
                 }
 
-                return tracks.First();
+                return new SpotifyErrors.RateLimitError("search", retryAfter);
+            }
+            catch (APIException ex)
+            {
+                return new SpotifyErrors.ApiError("search", (int)ex.Response?.StatusCode, ex.Message);
             }
             catch (Exception ex)
             {
@@ -183,38 +200,36 @@ namespace MusicTools.Logic
         {
             var tokenCheck = await EnsureValidTokenAsync();
             if (tokenCheck.IsLeft)
-            {
                 return tokenCheck.LeftToList().First();
-            }
 
             try
             {
-                var query = Uri.EscapeDataString($"artist:{artistName}");
-                var response = await _httpClient.GetAsync($"search?q={query}&type=artist&limit=1");
+                var query = $"artist:{artistName}";
+                var searchRequest = new SearchRequest(SearchRequest.Types.Artist, query);
+                var searchResponse = await _spotifyClient!.Search.Item(searchRequest);
 
-                if (response.StatusCode == SpotifyHttpStatusCodes.TooManyRequests &&
-                    response.Headers.TryGetValues("Retry-After", out var retryValues))
-                {
-                    int.TryParse(retryValues.FirstOrDefault(), out var retryAfter);
-                    return new SpotifyErrors.RateLimitError("search", retryAfter > 0 ? retryAfter : 60);
-                }
-
-                var content = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    return new SpotifyErrors.ApiError("search", (int)response.StatusCode, content);
-                }
-
-                var searchResult = JsonConvert.DeserializeObject<SearchResponse<SpotifyArtist>>(content);
-                var artists = searchResult?.Artists?.Items;
-
-                if (artists == null || !artists.Any())
-                {
+                if (searchResponse.Artists.Items == null || !searchResponse.Artists.Items.Any())
                     return new SpotifyErrors.ArtistNotFound(artistName, "No artists found matching criteria");
+
+                // Convert to our domain model
+                var spotifyArtist = searchResponse.Artists.Items.First();
+                return ToSpotifyArtist(spotifyArtist);
+            }
+            catch (APIException ex) when (ex.Response?.StatusCode == (System.Net.HttpStatusCode)429)
+            {
+                // Handle rate limiting
+                var retryAfter = 60; // Default
+                if (ex.Response.Headers.TryGetValue("Retry-After", out var values) &&
+                    values.Any() && int.TryParse(values, out var seconds))
+                {
+                    retryAfter = seconds;
                 }
 
-                return artists.First();
+                return new SpotifyErrors.RateLimitError("search", retryAfter);
+            }
+            catch (APIException ex)
+            {
+                return new SpotifyErrors.ApiError("search", (int)ex.Response?.StatusCode, ex.Message);
             }
             catch (Exception ex)
             {
@@ -229,28 +244,28 @@ namespace MusicTools.Logic
         {
             var tokenCheck = await EnsureValidTokenAsync();
             if (tokenCheck.IsLeft)
-            {
                 return tokenCheck.LeftToList().First();
-            }
 
             try
             {
-                var response = await _httpClient.PutAsync($"me/tracks?ids={spotifyTrackId}", null);
-
-                if (response.StatusCode == SpotifyHttpStatusCodes.TooManyRequests &&
-                    response.Headers.TryGetValues("Retry-After", out var retryValues))
-                {
-                    int.TryParse(retryValues.FirstOrDefault(), out var retryAfter);
-                    return new SpotifyErrors.RateLimitError("like_track", retryAfter > 0 ? retryAfter : 60);
-                }
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var content = await response.Content.ReadAsStringAsync();
-                    return new SpotifyErrors.ApiError("like_track", (int)response.StatusCode, content);
-                }
-
+                await _spotifyClient!.Library.SaveTracks(new LibrarySaveTracksRequest(new[] { spotifyTrackId }));
                 return true;
+            }
+            catch (APIException ex) when (ex.Response?.StatusCode == (System.Net.HttpStatusCode)429)
+            {
+                // Handle rate limiting
+                var retryAfter = 60; // Default
+                if (ex.Response.Headers.TryGetValue("Retry-After", out var values) &&
+                    values.Any() && int.TryParse(values, out var seconds))
+                {
+                    retryAfter = seconds;
+                }
+
+                return new SpotifyErrors.RateLimitError("like_track", retryAfter);
+            }
+            catch (APIException ex)
+            {
+                return new SpotifyErrors.ApiError("like_track", (int)ex.Response?.StatusCode, ex.Message);
             }
             catch (Exception ex)
             {
@@ -265,113 +280,65 @@ namespace MusicTools.Logic
         {
             var tokenCheck = await EnsureValidTokenAsync();
             if (tokenCheck.IsLeft)
-            {
                 return tokenCheck.LeftToList().First();
-            }
 
             try
             {
-                var response = await _httpClient.PutAsync($"me/following?type=artist&ids={spotifyArtistId}", null);
-
-                if (response.StatusCode == SpotifyHttpStatusCodes.TooManyRequests &&
-                    response.Headers.TryGetValues("Retry-After", out var retryValues))
-                {
-                    int.TryParse(retryValues.FirstOrDefault(), out var retryAfter);
-                    return new SpotifyErrors.RateLimitError("follow_artist", retryAfter > 0 ? retryAfter : 60);
-                }
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var content = await response.Content.ReadAsStringAsync();
-                    return new SpotifyErrors.ApiError("follow_artist", (int)response.StatusCode, content);
-                }
-
+                await _spotifyClient!.Follow.Follow(new FollowRequest(FollowRequest.Type.Artist, new[] { spotifyArtistId }));
                 return true;
+            }
+            catch (APIException ex) when (ex.Response?.StatusCode == (System.Net.HttpStatusCode)429)
+            {
+                // Handle rate limiting
+                var retryAfter = 60; // Default
+                if (ex.Response.Headers.TryGetValue("Retry-After", out var values) &&
+                    values.Any() && int.TryParse(values, out var seconds))
+                {
+                    retryAfter = seconds;
+                }
+
+                return new SpotifyErrors.RateLimitError("follow_artist", retryAfter);
+            }
+            catch (APIException ex)
+            {
+                return new SpotifyErrors.ApiError("follow_artist", (int)ex.Response?.StatusCode, ex.Message);
             }
             catch (Exception ex)
             {
                 return new SpotifyErrors.ApiError("follow_artist", 500, ex.Message);
             }
         }
-    }
 
-    // Response classes for Spotify API - These are unchanged
+        /// <summary>
+        /// Maps SpotifyAPI.Web FullTrack to our domain model
+        /// </summary>
+        private SpotifyTrack ToSpotifyTrack(FullTrack track) =>
+            new SpotifyTrack(
+                track.Id,
+                track.Name,
+                track.Artists.Select(artist => ToSpotifyArtist(artist)).ToArray(),
+                track.Album != null ? new SpotifyAlbum(track.Album.Id, track.Album.Name) : null,
+                track.Uri
+            );
 
-    public class TokenResponse
-    {
-        [JsonProperty("access_token")]
-        public string AccessToken { get; set; } = string.Empty;
+        /// <summary>
+        /// Maps SpotifyAPI.Web SimpleArtist to our domain model
+        /// </summary>
+        private SpotifyArtist ToSpotifyArtist(SimpleArtist artist) =>
+            new SpotifyArtist(
+                artist.Id,
+                artist.Name,
+                artist.Uri
+            );
 
-        [JsonProperty("token_type")]
-        public string TokenType { get; set; } = string.Empty;
-
-        [JsonProperty("expires_in")]
-        public int ExpiresIn { get; set; }
-
-        [JsonProperty("refresh_token")]
-        public string RefreshToken { get; set; } = string.Empty;
-    }
-
-    public class SearchResponse<T> where T : class
-    {
-        [JsonProperty("tracks")]
-        public PaginatedResponse<SpotifyTrack>? Tracks { get; set; }
-
-        [JsonProperty("artists")]
-        public PaginatedResponse<SpotifyArtist>? Artists { get; set; }
-    }
-
-    public class PaginatedResponse<T> where T : class
-    {
-        [JsonProperty("items")]
-        public List<T> Items { get; set; } = new List<T>();
-
-        [JsonProperty("total")]
-        public int Total { get; set; }
-
-        [JsonProperty("offset")]
-        public int Offset { get; set; }
-
-        [JsonProperty("limit")]
-        public int Limit { get; set; }
-    }
-
-    public class SpotifyTrack
-    {
-        [JsonProperty("id")]
-        public string Id { get; set; } = string.Empty;
-
-        [JsonProperty("name")]
-        public string Name { get; set; } = string.Empty;
-
-        [JsonProperty("artists")]
-        public List<SpotifyArtist> Artists { get; set; } = new List<SpotifyArtist>();
-
-        [JsonProperty("album")]
-        public SpotifyAlbum? Album { get; set; }
-
-        [JsonProperty("uri")]
-        public string Uri { get; set; } = string.Empty;
-    }
-
-    public class SpotifyArtist
-    {
-        [JsonProperty("id")]
-        public string Id { get; set; } = string.Empty;
-
-        [JsonProperty("name")]
-        public string Name { get; set; } = string.Empty;
-
-        [JsonProperty("uri")]
-        public string Uri { get; set; } = string.Empty;
-    }
-
-    public class SpotifyAlbum
-    {
-        [JsonProperty("id")]
-        public string Id { get; set; } = string.Empty;
-
-        [JsonProperty("name")]
-        public string Name { get; set; } = string.Empty;
+        /// <summary>
+        /// Maps SpotifyAPI.Web FullArtist to our domain model
+        /// </summary>
+        private SpotifyArtist ToSpotifyArtist(FullArtist artist) =>
+            new SpotifyArtist(
+                artist.Id,
+                artist.Name,
+                artist.Uri
+            );
     }
 }
