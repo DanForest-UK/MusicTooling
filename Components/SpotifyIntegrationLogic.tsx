@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, Linking, EmitterSubscription } from 'react-native';
 import { NativeModules } from 'react-native';
 import { AppModel } from '../types';
@@ -22,9 +22,26 @@ export const useSpotifyIntegration = (appState: AppModel) => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [errors, setErrors] = useState<SpotifyError[]>([]);
 
+    // Add a ref to track if code exchange is in progress
+    const codeExchangeInProgress = useRef(false);
+    // Add a ref to store the last used code to prevent duplicate usage
+    const lastUsedCode = useRef<string | null>(null);
+
     // Function to handle the auth code exchange - with improved error handling
     const completeAuthentication = useCallback(async (code: string) => {
         try {
+            // Prevent duplicate code usage
+            if (code === lastUsedCode.current) {
+                console.log("Skipping duplicate code usage");
+                return;
+            }
+
+            // Prevent concurrent code exchange attempts
+            if (codeExchangeInProgress.current) {
+                console.log("Code exchange already in progress");
+                return;
+            }
+
             if (!code || code.length < 5) {
                 console.error("Invalid authorization code received");
                 setIsAuthenticating(false);
@@ -34,13 +51,21 @@ export const useSpotifyIntegration = (appState: AppModel) => {
 
             console.log(`Auth code received (first 4 chars): ${code.substring(0, 4)}..., length: ${code.length}`);
 
-            // Set authenticating state
+            // Set authenticating state and mark exchange as in progress
             setIsAuthenticating(true);
+            codeExchangeInProgress.current = true;
+            lastUsedCode.current = code;
 
-            // Exchange code for token IMMEDIATELY
+            // Exchange code for token IMMEDIATELY - pass the raw code without any modification
             console.log("Exchanging code for token...");
             const result = await SpotifyModule.ExchangeCodeForToken(code);
             console.log("Code exchange completed, parsing result");
+
+            // Clear in-progress flag
+            codeExchangeInProgress.current = false;
+
+            // Clear the stored URI immediately to prevent reuse
+            await SpotifyModule.ClearStoredAuthUri();
 
             // Parse response
             const response = JSON.parse(result);
@@ -57,6 +82,7 @@ export const useSpotifyIntegration = (appState: AppModel) => {
         } catch (error) {
             console.error('Token exchange error:', error);
             setIsAuthenticating(false);
+            codeExchangeInProgress.current = false;
             Alert.alert('Error', `Token exchange failed: ${error}`);
         }
     }, []);
@@ -74,14 +100,15 @@ export const useSpotifyIntegration = (appState: AppModel) => {
 
         if (url.startsWith('musictools://auth/callback')) {
             try {
-                // Extract the code parameter using regex
+                // Extract the code parameter using regex for more reliable parsing
                 const codeMatch = url.match(/[?&]code=([^&]+)/);
                 if (codeMatch && codeMatch[1]) {
-                    // Get the code and make sure it's properly decoded
-                    const code = decodeURIComponent(codeMatch[1]);
+                    // Get the code - IMPORTANT: Do not decode it here
+                    // The authorization code from Spotify should be used as-is
+                    const code = codeMatch[1];
                     console.log(`Extracted code (length: ${code.length})`);
 
-                    // Call authenticate immediately
+                    // Call authenticate immediately with the raw code
                     completeAuthentication(code);
                 } else {
                     // Extract error parameter using regex
@@ -109,14 +136,17 @@ export const useSpotifyIntegration = (appState: AppModel) => {
     // Check for stored auth URI (fallback mechanism)
     const checkStoredUri = useCallback(async () => {
         try {
+            // Don't check for stored URI if authentication is already in progress
+            if (codeExchangeInProgress.current) {
+                console.log("Skipping stored URI check - code exchange in progress");
+                return;
+            }
+
             console.log("Checking for stored auth URI...");
             const storedUri = await SpotifyModule.GetStoredAuthUri();
             if (storedUri) {
                 console.log('Found stored auth URI, processing...');
                 handleAuthCallbackUrl(storedUri);
-                // Clear the stored URI to prevent reuse
-                console.log("Clearing stored auth URI");
-                SpotifyModule.ClearStoredAuthUri();
             } else {
                 console.log("No stored auth URI found");
             }
@@ -157,10 +187,8 @@ export const useSpotifyIntegration = (appState: AppModel) => {
             }
         });
 
-        // Check for stored URI immediately and after a delay
+        // Check for stored URI only once at startup - no timeout check needed
         checkStoredUri();
-        console.log("Setting timeout for second stored URI check");
-        const timeoutId = setTimeout(checkStoredUri, 2000);
 
         // Initial auth status check
         const checkAuth = async () => {
@@ -186,7 +214,6 @@ export const useSpotifyIntegration = (appState: AppModel) => {
             if (subscription) {
                 subscription.remove();
             }
-            clearTimeout(timeoutId);
         };
     }, [handleAuthCallbackUrl, checkStoredUri]);
 
@@ -195,6 +222,9 @@ export const useSpotifyIntegration = (appState: AppModel) => {
             console.log("Starting Spotify authentication process");
             setIsAuthenticating(true);
             setErrors([]);
+
+            // Reset last used code when starting a new auth flow
+            lastUsedCode.current = null;
 
             // Get the auth URL from SpotifyModule
             console.log("Requesting auth URL from native module");
@@ -222,6 +252,7 @@ export const useSpotifyIntegration = (appState: AppModel) => {
                         console.log("Authentication timeout occurred");
                         Alert.alert('Authentication Timeout',
                             'Did not receive a response from Spotify. Please try again.');
+                        codeExchangeInProgress.current = false;
                         return false;
                     }
                     return prevState;
