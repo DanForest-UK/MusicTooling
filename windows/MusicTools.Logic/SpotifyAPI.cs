@@ -26,6 +26,9 @@ namespace MusicTools.Logic
         DateTime tokenExpiry = DateTime.MinValue;
         const int TooManyRequests = 429;
 
+        // Maximum number of IDs per batch for Spotify API limits
+        private const int MAX_BATCH_SIZE = 50;
+
         /// <summary>
         /// Initializes a new instance of the SpotifyApi class
         /// </summary>
@@ -192,6 +195,33 @@ namespace MusicTools.Logic
         }
 
         /// <summary>
+        /// Likes multiple songs on Spotify in a single API call
+        /// </summary>
+        public async Task<Either<SpotifyErrors.SpotifyError, bool>> LikeSongsAsync(string[] spotifyTrackIds)
+        {
+            var tokenCheck = await EnsureValidTokenAsync();
+            if (tokenCheck.IsLeft)
+                return tokenCheck.LeftToList().First();
+
+            if (spotifyTrackIds == null || !spotifyTrackIds.Any())
+                return true; // Nothing to do
+
+            try
+            {
+                // Handle Spotify API limit of 50 IDs per request
+                foreach (var batch in spotifyTrackIds.ToBatchArray(MAX_BATCH_SIZE))
+                {
+                    await SpotifyClient.Library.SaveTracks(new LibrarySaveTracksRequest(batch));
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return HandleApiException<bool>(ex, "like_tracks");
+            }
+        }
+
+        /// <summary>
         /// Follows an artist on Spotify
         /// </summary>
         public async Task<Either<SpotifyErrors.SpotifyError, bool>> FollowArtistAsync(string spotifyArtistId)
@@ -208,6 +238,33 @@ namespace MusicTools.Logic
             catch (Exception ex)
             {
                 return HandleApiException<bool>(ex, "follow_artist");
+            }
+        }
+
+        /// <summary>
+        /// Follows multiple artists on Spotify in a single API call
+        /// </summary>
+        public async Task<Either<SpotifyErrors.SpotifyError, bool>> FollowArtistsAsync(string[] spotifyArtistIds)
+        {
+            var tokenCheck = await EnsureValidTokenAsync();
+            if (tokenCheck.IsLeft)
+                return tokenCheck.LeftToList().First();
+
+            if (spotifyArtistIds == null || !spotifyArtistIds.Any())
+                return true; // Nothing to do
+
+            try
+            {
+                // Handle Spotify API limit of 50 IDs per request
+                foreach (var batch in spotifyArtistIds.ToBatchArray(MAX_BATCH_SIZE))
+                {
+                    await SpotifyClient.Follow.Follow(new FollowRequest(FollowRequest.Type.Artist, batch));
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return HandleApiException<bool>(ex, "follow_artists");
             }
         }
 
@@ -247,32 +304,31 @@ namespace MusicTools.Logic
         /// Maps SpotifyAPI.Web FullTrack to our domain model
         /// </summary>
         SpotifyTrack ToSpotifyTrack(FullTrack track) =>
-                new SpotifyTrack(
-                    track.Id,
-                    track.Name,
-                    track.Artists.Select(artist => ToSpotifyArtist(artist)).ToArray(),
-                    track.Album != null ? new SpotifyAlbum(track.Album.Id, track.Album.Name) : null,
-                    track.Uri
-                );
+            new SpotifyTrack(
+                track.Id,
+                track.Name,
+                track.Artists.Select(artist => ToSpotifyArtist(artist)).ToArray(),
+                track.Album != null ? new SpotifyAlbum(track.Album.Id, track.Album.Name) : null,
+                track.Uri
+            );
 
-            /// <summary>
-            /// Maps SpotifyAPI.Web SimpleArtist to our domain model
-            /// </summary>
-            SpotifyArtist ToSpotifyArtist(SimpleArtist artist) =>
-                new SpotifyArtist(
-                    artist.Id,
-                    artist.Name,
-                    artist.Uri
-                );
+        /// <summary>
+        /// Maps SpotifyAPI.Web SimpleArtist to our domain model
+        /// </summary>
+        SpotifyArtist ToSpotifyArtist(SimpleArtist artist) =>
+            new SpotifyArtist(
+                artist.Id,
+                artist.Name,
+                artist.Uri
+            );
 
-            /// <summary>
-            /// Maps SpotifyAPI.Web FullArtist to our domain model
-            /// </summary>
-            SpotifyArtist ToSpotifyArtist(FullArtist artist) =>
-                new SpotifyArtist(
-                    artist.Id,
-                    artist.Name,
-                    artist.Uri
-                );
-        }
+        /// <summary>
+        /// Maps SpotifyAPI.Web FullArtist to our domain model
+        /// </summary>
+        SpotifyArtist ToSpotifyArtist(FullArtist artist) =>
+            new SpotifyArtist(
+                artist.Id,
+                artist.Name,
+                artist.Uri);        
     }
+}

@@ -228,7 +228,7 @@ namespace MusicTools.NativeModules
         }
 
         /// <summary>
-        /// Searches for and likes songs on Spotify
+        /// Searches for and likes songs on Spotify - optimized with batch processing
         /// </summary>
         [ReactMethod("LikeSongs")]
         public Task<string> LikeSongs(string chosenSongsJson)
@@ -250,39 +250,43 @@ namespace MusicTools.NativeModules
                     try
                     {
                         var errors = new List<SpotifyErrors.SpotifyError>();
+                        var trackIds = new List<string>();
 
+                        // First phase: Search for all songs to get their Spotify IDs
                         foreach (var song in chosenSongs)
                         {
-                            Debug.WriteLine($"Processing song: {song.Name} by {string.Join(", ", song.Artist)}");
+                            Debug.WriteLine($"Searching for song: {song.Name} by {string.Join(", ", song.Artist)}");
 
                             // Search for the song
                             var searchResult = await spotifyApi.SearchSongAsync(song.Name, song.Artist);
 
-                            await searchResult.Match(
-                                Right: async track => {
+                            searchResult.Match(
+                                Right: track => {
                                     Debug.WriteLine($"Song found: {track.Name} (ID: {track.Id})");
-
-                                    // Like the song if found
-                                    var likeResult = await spotifyApi.LikeSongAsync(track.Id);
-                                    likeResult.Match(
-                                        Right: _ => {
-                                            Debug.WriteLine("Song liked successfully");
-                                        },
-                                        Left: error => {
-                                            Debug.WriteLine($"Error liking song: {error.Message}");
-                                            errors.Add(error);
-                                        }
-                                    );
+                                    trackIds.Add(track.Id);
                                 },
                                 Left: error => {
                                     Debug.WriteLine($"Error finding song: {error.Message}");
                                     errors.Add(error);
-                                    return Task.CompletedTask;
                                 }
                             );
+                        }
 
-                            // Add a small delay to avoid hitting rate limits
-                            await Task.Delay(200);
+                        // Second phase: Like all found songs in a single batch operation
+                        if (trackIds.Any())
+                        {
+                            Debug.WriteLine($"Liking {trackIds.Count} songs in batch operation");
+                            var likeResult = await spotifyApi.LikeSongsAsync(trackIds.ToArray());
+
+                            likeResult.Match(
+                                Right: _ => {
+                                    Debug.WriteLine("Batch like operation successful");
+                                },
+                                Left: error => {
+                                    Debug.WriteLine($"Error in batch like operation: {error.Message}");
+                                    errors.Add(error);
+                                }
+                            );
                         }
 
                         object response;
@@ -323,7 +327,7 @@ namespace MusicTools.NativeModules
         }
 
         /// <summary>
-        /// Follows artists from chosen songs on Spotify
+        /// Follows artists from chosen songs on Spotify - optimized with batch processing
         /// </summary>
         [ReactMethod("FollowArtists")]
         public Task<string> FollowArtists(string chosenSongsJson)
@@ -354,39 +358,43 @@ namespace MusicTools.NativeModules
                         Debug.WriteLine($"Found {distinctArtists.Count} distinct artists to follow");
 
                         var errors = new List<SpotifyErrors.SpotifyError>();
+                        var artistIds = new List<string>();
 
+                        // First phase: Search for all artists to get their Spotify IDs
                         foreach (var artistName in distinctArtists)
                         {
-                            Debug.WriteLine($"Processing artist: {artistName}");
+                            Debug.WriteLine($"Searching for artist: {artistName}");
 
                             // Search for the artist
                             var searchResult = await spotifyApi.SearchArtistAsync(artistName);
 
-                            await searchResult.Match(
-                                Right: async artist => {
+                            searchResult.Match(
+                                Right: artist => {
                                     Debug.WriteLine($"Artist found: {artist.Name} (ID: {artist.Id})");
-
-                                    // Follow the artist if found
-                                    var followResult = await spotifyApi.FollowArtistAsync(artist.Id);
-                                    followResult.Match(
-                                        Right: _ => {
-                                            Debug.WriteLine("Artist followed successfully");
-                                        },
-                                        Left: error => {
-                                            Debug.WriteLine($"Error following artist: {error.Message}");
-                                            errors.Add(error);
-                                        }
-                                    );
+                                    artistIds.Add(artist.Id);
                                 },
                                 Left: error => {
                                     Debug.WriteLine($"Error finding artist: {error.Message}");
                                     errors.Add(error);
-                                    return Task.CompletedTask;
                                 }
                             );
+                        }
 
-                            // Add a small delay to avoid hitting rate limits
-                            await Task.Delay(200);
+                        // Second phase: Follow all found artists in a single batch operation
+                        if (artistIds.Any())
+                        {
+                            Debug.WriteLine($"Following {artistIds.Count} artists in batch operation");
+                            var followResult = await spotifyApi.FollowArtistsAsync(artistIds.ToArray());
+
+                            followResult.Match(
+                                Right: _ => {
+                                    Debug.WriteLine("Batch follow operation successful");
+                                },
+                                Left: error => {
+                                    Debug.WriteLine($"Error in batch follow operation: {error.Message}");
+                                    errors.Add(error);
+                                }
+                            );
                         }
 
                         object response;
