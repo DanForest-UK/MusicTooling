@@ -10,6 +10,7 @@ using SpotifyAPI.Web;
 using static LanguageExt.Prelude;
 using static MusicTools.Core.Types;
 using System.Diagnostics;
+using SpotifyAPI.Web.Http;
 
 namespace MusicTools.Logic
 {
@@ -69,10 +70,16 @@ namespace MusicTools.Logic
             {
                 var oauth = new OAuthClient();
 
+                var decodedCode = WebUtility.UrlDecode(code);
+
+                // Use the decoded code only if it's different, otherwise use original
+                // This prevents double-decoding issues
+                var codeToUse = decodedCode != code ? decodedCode : code;
+
                 var tokenRequest = new AuthorizationCodeTokenRequest(
                     clientId,
                     clientSecret,
-                    code,
+                    codeToUse,
                     new Uri(redirectUri)
                 );
 
@@ -121,7 +128,7 @@ namespace MusicTools.Logic
             {
                 var query = $"track:{title} artist:{string.Join(" ", artists)}";
                 var searchRequest = new SearchRequest(SearchRequest.Types.Track, query);
-                var searchResponse = await SpotifyClient!.Search.Item(searchRequest);
+                var searchResponse = await SpotifyClient.Search.Item(searchRequest);
 
                 if (searchResponse.Tracks.Items == null || !searchResponse.Tracks.Items.Any())
                     return new SpotifyErrors.SongNotFound(title, artists, "No tracks found matching criteria");
@@ -130,17 +137,9 @@ namespace MusicTools.Logic
                 var spotifyTrack = searchResponse.Tracks.Items.First();
                 return ToSpotifyTrack(spotifyTrack);
             }
-            catch (APIException ex) when ((int)ex.Response?.StatusCode == TooManyRequests)
-            {
-                return HandleRateLimitError(ex, "search");
-            }
-            catch (APIException ex)
-            {
-                return new SpotifyErrors.ApiError("search", (int)ex.Response?.StatusCode, ex.Message);
-            }
             catch (Exception ex)
             {
-                return new SpotifyErrors.ApiError("search", 500, ex.Message);
+                return HandleApiException<SpotifyTrack>(ex, "search");
             }
         }
 
@@ -166,17 +165,9 @@ namespace MusicTools.Logic
                 var spotifyArtist = searchResponse.Artists.Items.First();
                 return ToSpotifyArtist(spotifyArtist);
             }
-            catch (APIException ex) when ((int)ex.Response?.StatusCode == TooManyRequests)
-            {
-                return HandleRateLimitError(ex, "search");
-            }
-            catch (APIException ex)
-            {
-                return new SpotifyErrors.ApiError("search", (int)ex.Response?.StatusCode, ex.Message);
-            }
             catch (Exception ex)
             {
-                return new SpotifyErrors.ApiError("search", 500, ex.Message);
+                return HandleApiException<SpotifyArtist>(ex, "search");
             }
         }
 
@@ -194,17 +185,9 @@ namespace MusicTools.Logic
                 await SpotifyClient.Library.SaveTracks(new LibrarySaveTracksRequest(new[] { spotifyTrackId }));
                 return true;
             }
-            catch (APIException ex) when ((int)ex.Response?.StatusCode == TooManyRequests)
-            {
-                return HandleRateLimitError(ex, "like_track");
-            }
-            catch (APIException ex)
-            {
-                return new SpotifyErrors.ApiError("like_track", (int)ex.Response?.StatusCode, ex.Message);
-            }
             catch (Exception ex)
             {
-                return new SpotifyErrors.ApiError("like_track", 500, ex.Message);
+                return HandleApiException<bool>(ex, "like_track");
             }
         }
 
@@ -222,20 +205,11 @@ namespace MusicTools.Logic
                 await SpotifyClient.Follow.Follow(new FollowRequest(FollowRequest.Type.Artist, new[] { spotifyArtistId }));
                 return true;
             }
-            catch (APIException ex) when ((int)ex.Response?.StatusCode == TooManyRequests)
-            {
-                return HandleRateLimitError(ex, "follow_artist");
-            }
-            catch (APIException ex)
-            {
-                return new SpotifyErrors.ApiError("follow_artist", (int)ex.Response?.StatusCode, ex.Message);
-            }
             catch (Exception ex)
             {
-                return new SpotifyErrors.ApiError("follow_artist", 500, ex.Message);
+                return HandleApiException<bool>(ex, "follow_artist");
             }
         }
-
 
         /// <summary>
         /// Handles rate limit errors from Spotify API
@@ -249,6 +223,24 @@ namespace MusicTools.Logic
                 retryAfter = seconds;
 
             return new SpotifyErrors.RateLimitError(resource, retryAfter);
+        }
+
+        int GetStatusCode(IResponse response) => Optional(response).Map(r => (int)r.StatusCode).IfNone(500);
+
+        Either<SpotifyErrors.SpotifyError, T> HandleApiException<T>(Exception ex, string resource)
+        {
+            if (ex is APIException apiEx && Optional(apiEx.Response).Map(r => (int)r.StatusCode).IfNone(500) == TooManyRequests)
+            {
+                return HandleRateLimitError(apiEx, resource);
+            }
+            if (ex is APIException apiEx2)
+            {
+                return new SpotifyErrors.ApiError(resource, GetStatusCode(apiEx2.Response!), ex.Message);
+            }
+            else
+            {
+                return new SpotifyErrors.ApiError(resource, 500, ex.Message);
+            }
         }
 
         /// <summary>
