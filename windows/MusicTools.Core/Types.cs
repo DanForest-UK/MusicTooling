@@ -2,13 +2,34 @@
 using LanguageExt.Common;
 using System;
 using System.Collections.Generic;
+using static LanguageExt.Prelude; 
+using System.Linq;
 
 namespace MusicTools.Core
 {
     public static class Types
     {
         // Records for application state
-        public record AppModel(SongInfo[] Songs, Guid[] ChosenSongs, int MinimumRating);
+        // Todo might be more efficient for 'unchosen songs'
+        public record AppModel(SongInfo[] Songs, Guid[] ChosenSongs, int MinimumRating)
+        {
+            public Seq<SongInfo> FilteredSongs()
+            { 
+                var chosenSongsHash = toHashSet(ChosenSongs);
+
+                return (from s in Songs
+                        where s.Rating >= MinimumRating &&
+                              chosenSongsHash.Contains(s.Id)
+                        select s).ToSeq();
+            }
+
+            public Seq<string> DistinctArtists() =>
+                (from s in FilteredSongs()
+                 from a in s.Artist
+                 where a.HasValue()
+                 select a).Distinct().ToSeq();
+        }
+
         public record SongInfo(Guid Id, string Name, string Path, string[] Artist, string Album, int Rating);
         public record SpotifySettings(string ClientId, string ClientSecret);
 

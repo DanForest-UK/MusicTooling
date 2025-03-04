@@ -22,6 +22,7 @@ namespace MusicTools
             Runtime.GetFilesWithExtensionAsync = React.GetFilesWithExtensionAsync;
             Runtime.ReadSongInfo = ReadTag.ReadSongInfo;
             Runtime.WithStream = React.WithStream;
+            Runtime.GetSpotifyAPI = (clientId, clientSecret, redirectUri) => new SpotifyApi(clientId, clientSecret, redirectUri);
 
 #if BUNDLE
             JavaScriptBundleFile = "index.windows";

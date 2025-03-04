@@ -24,7 +24,7 @@ namespace MusicTools.NativeModules
     [ReactModule("SpotifyModule")]
     public sealed class SpotifyModule
     {
-        readonly SpotifyApi spotifyApi;
+        readonly ISpotifyApi spotifyApi;
         bool isInitialised = false;
         bool isAuthenticated = false;
         public const string spotifyAuthUriKey = "spotifyAuthUri";
@@ -37,7 +37,7 @@ namespace MusicTools.NativeModules
         public SpotifyModule()
         {
             var settings = LoadSettings();
-            spotifyApi = new SpotifyApi(settings.ClientId, settings.ClientSecret, redirectUrl);
+            spotifyApi = Runtime.GetSpotifyAPI(settings.ClientId, settings.ClientSecret, redirectUrl);
             isInitialised = true;
         }
 
@@ -205,16 +205,16 @@ namespace MusicTools.NativeModules
         /// Searches for and likes songs on Spotify - optimized with batch processing
         /// </summary>
         [ReactMethod("LikeSongs")]
-        public Task<string> LikeSongs(string chosenSongsJson)
+        public Task<string> LikeSongs()
         {
             try
             {
                 EnsureInitialized();
 
-                var chosenSongs = JsonConvert.DeserializeObject<SongInfo[]>(chosenSongsJson);
-                if (Optional(chosenSongs).Map(c => c.Length).IfNone(0) == 0)
-                    return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = "No songs provided" }));
+                var filteredSongs = ObservableState.Current.FilteredSongs();
 
+                if (!filteredSongs.Any())
+                    return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = "No songs provided" }));
 
                 return Task.Run(async () => {
                     try
@@ -222,7 +222,7 @@ namespace MusicTools.NativeModules
                         var errors = new List<SpotifyErrors.SpotifyError>();
                         var trackIds = new List<string>();
                         
-                        chosenSongs.Iter(async song =>
+                        filteredSongs.Iter(async song =>
                         {                            
                             var result = await SearchForSong(song);
                             result.Match(
@@ -239,7 +239,7 @@ namespace MusicTools.NativeModules
                             ? new
                             {
                                 success = false,
-                                partialSuccess = errors.Count < chosenSongs.Length,
+                                partialSuccess = errors.Count < filteredSongs.Length,
                                 errors
                             }
                             : new { success = true });
@@ -278,28 +278,20 @@ namespace MusicTools.NativeModules
         /// Follows artists from chosen songs on Spotify - optimized with batch processing
         /// </summary>
         [ReactMethod("FollowArtists")]
-        public Task<string> FollowArtists(string chosenSongsJson)
+        public Task<string> FollowArtists()
         {
             try
             {
                 EnsureInitialized();
 
-                var chosenSongs = JsonConvert.DeserializeObject<SongInfo[]>(chosenSongsJson);
-                if (chosenSongs == null || !chosenSongs.Any())
+                var distinctArtists = ObservableState.Current.DistinctArtists();
+                if (!distinctArtists.Any())
                     return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = "No songs provided" }));
-
-                Debug.WriteLine($"FollowArtists called with {chosenSongs.Length} songs");
 
                 return Task.Run(async () => {
                     try
                     {
-                        // Extract distinct artist names from the songs
-                        var distinctArtists = (from song in chosenSongs
-                                               from artist in song.Artist
-                                               where artist.HasValue()
-                                               select artist).Distinct().ToSeq();
-
-
+                        
                         var errors = new List<SpotifyErrors.SpotifyError>();
                         var artistIds = new List<string>();
 

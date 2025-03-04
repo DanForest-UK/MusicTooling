@@ -17,7 +17,7 @@ namespace MusicTools.Logic
     /// <summary>
     /// Spotify API implementation using SpotifyAPI.Web package
     /// </summary>
-    public class SpotifyApi
+    public class SpotifyApi : ISpotifyApi
     {
         readonly string clientId;
         readonly string clientSecret;

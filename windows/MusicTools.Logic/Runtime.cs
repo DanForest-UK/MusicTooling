@@ -1,4 +1,5 @@
 ﻿using LanguageExt;
+using MusicTools.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,5 +17,6 @@ namespace MusicTools.Logic
         public static Func<string, string, Task<Seq<string>>> GetFilesWithExtensionAsync = (_, _1)  => throw new NotImplementedException();
         public static Func<string, Stream, SongInfo> ReadSongInfo = (_, _) => throw new NotImplementedException();
         public static Func<string, Func<Stream, Task>, Task> WithStream = (_, _) => throw new NotImplementedException();
+        public static Func<string, string, string, ISpotifyApi> GetSpotifyAPI = (_,_,_)  => throw new NotImplementedException();
     }
 }
