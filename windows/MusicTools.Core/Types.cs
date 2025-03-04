@@ -60,6 +60,10 @@ namespace MusicTools.Core
         public static SpotifyError Empty => new SpotifyError("", "", "");
 
         // Specific error types 
+
+        public record AlreadyAuthenticated()
+            : SpotifyError("ALREADY_AUTHENTICATED", "Already authenticated", "authentication");
+
         public record SongNotFound(string Title, string[] Artists, string ErrorMessage)
             : SpotifyError("SONG_NOT_FOUND", $"Could not find song: {Title} by {string.Join(", ", Artists)}", Title);
 

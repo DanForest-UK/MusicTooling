@@ -130,22 +130,12 @@ const App = () => {
                 </View>
 
                 <View style={styles.statsContainer}>
-                    <View>
-                        <Text style={styles.statsText}>
-                            Showing {filteredSongs.length} of {appState.songs.length} songs
-                        </Text>
-                        <Text style={styles.statsText}>
-                            {appState.chosenSongs.length} songs selected
-                        </Text>
-                    </View>
-                    <TouchableOpacity
-                        style={styles.spotifyOptionsButton}
-                        onPress={toggleSpotifyPanel}
-                    >
-                        <Text style={styles.spotifyOptionsButtonText}>
-                            {showSpotify ? "Hide Spotify" : "Spotify Options"}
-                        </Text>
-                    </TouchableOpacity>
+                    <Text style={styles.statsText}>
+                        Showing {filteredSongs.length} of {appState.songs.length} songs
+                    </Text>
+                    <Text style={styles.statsText}>
+                        {appState.chosenSongs.length} songs selected
+                    </Text>
                 </View>
 
                 {loading && (
@@ -172,6 +162,18 @@ const App = () => {
                     )}
                 />
 
+                {/* Spotify Toggle - Moved to bottom */}
+                <View style={styles.spotifyToggleContainer}>
+                    <TouchableOpacity
+                        style={styles.spotifyOptionsButton}
+                        onPress={toggleSpotifyPanel}
+                    >
+                        <Text style={styles.spotifyOptionsButtonText}>
+                            {showSpotify ? "Hide Spotify" : "Spotify Options"}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
                 {/* Spotify Integration Panel */}
                 {showSpotify && (
                     <View style={styles.spotifyContainer}>
@@ -184,8 +186,8 @@ const App = () => {
                                 <FontAwesomeIcon name="times" style={styles.spotifyCloseIcon} />
                             </TouchableOpacity>
                         </View>
-                         <SpotifyIntegration 
-                            appState={appState} 
+                        <SpotifyIntegration
+                            appState={appState}
                             onClose={toggleSpotifyPanel}
                         />
                     </View>

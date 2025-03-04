@@ -69,6 +69,9 @@ namespace MusicTools.Logic
         /// </summary>
         public async Task<Either<SpotifyErrors.SpotifyError, bool>> GetAccessTokenAsync(string code)
         {
+            if (spotifyClient.IsSome)
+                return new SpotifyErrors.AlreadyAuthenticated();
+
             try
             {
                 var oauth = new OAuthClient();

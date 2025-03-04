@@ -2,14 +2,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, Linking, EmitterSubscription } from 'react-native';
 import { NativeModules } from 'react-native';
 import { AppModel } from '../types';
+import {
+    SpotifyError,
+    SpotifyResponse,
+    isAlreadyAuthenticatedError,
+} from '../types';
 
 const { SpotifyModule } = NativeModules;
-
-export interface SpotifyError {
-    errorCode: string;
-    message: string;
-    resourceId: string;
-}
 
 export interface SpotifyIntegrationProps {
     appState: AppModel;
@@ -68,16 +67,32 @@ export const useSpotifyIntegration = (appState: AppModel) => {
             await SpotifyModule.ClearStoredAuthUri();
 
             // Parse response
-            const response = JSON.parse(result);
+            const response = JSON.parse(result) as SpotifyResponse;
+            console.log('Parsed response:', response);
             setIsAuthenticating(false);
 
-            if (response.success) {
+            // Check for either PascalCase or camelCase success property
+            if (response.success || response.Success) {
                 console.log('Authentication successful!');
                 setIsAuthenticated(true);
                 Alert.alert('Success', 'Spotify authentication successful!');
             } else {
-                console.error('Token exchange failed:', response.error?.message || 'Unknown error');
-                Alert.alert('Error', `Token exchange failed: ${response.error?.message || 'Unknown error'}`);
+                // Get the error object from either PascalCase or camelCase
+                const errorObj = response.error || response.Error;
+
+                if (errorObj) {
+                    if (isAlreadyAuthenticatedError(errorObj)) {
+                        // User is already authenticated, shouldn't happen but not a real issue 
+                        // so no need to alert the user
+                        setIsAuthenticated(true);
+                    } else {
+                        console.error('Token exchange failed:', errorObj.Message);
+                        Alert.alert('Error', `Token exchange failed: ${errorObj.Message}`);
+                    }
+                } else {
+                    console.error('Token exchange failed: Unknown error');
+                    Alert.alert('Error', 'Token exchange failed: Unknown error');
+                }
             }
         } catch (error) {
             console.error('Token exchange error:', error);
@@ -285,18 +300,24 @@ export const useSpotifyIntegration = (appState: AppModel) => {
 
             const result = await SpotifyModule.LikeSongs();
             console.log('Like songs request completed, parsing response');
-            const response = JSON.parse(result);
+            const response = JSON.parse(result) as SpotifyResponse;
+            console.log('Parsed like songs response:', response);
 
-            if (response.success) {
+            // Check for either PascalCase or camelCase properties
+            if (response.success || response.Success) {
                 console.log('All songs liked successfully');
                 Alert.alert('Success', 'Songs have been liked on Spotify!');
-            } else if (response.partialSuccess) {
-                console.log(`Partial success: ${response.errors?.length || 0} errors`);
-                setErrors(response.errors || []);
+            } else if (response.partialSuccess || response.PartialSuccess) {
+                // Get errors array from either PascalCase or camelCase
+                const errorsArray = response.errors || response.Errors || [];
+                console.log(`Partial success: ${errorsArray.length} errors`);
+                setErrors(errorsArray);
                 Alert.alert('Partial Success', 'Some songs were liked, but there were errors. See details below.');
             } else {
-                console.error('Failed to like songs:', response.errors);
-                setErrors(response.errors || []);
+                // Get errors array from either PascalCase or camelCase
+                const errorsArray = response.errors || response.Errors || [];
+                console.error('Failed to like songs:', errorsArray);
+                setErrors(errorsArray);
                 Alert.alert('Error', 'Failed to like songs on Spotify. See details below.');
             }
         } catch (error) {
@@ -326,18 +347,24 @@ export const useSpotifyIntegration = (appState: AppModel) => {
 
             const result = await SpotifyModule.FollowArtists();
             console.log('Follow artists request completed, parsing response');
-            const response = JSON.parse(result);
+            const response = JSON.parse(result) as SpotifyResponse;
+            console.log('Parsed follow artists response:', response);
 
-            if (response.success) {
+            // Check for either PascalCase or camelCase properties
+            if (response.success || response.Success) {
                 console.log('All artists followed successfully');
                 Alert.alert('Success', 'Artists have been followed on Spotify!');
-            } else if (response.partialSuccess) {
-                console.log(`Partial success: ${response.errors?.length || 0} errors`);
-                setErrors(response.errors || []);
+            } else if (response.partialSuccess || response.PartialSuccess) {
+                // Get errors array from either PascalCase or camelCase
+                const errorsArray = response.errors || response.Errors || [];
+                console.log(`Partial success: ${errorsArray.length} errors`);
+                setErrors(errorsArray);
                 Alert.alert('Partial Success', 'Some artists were followed, but there were errors. See details below.');
             } else {
-                console.error('Failed to follow artists:', response.errors);
-                setErrors(response.errors || []);
+                // Get errors array from either PascalCase or camelCase
+                const errorsArray = response.errors || response.Errors || [];
+                console.error('Failed to follow artists:', errorsArray);
+                setErrors(errorsArray);
                 Alert.alert('Error', 'Failed to follow artists on Spotify. See details below.');
             }
         } catch (error) {

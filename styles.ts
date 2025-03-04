@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
     listContainer: {
         padding: 3,
         paddingRight: 10,
-        paddingBottom: 80, // Add padding at bottom for Spotify integration
+        paddingBottom: 80, // Add padding at bottom for Spotify toggle
     },
     fileItem: {
         marginVertical: 10,
@@ -132,7 +132,21 @@ export const styles = StyleSheet.create({
         color: '#60A5FA',
     },
 
-    // Spotify integration styles
+    // New style for Spotify toggle container
+    spotifyToggleContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: 10,
+        backgroundColor: '#2D3748',
+        borderTopLeftRadius: 10,
+        borderTopRightRadius: 10,
+        alignItems: 'center',
+        zIndex: 50,
+    },
+
+    // Spotify integration styles - adjusted for new toggle position
     spotifyContainer: {
         position: 'absolute',
         left: 0,
@@ -216,13 +230,15 @@ export const styles = StyleSheet.create({
     },
     spotifyOptionsButton: {
         backgroundColor: '#1DB954',
-        paddingVertical: 6,
-        paddingHorizontal: 10,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
         borderRadius: 4,
+        width: '100%',
+        alignItems: 'center',
     },
     spotifyOptionsButtonText: {
         color: 'white',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: 'bold',
     }
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Button, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { styles } from '../styles';
-import { SpotifyError } from './SpotifyIntegrationLogic';
+import { SpotifyError } from '../types/spotify-errors';
 
 interface SpotifyIntegrationUIProps {
     isAuthenticated: boolean;
@@ -12,7 +12,7 @@ interface SpotifyIntegrationUIProps {
     onAuthenticate: () => void;
     onLikeSongs: () => void;
     onFollowArtists: () => void;
-    onClose: () => void; // We'll keep this prop but use a different approach
+    onClose: () => void;
 }
 
 const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
@@ -24,7 +24,7 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
     onAuthenticate,
     onLikeSongs,
     onFollowArtists,
-    onClose // Using this prop but not adding a UI element for it
+    onClose
 }) => {
     // Adding a useEffect to demonstrate use of onClose
     React.useEffect(() => {
@@ -47,8 +47,8 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
                 <ScrollView style={{ maxHeight: 120 }}>
                     {errors.map((error, index) => (
                         <View key={index} style={styles.spotifyErrorItem}>
-                            <Text style={styles.spotifyErrorCode}>{error.errorCode}</Text>
-                            <Text style={styles.spotifyErrorMessage}>{error.message}</Text>
+                            <Text style={styles.spotifyErrorCode}>{error.ErrorCode}</Text>
+                            <Text style={styles.spotifyErrorMessage}>{error.Message}</Text>
                         </View>
                     ))}
                 </ScrollView>
