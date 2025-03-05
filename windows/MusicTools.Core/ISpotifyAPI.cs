@@ -25,7 +25,7 @@ namespace MusicTools.Core
         /// <summary>
         /// Searches for a song on Spotify
         /// </summary>
-        Task<Either<SpotifyErrors.SpotifyError, SpotifyTrack>> SearchSongAsync(Guid id, string title, string[] artists);
+        Task<Either<SpotifyErrors.SpotifyError, SpotifyTrack>> SearchSongAsync(int id, string title, string[] artists);
 
         /// <summary>
         /// Searches for an artist on Spotify

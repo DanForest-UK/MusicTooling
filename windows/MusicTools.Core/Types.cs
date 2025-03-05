@@ -2,7 +2,7 @@
 using LanguageExt.Common;
 using System;
 using System.Collections.Generic;
-using static LanguageExt.Prelude; 
+using static LanguageExt.Prelude;
 using System.Linq;
 
 namespace MusicTools.Core
@@ -10,14 +10,13 @@ namespace MusicTools.Core
     public static class Types
     {
         // Records for application state
-        // Todo might be more efficient for 'unchosen songs'
-        public record AppModel(SongInfo[] Songs, Guid[] ChosenSongs, int MinimumRating)
+        public record AppModel(Dictionary<int, SongInfo> Songs, int[] ChosenSongs, int MinimumRating)
         {
             public Seq<SongInfo> FilteredSongs()
-            { 
+            {
                 var chosenSongsHash = toHashSet(ChosenSongs);
 
-                return (from s in Songs
+                return (from s in Songs.Values
                         where s.Rating >= MinimumRating &&
                               chosenSongsHash.Contains(s.Id)
                         select s).ToSeq();
@@ -30,7 +29,7 @@ namespace MusicTools.Core
                  select a).Distinct().ToSeq();
         }
 
-        public record SongInfo(Guid Id, string Name, string Path, string[] Artist, string Album, int Rating);
+        public record SongInfo(int Id, string Name, string Path, string[] Artist, string Album, int Rating, bool SongFoundOnSpotify, bool ArtistFoundOnSpotify);
         public record SpotifySettings(string ClientId, string ClientSecret);
 
         // Spotify domain models
@@ -64,8 +63,9 @@ namespace MusicTools.Core
         public record AlreadyAuthenticated()
             : SpotifyError("ALREADY_AUTHENTICATED", "Already authenticated", "authentication");
 
-        public record SongNotFound(Guid TrackId, string Title, string[] Artists, string ErrorMessage)
+        public record SongNotFound(int TrackId, string Title, string[] Artists, string ErrorMessage)
             : SpotifyError("SONG_NOT_FOUND", $"Could not find song: {Title} by {string.Join(", ", Artists)}", TrackId.ToString());
+
 
         public record ArtistNotFound(string ArtistName, string ErrorMessage)
             : SpotifyError("ARTIST_NOT_FOUND", $"Could not find artist: {ArtistName}", ArtistName);

@@ -8,23 +8,23 @@ export interface SongInfo {
     path: string;
 }
 
+// Dictionary type for songs
+export interface SongsDictionary {
+    [id: string]: SongInfo;
+}
+
 export interface AppModel {
-    songs: SongInfo[];
+    songs: SongsDictionary;
     chosenSongs: string[];
     minimumRating: number;
 }
-// spotify-errors.ts
+
 // Spotify Error Types
 export interface SpotifyError {
-    // Match the PascalCase from C# serialization
+    // Match the PascalCase from C# reord serialization
     ErrorCode: string;
     Message: string;
     ResourceId: string;
-
-    // Also include camelCase aliases for backwards compatibility
-    errorCode?: string;
-    message?: string;
-    resourceId?: string;
 }
 
 // Specific error types matching the C# counterparts
@@ -78,16 +78,10 @@ export const isApiError = (error: SpotifyError): error is ApiError =>
 
 // Response type for Spotify operations
 export interface SpotifyResponse<T = boolean> {
-    success: boolean;
+
+    success?: boolean;
     partialSuccess?: boolean;
     error?: SpotifyError;
     errors?: SpotifyError[];
     data?: T;
-
-    // PascalCase versions for C# serialization
-    Success?: boolean;
-    PartialSuccess?: boolean;
-    Error?: SpotifyError;
-    Errors?: SpotifyError[];
-    Data?: T;
 }

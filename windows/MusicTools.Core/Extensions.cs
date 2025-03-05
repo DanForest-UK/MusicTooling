@@ -1,6 +1,7 @@
 ﻿using LanguageExt;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Text;
 using static LanguageExt.Prelude;
@@ -31,6 +32,19 @@ namespace MusicTools.Core
             {
                 yield return source.Skip(i).Take(batchSize).ToArray();
             }
+        }
+
+        /// <summary>
+        /// Convert array to OrderedDictionary with indices as keys
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="array"></param>
+        /// <returns></returns>
+        public static OrderedDictionary ToOrderedDictionary<T, S>(this T[] array, Func<T,S> getId)
+        {
+            var result = new OrderedDictionary();
+            array.Iter(item => result.Add(getId(item), item));
+            return result;
         }
     }
 }

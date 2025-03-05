@@ -68,7 +68,7 @@ namespace MusicTools.NativeModules
         /// </summary>
         [ReactMethod("ToggleSongSelection")]
         public void ToggleSongSelection(string songId) =>
-            ObservableState.ToggleSongSelection(Guid.Parse(songId));
+            ObservableState.ToggleSongSelection(int.Parse(songId));
 
         /// <summary>
         /// Sets all chosen songs
@@ -78,7 +78,7 @@ namespace MusicTools.NativeModules
         {
             try
             {
-                var songIds = JsonConvert.DeserializeObject<Guid[]>(chosenSongsJson);
+                var songIds = JsonConvert.DeserializeObject<int[]>(chosenSongsJson);
                 if (songIds != null)
                     ObservableState.SetChosenSongs(songIds);
             }

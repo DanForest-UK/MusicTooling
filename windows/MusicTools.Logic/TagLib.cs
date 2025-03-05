@@ -43,13 +43,17 @@ namespace MusicTools.Logic
             else
                 Console.WriteLine("No ID3v2 tag found.");
 
+            // This happens synchronously so ordering/duplication is not an issue
+            // although the order is reinforced in the state when a new set of songs is loaded
             return new SongInfo(
-                Guid.NewGuid(),
+                ObservableState.Current.Songs.Count(), 
                 tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
                 path,
                 tagFile.Tag.AlbumArtists.Union(tagFile.Tag.Artists).ToArray(),
                 tagFile.Tag.Album.ValueOrNone().IfNone("[No album]"),
-                rating);
+                rating, 
+                false,
+                false);
         }
 
         /// <summary>

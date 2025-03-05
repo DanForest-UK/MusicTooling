@@ -5,7 +5,7 @@ import { NativeModules } from 'react-native';
 import { styles } from './styles';
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 // Import the interfaces
-import { AppModel } from './types';
+import { AppModel, SongInfo } from './types';
 // Import the SongItem component
 import SongItem from './Components/SongItem';
 // Import the SpotifyIntegration component 
@@ -25,7 +25,7 @@ const App = () => {
 
     // App state from C# backend
     const [appState, setAppState] = useState<AppModel>({
-        songs: [],
+        songs: {},
         chosenSongs: [],
         minimumRating: 0,
     });
@@ -33,9 +33,9 @@ const App = () => {
     // Reference to track the interval for cleanup
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Calculate filtered songs in the frontend - only filter by rating
+    // Calculate filtered songs in the frontend - convert dictionary to array and filter by rating
     const filteredSongs = useMemo(() => {
-        return appState.songs.filter(song =>
+        return Object.values(appState.songs).filter(song =>
             song.rating >= appState.minimumRating
         );
     }, [appState.songs, appState.minimumRating]);
@@ -132,7 +132,7 @@ const App = () => {
 
                 <View style={styles.statsContainer}>
                     <Text style={styles.statsText}>
-                        Showing {filteredSongs.length} of {appState.songs.length} songs
+                        Showing {filteredSongs.length} of {Object.keys(appState.songs).length} songs
                     </Text>
                     <Text style={styles.statsText}>
                         {appState.chosenSongs.length} songs selected

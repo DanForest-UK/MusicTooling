@@ -125,7 +125,7 @@ namespace MusicTools.Logic
         /// Searches for a song on Spotify
         /// todo - try individual artists if multiple artists search fails
         /// </summary>
-        public async Task<Either<SpotifyErrors.SpotifyError, SpotifyTrack>> SearchSongAsync(Guid id, string title, string[] artists)
+        public async Task<Either<SpotifyErrors.SpotifyError, SpotifyTrack>> SearchSongAsync(int id, string title, string[] artists)
         {
             var tokenCheck = await EnsureValidTokenAsync();
             if (tokenCheck.IsLeft)

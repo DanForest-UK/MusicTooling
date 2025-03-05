@@ -222,13 +222,23 @@ namespace MusicTools.NativeModules
                         var errors = new List<SpotifyErrors.SpotifyError>();
                         var trackIds = new List<string>();
                         
-                        filteredSongs.Iter(async song =>
+                        filteredSongs.ToArray().Iter(async song =>
                         {                            
                             var result = await SearchForSong(song);
                             result.Match(
                                Right: id => trackIds.Add(id),
-                               Left: error => errors.Add(error));
-                            await Task.Delay(delayTime); // Prevent too many requests from spotify
+                               Left: error =>
+                               {
+                                   if (error is SpotifyErrors.SongNotFound songNotFound)
+                                   {
+                                       ObservableState.SongNotFound(songNotFound.TrackId);
+                                   }
+                                   else
+                                   {
+                                       errors.Add(error);
+                                   }                                   
+                               });
+                               await Task.Delay(delayTime); // Prevent too many requests from spotify
                         });                            
 
                         // Second phase: Like all found songs in a single batch operation
