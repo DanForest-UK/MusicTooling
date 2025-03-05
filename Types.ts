@@ -34,7 +34,7 @@ export interface AlreadyAuthenticatedError extends SpotifyError {
 
 export interface SongNotFoundError extends SpotifyError {
     ErrorCode: 'SONG_NOT_FOUND';
-    ResourceId: string; // Title of the song
+    ResourceId: string; // SongInfo.Id of the song
 }
 
 export interface ArtistNotFoundError extends SpotifyError {

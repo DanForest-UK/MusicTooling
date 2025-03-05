@@ -64,8 +64,8 @@ namespace MusicTools.Core
         public record AlreadyAuthenticated()
             : SpotifyError("ALREADY_AUTHENTICATED", "Already authenticated", "authentication");
 
-        public record SongNotFound(string Title, string[] Artists, string ErrorMessage)
-            : SpotifyError("SONG_NOT_FOUND", $"Could not find song: {Title} by {string.Join(", ", Artists)}", Title);
+        public record SongNotFound(Guid TrackId, string Title, string[] Artists, string ErrorMessage)
+            : SpotifyError("SONG_NOT_FOUND", $"Could not find song: {Title} by {string.Join(", ", Artists)}", TrackId.ToString());
 
         public record ArtistNotFound(string ArtistName, string ErrorMessage)
             : SpotifyError("ARTIST_NOT_FOUND", $"Could not find artist: {ArtistName}", ArtistName);
