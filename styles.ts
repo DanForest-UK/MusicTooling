@@ -120,6 +120,29 @@ export const styles = StyleSheet.create({
         color: 'white',
         fontSize: 12,
     },
+    // New styles for the redesigned SongItem
+    songItemContainer: {
+        flexDirection: 'row',
+        alignItems: 'stretch',
+    },
+    leftCheckboxContainer: {
+        width: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#2D3748',
+        borderTopLeftRadius: 3,
+        borderBottomLeftRadius: 3,
+    },
+    songContentContainer: {
+        flex: 1,
+    },
+    songContent: {
+        flex: 1,
+    },
+    labelText: {
+        fontWeight: 'bold',
+        color: 'white',
+    },
     checkboxContainer: {
         flexDirection: 'row',
         alignItems: 'center',

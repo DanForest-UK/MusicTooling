@@ -1,8 +1,20 @@
 import React, { memo } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import { styles } from '../styles';
 import { SongInfo } from '../types';
+
+// Windows-specific tooltip support
+const TooltipView = (props) => {
+    const viewProps = { ...props };
+
+    // For Windows platform, add the tooltip property
+    if (Platform.OS === 'windows') {
+        viewProps.tooltip = props.tooltip;
+    }
+
+    return <View {...viewProps}>{props.children}</View>;
+};
 
 interface SongItemProps {
     item: SongInfo;
@@ -25,44 +37,53 @@ const SongItem = memo(({ item, isSelected, onToggle }: SongItemProps) => {
     };
 
     return (
-        <View style={styles.fileItem}>
-            <View style={styles.fileHeaderContainer}>
+        <TooltipView
+            style={styles.fileItem}
+            tooltip={item.path}
+        >
+            <View style={styles.songItemContainer}>
+                {/* Checkbox on the left */}
                 <TouchableOpacity
-                    style={styles.checkboxContainer}
+                    style={styles.leftCheckboxContainer}
                     onPress={handleToggle}
                 >
                     <FontAwesomeIcon
                         name={isSelected ? 'check-square-o' : 'square-o'}
                         style={[styles.checkboxIcon, isSelected ? styles.checkboxIconChecked : null]}
                     />
-                    <Text style={styles.fileHeaderText}>
-                        {isSelected ? 'Selected' : 'Not Selected'}
-                    </Text>
                 </TouchableOpacity>
+
+                {/* Content area */}
+                <View style={styles.songContentContainer}>
+                    <TouchableOpacity onPress={handleToggle} style={styles.songContent}>
+                        <View style={styles.fileTextContainer}>
+                            <Text style={styles.fileText}>
+                                <Text style={styles.labelText}>Artist: </Text>
+                                {item.artist?.length ? item.artist.join(', ') : '[No artist]'}
+                            </Text>
+                        </View>
+                        <View style={styles.fileTextContainer}>
+                            <Text style={styles.fileText}>
+                                <Text style={styles.labelText}>Title: </Text>
+                                {item.name}
+                            </Text>
+                        </View>
+                        <View style={styles.fileTextContainer}>
+                            <Text style={styles.fileText}>
+                                <Text style={styles.labelText}>Album: </Text>
+                                {item.album}
+                            </Text>
+                        </View>
+                        <View style={styles.fileTextContainer}>
+                            <View style={styles.ratingRow}>
+                                <Text style={styles.labelText}>Rating:</Text>
+                                {renderStars(item.rating)}
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+                </View>
             </View>
-            <TouchableOpacity onPress={handleToggle}>
-                <View style={styles.fileTextContainer}>
-                    <Text style={styles.fileText}>
-                        Artist: {item.artist?.length ? item.artist.join(', ') : '[No artist]'}
-                    </Text>
-                </View>
-                <View style={styles.fileTextContainer}>
-                    <Text style={styles.fileText}>Title: {item.name}</Text>
-                </View>
-                <View style={styles.fileTextContainer}>
-                    <Text style={styles.fileText}>Album: {item.album}</Text>
-                </View>
-                <View style={styles.fileTextContainer}>
-                    <View style={styles.ratingRow}>
-                        <Text style={styles.fileText}>Rating:</Text>
-                        {renderStars(item.rating)}
-                    </View>
-                </View>
-                <View style={styles.fileTextContainer}>
-                    <Text style={styles.fileText}>Path: {item.path}</Text>
-                </View>
-            </TouchableOpacity>
-        </View>
+        </TooltipView>
     );
 });
 

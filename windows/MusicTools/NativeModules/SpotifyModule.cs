@@ -264,7 +264,7 @@ namespace MusicTools.NativeModules
         /// </summary>
         async Task<Either<SpotifyErrors.SpotifyError, string>> SearchForSong(SongInfo song)
         {
-            var searchResult = await spotifyApi.SearchSongAsync(song.Name, song.Artist);
+            var searchResult = await spotifyApi.SearchSongAsync(song.Id, song.Name, song.Artist);
             return searchResult.Map(v => v.Id);              
         }
 

@@ -123,8 +123,9 @@ namespace MusicTools.Logic
 
         /// <summary>
         /// Searches for a song on Spotify
+        /// todo - try individual artists if multiple artists search fails
         /// </summary>
-        public async Task<Either<SpotifyErrors.SpotifyError, SpotifyTrack>> SearchSongAsync(string title, string[] artists)
+        public async Task<Either<SpotifyErrors.SpotifyError, SpotifyTrack>> SearchSongAsync(Guid id, string title, string[] artists)
         {
             var tokenCheck = await EnsureValidTokenAsync();
             if (tokenCheck.IsLeft)
@@ -137,7 +138,7 @@ namespace MusicTools.Logic
                 var searchResponse = await SpotifyClient.Search.Item(searchRequest);
 
                 if (searchResponse.Tracks.Items == null || !searchResponse.Tracks.Items.Any())
-                    return new SpotifyErrors.SongNotFound(title, artists, "No tracks found matching criteria");
+                    return new SpotifyErrors.SongNotFound(id, title, artists, "No tracks found matching criteria");
 
                 // Convert to our domain model
                 var spotifyTrack = searchResponse.Tracks.Items.First();

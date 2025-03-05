@@ -11,6 +11,7 @@ import SongItem from './Components/SongItem';
 // Import the SpotifyIntegration component 
 import SpotifyIntegration from './Components/SpotifyIntegration';
 
+// Native modules are imported at the top
 const { FileScannerModule, StateModule } = NativeModules;
 
 // The polling interval in milliseconds
@@ -162,20 +163,22 @@ const App = () => {
                     )}
                 />
 
-                {/* Spotify Toggle - Moved to bottom */}
-                <View style={styles.spotifyToggleContainer}>
-                    <TouchableOpacity
-                        style={styles.spotifyOptionsButton}
-                        onPress={toggleSpotifyPanel}
-                    >
-                        <Text style={styles.spotifyOptionsButtonText}>
-                            {showSpotify ? "Hide Spotify" : "Spotify Options"}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
+                {/* Spotify Toggle - Only show after scanning files with results */}
+                {hasScanned && filteredSongs.length > 0 && (
+                    <View style={styles.spotifyToggleContainer}>
+                        <TouchableOpacity
+                            style={styles.spotifyOptionsButton}
+                            onPress={toggleSpotifyPanel}
+                        >
+                            <Text style={styles.spotifyOptionsButtonText}>
+                                {showSpotify ? "Hide Spotify" : "Spotify Options"}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 {/* Spotify Integration Panel */}
-                {showSpotify && (
+                {showSpotify && hasScanned && filteredSongs.length > 0 && (
                     <View style={styles.spotifyContainer}>
                         <View style={styles.spotifyHeader}>
                             <Text style={styles.spotifyTitle}>Spotify Integration</Text>
