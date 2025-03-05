@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Button, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { styles } from '../styles';
-import { SpotifyError } from '../types/spotify-errors';
+import { SpotifyError } from '../types';
 
 interface SpotifyIntegrationUIProps {
     isAuthenticated: boolean;
