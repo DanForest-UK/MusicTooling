@@ -21,6 +21,7 @@ using System.Threading;
 using System.Reflection.Metadata.Ecma335;
 using static MusicTools.Core.SpotifyErrors;
 using Windows.UI.Xaml.Shapes;
+using System.Collections.Concurrent;
 
 namespace MusicTools.NativeModules
 {
@@ -222,8 +223,8 @@ namespace MusicTools.NativeModules
                     try
                     {
 
-                        var errors = new List<SpotifyError>();
-                        var foundArtists = new Dictionary<SpotifyArtistId, string>();// lookup of spotify artist id to name
+                        var errors = new ConcurrentBag<SpotifyError>();
+                        var foundArtists = new ConcurrentDictionary<SpotifyArtistId, string>();// lookup of spotify artist id to name
                                                
                         distinctArtists.ToArray().Iter(async artist =>
                         {
@@ -231,7 +232,7 @@ namespace MusicTools.NativeModules
                             result.Match(
                                Right: foundArtistId => 
                                {
-                                   foundArtists.Add(foundArtistId, artist);
+                                   foundArtists.TryAdd(foundArtistId, artist);
                                    ObservableState.Current.UpdateArtistsStatus(new string[] { artist }, SpotifyStatus.Found);
                                },
                               Left: error =>
@@ -252,7 +253,7 @@ namespace MusicTools.NativeModules
                         if (foundArtists.Any())
                         {
                             var result = await spotifyApi.FollowArtistsAsync(foundArtists.Keys.ToArray()); // sending spotify song ID to api
-                            errors.AddRange(result.Errors);
+                            result.Errors.Iter(errors.Add);
 
                             // Convert spotify artist id to artist name
                             var followedArtistNames = result.FollowedArtists.Select(id => foundArtists.ValueOrNone(id)).Somes().Distinct();
@@ -307,9 +308,9 @@ namespace MusicTools.NativeModules
                 return Task.Run(async () => {
                     try
                     {
-                        var errors = new List<SpotifyError>();
+                        var errors = new ConcurrentBag<SpotifyError>();
 
-                        var foundSongs = new Dictionary<SpotifySongId, int>(); // lookup from spotify song id to our song id
+                        var foundSongs = new ConcurrentDictionary<SpotifySongId, int>(); // lookup from spotify song id to our song id
                         
                         filteredSongs.ToArray().Iter(async song =>
                         {                            
@@ -317,7 +318,7 @@ namespace MusicTools.NativeModules
                             result.Match(
                                Right: id =>
                                {
-                                   foundSongs.Add(id, song.Id);
+                                   foundSongs.TryAdd(id, song.Id);
                                    ObservableState.Current.UpdateSongsStatus(new int[] {song.Id},  SpotifyStatus.Found);
                                },
                               Left: error =>
@@ -338,7 +339,7 @@ namespace MusicTools.NativeModules
                         if (foundSongs.Any())
                         {                           
                             var result = await spotifyApi.LikeSongsAsync(foundSongs.Keys.ToArray()); // sending spotify song ID to api
-                            errors.AddRange(result.Errors);
+                            result.Errors.Iter(errors.Add);
 
                             // todo consider new type to avoid confusion between spotify track id and our track id
 
