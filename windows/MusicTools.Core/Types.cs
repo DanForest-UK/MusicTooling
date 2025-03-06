@@ -29,7 +29,7 @@ namespace MusicTools.Core
                  select a).Distinct().ToSeq();
         }
 
-        public record SongInfo(int Id, string Name, string Path, string[] Artist, string Album, int Rating, bool SongFoundOnSpotify, bool ArtistFoundOnSpotify);
+        public record SongInfo(int Id, string Name, string Path, string[] Artist, string Album, int Rating, bool SongNotFoundOnSpotify, bool ArtistFoundOnSpotify);
         public record SpotifySettings(string ClientId, string ClientSecret);
 
         // Spotify domain models

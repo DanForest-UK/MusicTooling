@@ -21,7 +21,7 @@ namespace MusicTools.Logic
         /// </summary>
         public async static Task<Either<Error, Seq<SongInfo>>> ScanFilesAsync()
         {
-            var path = @"C:\Dan\Dropbox\Dropbox\[Music]\[Folk]\[Acapella]";
+            var path = @"C:\Dan\Dropbox\[NewMusic]\New 2";
 
             try
             {

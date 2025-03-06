@@ -7,6 +7,7 @@ using G = System.Collections.Generic;
 using MusicTools.Core;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 namespace MusicTools.Logic
 {
@@ -57,41 +58,18 @@ namespace MusicTools.Logic
         public static void SetMinimumRating(int rating) =>
             stateAtom.Swap(state => state with { MinimumRating = rating });
 
-        public static void SongNotFound(int trackId) =>
-            stateAtom.Swap(state =>
-            {
-                var songs = state.Songs;
-                if (songs.ContainsKey(trackId))
-                    songs[trackId] = songs[trackId] with { SongFoundOnSpotify = false };
-                return state with { Songs = songs };
-            });
-
+        /// <summary>
+        /// Mark song as not found on spotify
+        /// </summary>
+        /// <param name="songId"></param>
+        public static void SongNotFound(int songId) =>
+            stateAtom.Swap(state => state.SongNotFoundOnSpotify(songId));
+      
         /// <summary>
         /// Sets the song collection and initializes chosen songs if not set
         /// </summary>
-        public static void SetSongs(Seq<SongInfo> songs)
-        {
-            //todo these methods should be moved to .Core        
-            stateAtom.Swap(state =>
-            {
-                // Ensure sequential ordering
-                if (songs.Select(s => s.Id).Distinct().Count() != songs.Count())
-                {
-                    songs = songs.Select((s, i) => s with { Id = i + 1 }).ToSeq();
-                }
-
-                // Initialize ChosenSongs with all song IDs if it's empty
-                var chosenSongs = state.ChosenSongs.Length == 0
-                    ? songs.Select(s => s.Id).ToArray()
-                    : state.ChosenSongs;
-
-                return state with
-                {
-                    Songs = songs.ToDictionary(s => s.Id),
-                    ChosenSongs = chosenSongs
-                };
-            });
-        }
+        public static void SetSongs(Seq<SongInfo> songs) =>
+            stateAtom.Swap(state => state.SetSongs(songs));
 
         /// <summary>
         /// Sets the chosen songs
@@ -102,20 +80,7 @@ namespace MusicTools.Logic
         /// <summary>
         /// Toggles the selection state of a song
         /// </summary>
-        public static void ToggleSongSelection(int songId)
-        {
-            stateAtom.Swap(state => {
-
-                // Mutable hash set for fast add/remove
-                var currentChosen = new G.HashSet<int>(state.ChosenSongs);
-
-                if (currentChosen.Contains(songId))
-                    currentChosen.Remove(songId);
-                else
-                    currentChosen.Add(songId);
-
-                return state with { ChosenSongs = currentChosen.ToArray() };
-            });
-        }
+        public static void ToggleSongSelection(int songId) =>       
+            stateAtom.Swap(state => state.ToggleSongSelection(songId));
     }
 }
