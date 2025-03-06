@@ -32,20 +32,11 @@ namespace MusicTools.Core
         /// </summary>
         Task<Either<SpotifyErrors.SpotifyError, SpotifyArtist>> SearchArtistAsync(string artistName);
 
-        /// <summary>
-        /// Likes a song on Spotify
-        /// </summary>
-        Task<Either<SpotifyErrors.SpotifyError, bool>> LikeSongAsync(string spotifyTrackId);
 
         /// <summary>
         /// Likes multiple songs on Spotify in a single API call
         /// </summary>
         Task<Either<SpotifyErrors.SpotifyError, bool>> LikeSongsAsync(string[] spotifyTrackIds);
-
-        /// <summary>
-        /// Follows an artist on Spotify
-        /// </summary>
-        Task<Either<SpotifyErrors.SpotifyError, bool>> FollowArtistAsync(string spotifyArtistId);
 
         /// <summary>
         /// Follows multiple artists on Spotify in a single API call

@@ -176,27 +176,7 @@ namespace MusicTools.Logic
             {
                 return HandleApiException<SpotifyArtist>(ex, "search");
             }
-        }
-
-        /// <summary>
-        /// Likes a song on Spotify
-        /// </summary>
-        public async Task<Either<SpotifyErrors.SpotifyError, bool>> LikeSongAsync(string spotifyTrackId)
-        {
-            var tokenCheck = await EnsureValidTokenAsync();
-            if (tokenCheck.IsLeft)
-                return tokenCheck.LeftToList().First();
-
-            try
-            {
-                await SpotifyClient.Library.SaveTracks(new LibrarySaveTracksRequest(new[] { spotifyTrackId }));
-                return true;
-            }
-            catch (Exception ex)
-            {
-                return HandleApiException<bool>(ex, "like_track");
-            }
-        }
+        }           
 
         /// <summary>
         /// Likes multiple songs on Spotify in a single API call
@@ -222,26 +202,6 @@ namespace MusicTools.Logic
             catch (Exception ex)
             {
                 return HandleApiException<bool>(ex, "like_tracks");
-            }
-        }
-
-        /// <summary>
-        /// Follows an artist on Spotify
-        /// </summary>
-        public async Task<Either<SpotifyErrors.SpotifyError, bool>> FollowArtistAsync(string spotifyArtistId)
-        {
-            var tokenCheck = await EnsureValidTokenAsync();
-            if (tokenCheck.IsLeft)
-                return tokenCheck.LeftToList().First();
-
-            try
-            {
-                await SpotifyClient.Follow.Follow(new FollowRequest(FollowRequest.Type.Artist, new[] { spotifyArtistId }));
-                return true;
-            }
-            catch (Exception ex)
-            {
-                return HandleApiException<bool>(ex, "follow_artist");
             }
         }
 
