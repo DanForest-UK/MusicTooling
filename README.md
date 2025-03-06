@@ -24,14 +24,17 @@ MusicTools is a React Native application with a C# backend that helps you manage
 ### 1. Clone the repository
 
 ```
-git clone https://github.com/yourusername/musictools.git
+git clone https://github.com/DanForest-UK/MusicTooling
 cd musictools
 ```
 
-### 2. Install dependencies
+### 2. Install dependencies and build
 
 ```
 npm install
+npm install --save react-native-windows@0.77.0
+cd windows
+msbuild /t:Restore MusicTools.sln
 ```
 
 ### 3. Configure Spotify API credentials
