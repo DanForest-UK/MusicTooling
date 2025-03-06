@@ -52,8 +52,8 @@ namespace MusicTools.Logic
                 tagFile.Tag.AlbumArtists.Union(tagFile.Tag.Artists).ToArray(),
                 tagFile.Tag.Album.ValueOrNone().IfNone("[No album]"),
                 rating, 
-                false,
-                false);
+                SpotifyStatus.NotSearched,
+                SpotifyStatus.NotSearched);
         }
 
         /// <summary>

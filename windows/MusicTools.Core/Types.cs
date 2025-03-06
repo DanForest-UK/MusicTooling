@@ -29,25 +29,61 @@ namespace MusicTools.Core
                  select a).Distinct().ToSeq();
         }
 
-        public record SongInfo(int Id, string Name, string Path, string[] Artist, string Album, int Rating, bool SongNotFoundOnSpotify, bool ArtistFoundOnSpotify);
+        /// <summary>
+        /// Defines if the item can be found on Spotify
+        /// </summary>
+        public enum SpotifyStatus
+        {
+            NotSearched = 0,
+            Found = 1,
+            NotFound = 2,
+            Liked = 3
+        }
+
+        /// <summary>
+        /// New type for spotify artist ID - for compile time safety avoid clashes with artist name
+        /// </summary>
+        public class SpotifyArtistId : NewType<SpotifyArtistId, string>
+        {
+            public SpotifyArtistId(string value) : base(value) { }
+        }
+
+        /// <summary>
+        /// New type for spotify track id, for compile time safety and avoid clashes with our song ID
+        /// </summary>
+        public class SpotifySongId : NewType<SpotifySongId, string>
+        {
+            public SpotifySongId(string value) : base(value) { }
+        }
+
+        /// <summary>
+        /// Main type for a song
+        /// </summary>
+        /// <param name="Id"></param>
+        /// <param name="Name"></param>
+        /// <param name="Path"></param>
+        /// <param name="Artist"></param>
+        /// <param name="Album"></param>
+        /// <param name="Rating"></param>
+        /// <param name="ArtistStatus"></param>
+        /// <param name="SongStatus"></param>
+        public record SongInfo(int Id, string Name, string Path, string[] Artist, string Album, int Rating, SpotifyStatus ArtistStatus, SpotifyStatus SongStatus);
+
         public record SpotifySettings(string ClientId, string ClientSecret);
 
         // Spotify domain models
         public record SpotifyTrack(
-            string Id,
+            SpotifySongId Id,
             string Name,
             SpotifyArtist[] Artists,
-            SpotifyAlbum? Album,
             string Uri);
 
         public record SpotifyArtist(
-            string Id,
+            SpotifyArtistId Id,
             string Name,
             string Uri);
 
-        public record SpotifyAlbum(
-            string Id,
-            string Name);
+        // todo add follow album functionality?
     }
 
     public static class SpotifyErrors

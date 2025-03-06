@@ -15,6 +15,11 @@ namespace MusicTools.Core
             ? Some(value!)
             : None;
 
+        public static Option<T> ValueOrNone<S, T>(this Dictionary<S,T> dictionary, S key) =>
+            dictionary.ContainsKey(key)
+                ? Some(dictionary[key])
+                : None;       
+
         public static bool HasValue(this string? value) =>
             !string.IsNullOrWhiteSpace(value);
 

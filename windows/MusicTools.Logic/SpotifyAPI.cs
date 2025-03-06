@@ -176,60 +176,100 @@ namespace MusicTools.Logic
             {
                 return HandleApiException<SpotifyArtist>(ex, "search");
             }
-        }           
+        }
 
         /// <summary>
-        /// Likes multiple songs on Spotify in a single API call
+        /// Likes multiple songs on Spotify, processing in batches and handling errors
         /// </summary>
-        public async Task<Either<SpotifyErrors.SpotifyError, bool>> LikeSongsAsync(string[] spotifyTrackIds)
+        public async Task<(SpotifyErrors.SpotifyError[] Errors, SpotifySongId[] LikedSongs)> LikeSongsAsync(SpotifySongId[] spotifyTrackIds)
         {
+            var likedSongs = new List<SpotifySongId>();
             var tokenCheck = await EnsureValidTokenAsync();
             if (tokenCheck.IsLeft)
-                return tokenCheck.LeftToList().First();
+                return (Errors: tokenCheck.LeftToArray().ToArray(), new SpotifySongId[0]);
 
             if (spotifyTrackIds == null || !spotifyTrackIds.Any())
-                return true; // Nothing to do
+                return (new SpotifyErrors.SpotifyError[0], new SpotifySongId[0]); // Nothing to do
+
+            var errors = new List<SpotifyErrors.SpotifyError>();
+            void HandleException(Exception ex) =>
+                HandleApiException<Unit>(ex, "like_tracks").Match(
+                    Left: err =>
+                    {
+                        errors.Add(err);
+                        return unit;
+                    },
+                    Right: _ => unit);
 
             try
             {
                 // Handle Spotify API limit of 50 IDs per request
                 foreach (var batch in spotifyTrackIds.ToBatchArray(MAX_BATCH_SIZE))
                 {
-                    await SpotifyClient.Library.SaveTracks(new LibrarySaveTracksRequest(batch));
+                    try
+                    {
+                        await SpotifyClient.Library.SaveTracks(new LibrarySaveTracksRequest(batch.Select(v => v.Value).ToArray()));
+                        likedSongs.AddRange(batch);
+                    }
+                    catch (Exception ex)
+                    {
+                        HandleException(ex);
+                    }
                 }
-                return true;
             }
             catch (Exception ex)
             {
-                return HandleApiException<bool>(ex, "like_tracks");
+                HandleException(ex);
             }
+
+            return (errors.ToArray(), likedSongs.ToArray());
         }
 
         /// <summary>
-        /// Follows multiple artists on Spotify in a single API call
+        /// Follows multiple artists on Spotify, processing in batches and handling errors
         /// </summary>
-        public async Task<Either<SpotifyErrors.SpotifyError, bool>> FollowArtistsAsync(string[] spotifyArtistIds)
+        public async Task<(SpotifyErrors.SpotifyError[] Errors, SpotifyArtistId[] FollowedArtists)> FollowArtistsAsync(SpotifyArtistId[] spotifyArtistIds)
         {
+            var followedArtists = new List<SpotifyArtistId>();
             var tokenCheck = await EnsureValidTokenAsync();
             if (tokenCheck.IsLeft)
-                return tokenCheck.LeftToList().First();
+                return (Errors: tokenCheck.LeftToArray().ToArray(), new SpotifyArtistId[0]);
 
             if (spotifyArtistIds == null || !spotifyArtistIds.Any())
-                return true; // Nothing to do
+                return (new SpotifyErrors.SpotifyError[0], new SpotifyArtistId[0]); // Nothing to do
+
+            var errors = new List<SpotifyErrors.SpotifyError>();
+            void HandleException(Exception ex) =>
+                HandleApiException<Unit>(ex, "follow_artists").Match(
+                    Left: err =>
+                    {
+                        errors.Add(err);
+                        return unit;
+                    },
+                    Right: _ => unit);
 
             try
             {
                 // Handle Spotify API limit of 50 IDs per request
                 foreach (var batch in spotifyArtistIds.ToBatchArray(MAX_BATCH_SIZE))
                 {
-                    await SpotifyClient.Follow.Follow(new FollowRequest(FollowRequest.Type.Artist, batch));
+                    try
+                    {
+                        await SpotifyClient.Follow.Follow(new FollowRequest(FollowRequest.Type.Artist, batch.Select(v => v.Value).ToArray()));
+                        followedArtists.AddRange(batch);
+                    }
+                    catch (Exception ex)
+                    {
+                        HandleException(ex);
+                    }
                 }
-                return true;
             }
             catch (Exception ex)
             {
-                return HandleApiException<bool>(ex, "follow_artists");
+                HandleException(ex);
             }
+
+            return (errors.ToArray(), followedArtists.ToArray());
         }
 
         /// <summary>
@@ -269,10 +309,9 @@ namespace MusicTools.Logic
         /// </summary>
         SpotifyTrack ToSpotifyTrack(FullTrack track) =>
             new SpotifyTrack(
-                track.Id,
+                SpotifySongId.New(track.Id),
                 track.Name,
                 track.Artists.Select(artist => ToSpotifyArtist(artist)).ToArray(),
-                track.Album != null ? new SpotifyAlbum(track.Album.Id, track.Album.Name) : null,
                 track.Uri
             );
 
@@ -281,7 +320,7 @@ namespace MusicTools.Logic
         /// </summary>
         SpotifyArtist ToSpotifyArtist(SimpleArtist artist) =>
             new SpotifyArtist(
-                artist.Id,
+                SpotifyArtistId.New(artist.Id),
                 artist.Name,
                 artist.Uri
             );
@@ -291,8 +330,8 @@ namespace MusicTools.Logic
         /// </summary>
         SpotifyArtist ToSpotifyArtist(FullArtist artist) =>
             new SpotifyArtist(
-                artist.Id,
+                SpotifyArtistId.New(artist.Id),
                 artist.Name,
-                artist.Uri);        
+                artist.Uri);
     }
 }

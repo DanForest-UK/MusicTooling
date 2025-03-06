@@ -58,13 +58,12 @@ namespace MusicTools.Logic
         public static void SetMinimumRating(int rating) =>
             stateAtom.Swap(state => state with { MinimumRating = rating });
 
-        /// <summary>
-        /// Mark song as not found on spotify
-        /// </summary>
-        /// <param name="songId"></param>
-        public static void SongNotFound(int songId) =>
-            stateAtom.Swap(state => state.SongNotFoundOnSpotify(songId));
-      
+        public static void UpdateSongStatus(int[] songIds, SpotifyStatus status) =>
+            stateAtom.Swap(state => state.UpdateSongsStatus(songIds, status));
+
+        public static void UpdateArtistStatus(string[] artists, SpotifyStatus status) =>
+            stateAtom.Swap(state => state.UpdateArtistsStatus(artists, status));
+          
         /// <summary>
         /// Sets the song collection and initializes chosen songs if not set
         /// </summary>

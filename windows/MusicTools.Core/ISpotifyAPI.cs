@@ -34,13 +34,17 @@ namespace MusicTools.Core
 
 
         /// <summary>
-        /// Likes multiple songs on Spotify in a single API call
+        /// Likes multiple songs on Spotify, processing in batches and handling errors
         /// </summary>
-        Task<Either<SpotifyErrors.SpotifyError, bool>> LikeSongsAsync(string[] spotifyTrackIds);
+        /// <param name="spotifyTrackIds">Array of Spotify track IDs to like</param>
+        /// <returns>Tuple containing any errors and array of successfully liked track IDs</returns>
+        Task<(SpotifyErrors.SpotifyError[] Errors, SpotifySongId[] LikedSongs)> LikeSongsAsync(SpotifySongId[] spotifyTrackIds);
 
         /// <summary>
-        /// Follows multiple artists on Spotify in a single API call
+        /// Follows multiple artists on Spotify, processing in batches and handling errors
         /// </summary>
-        Task<Either<SpotifyErrors.SpotifyError, bool>> FollowArtistsAsync(string[] spotifyArtistIds);
+        /// <param name="spotifyArtistIds">Array of Spotify artist IDs to follow</param>
+        /// <returns>Tuple containing any errors and array of successfully followed artist IDs</returns>
+        Task<(SpotifyErrors.SpotifyError[] Errors, SpotifyArtistId[] FollowedArtists)> FollowArtistsAsync(SpotifyArtistId[] spotifyArtistIds);
     }
 }

@@ -36,17 +36,33 @@ namespace MusicTools.Core
             };
         }
 
-        /// <summary>
-        /// Mark song not found on spotify
-        /// </summary>
-        /// <param name="current"></param>
-        /// <param name="songId"></param>
-        /// <returns></returns>
-        public static AppModel SongNotFoundOnSpotify(this AppModel current, int songId)
+        // todo move logic to core
+        public static AppModel UpdateSongsStatus(this AppModel current, int[] songId, SpotifyStatus status)
         {
             var songs = current.Songs;
-            if (songs.ContainsKey(songId))
-                songs[songId] = songs[songId] with { SongNotFoundOnSpotify = true };
+            songId.Iter(songId =>
+            {
+                if (songs.ContainsKey(songId))
+                    songs[songId] = songs[songId] with { SongStatus = SpotifyStatus.NotFound };
+            });
+            return current with { Songs = songs };
+        }
+
+        public static AppModel UpdateArtistsStatus(this AppModel current, string[] artists, SpotifyStatus status)
+        {
+            var songs = current.Songs;
+
+            var songsWithArtist = (from s in songs.Values
+                                   from songInfoArtists in s.Artist
+                                   from artist in artists
+                                   where artist.ToLower() == songInfoArtists.ToLower() // todo check if we can make search case insensitive
+                                   select s.Id).Distinct();
+
+            songsWithArtist.Iter(songId =>
+            {
+                if (songs.ContainsKey(songId))
+                    songs[songId] = songs[songId] with { ArtistStatus = status };
+            });
             return current with { Songs = songs };
         }
 
