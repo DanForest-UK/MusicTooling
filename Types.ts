@@ -1,4 +1,13 @@
 // Define types with exports
+
+// Spotify status enum to match C# enum
+export enum SpotifyStatus {
+    NotSearched = 0,
+    Found = 1,
+    NotFound = 2,
+    Liked = 3
+}
+
 export interface SongInfo {
     id: string;
     name: string;
@@ -6,6 +15,8 @@ export interface SongInfo {
     album: string;
     rating: number;
     path: string;
+    songStatus: SpotifyStatus;
+    artistStatus: SpotifyStatus;
 }
 
 // Dictionary type for songs
@@ -78,7 +89,6 @@ export const isApiError = (error: SpotifyError): error is ApiError =>
 
 // Response type for Spotify operations
 export interface SpotifyResponse<T = boolean> {
-
     success?: boolean;
     partialSuccess?: boolean;
     error?: SpotifyError;

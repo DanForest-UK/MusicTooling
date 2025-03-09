@@ -8,6 +8,7 @@ using MusicTools.Core;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Collections.Concurrent;
 
 namespace MusicTools.Logic
 {
@@ -18,7 +19,7 @@ namespace MusicTools.Logic
     {
         // Thread safe and atomic management of state
         static readonly Atom<AppModel> stateAtom = Atom(new AppModel(
-            Songs: new Dictionary<int, SongInfo>(), // chosen mutable type for efficiency on updates
+            Songs: new ConcurrentDictionary<int, SongInfo>(), // chosen mutable type for efficiency on updates
             ChosenSongs: new int[0],
             MinimumRating: 0
         ));

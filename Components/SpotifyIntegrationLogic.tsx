@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, Linking, EmitterSubscription } from 'react-native';
 import { NativeModules } from 'react-native';
-import { AppModel } from '../types';
+import { AppModel, SpotifyStatus } from '../types';
 import {
     SpotifyError,
     SpotifyResponse,
@@ -13,18 +13,27 @@ const { SpotifyModule } = NativeModules;
 export interface SpotifyIntegrationProps {
     appState: AppModel;
     onClose: () => void;
+    onSpotifyAction?: () => void;
 }
 
-export const useSpotifyIntegration = (appState: AppModel) => {
+export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () => void) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [errors, setErrors] = useState<SpotifyError[]>([]);
+    // Keep a local copy of the last valid state
+    const lastValidAppState = useRef<AppModel | null>(null);
 
-    // Add a ref to track if code exchange is in progress
-    const codeExchangeInProgress = useRef(false);
-    // Add a ref to store the last used code to prevent duplicate usage
-    const lastUsedCode = useRef<string | null>(null);
+    // Update the ref whenever we get a valid appState
+    useEffect(() => {
+        // More precise checking for valid appState structure
+        if (appState &&
+            typeof appState.songs === 'object' &&
+            Array.isArray(appState.chosenSongs)) {
+            console.log('Storing valid app state as fallback');
+            lastValidAppState.current = appState;
+        }
+    }, [appState]);
 
     // Function to handle the auth code exchange - with improved error handling
     const completeAuthentication = useCallback(async (code: string) => {
@@ -98,6 +107,11 @@ export const useSpotifyIntegration = (appState: AppModel) => {
             Alert.alert('Error', `Token exchange failed: ${error}`);
         }
     }, []);
+
+    // Add a ref to track if code exchange is in progress
+    const codeExchangeInProgress = useRef(false);
+    // Add a ref to store the last used code to prevent duplicate usage
+    const lastUsedCode = useRef<string | null>(null);
 
     // Handle authentication error
     const handleAuthError = useCallback((error: string) => {
@@ -284,7 +298,12 @@ export const useSpotifyIntegration = (appState: AppModel) => {
             return;
         }
 
-        if (appState.chosenSongs.length === 0) {
+        // Use the last valid state if current state is invalid
+        // Check specifically for object validity rather than just truthiness
+        const stateToUse = appState && typeof appState.songs === 'object' && Array.isArray(appState.chosenSongs) ?
+            appState : lastValidAppState.current;
+
+        if (!stateToUse || !stateToUse.chosenSongs || stateToUse.chosenSongs.length === 0) {
             Alert.alert('No Songs Selected', 'Please select songs to like on Spotify');
             return;
         }
@@ -293,12 +312,17 @@ export const useSpotifyIntegration = (appState: AppModel) => {
         setErrors([]);
 
         try {
-            console.log(`Liking ${appState.chosenSongs.length} songs on Spotify`);
+            console.log(`Liking ${stateToUse.chosenSongs.length} songs on Spotify`);
 
             const result = await SpotifyModule.LikeSongs();
             console.log('Like songs request completed, parsing response');
             const response = JSON.parse(result) as SpotifyResponse;
             console.log('Parsed like songs response:', response);
+
+            // Notify parent component to show Spotify status
+            if (onSpotifyAction) {
+                onSpotifyAction();
+            }
 
             // Check for either PascalCase or camelCase properties
             if (response.success) {
@@ -331,7 +355,12 @@ export const useSpotifyIntegration = (appState: AppModel) => {
             return;
         }
 
-        if (appState.chosenSongs.length === 0) {
+        // Use the last valid state if current state is invalid
+        // Check specifically for object validity rather than just truthiness
+        const stateToUse = appState && typeof appState.songs === 'object' && Array.isArray(appState.chosenSongs) ?
+            appState : lastValidAppState.current;
+
+        if (!stateToUse || !stateToUse.chosenSongs || stateToUse.chosenSongs.length === 0) {
             Alert.alert('No Songs Selected', 'Please select songs whose artists you want to follow');
             return;
         }
@@ -340,12 +369,17 @@ export const useSpotifyIntegration = (appState: AppModel) => {
         setErrors([]);
 
         try {
-            console.log(`Following artists from ${appState.chosenSongs.length} songs`);
+            console.log(`Following artists from ${stateToUse.chosenSongs.length} songs`);
 
             const result = await SpotifyModule.FollowArtists();
             console.log('Follow artists request completed, parsing response');
             const response = JSON.parse(result) as SpotifyResponse;
             console.log('Parsed follow artists response:', response);
+
+            // Notify parent component to show Spotify status
+            if (onSpotifyAction) {
+                onSpotifyAction();
+            }
 
             // Check for either PascalCase or camelCase properties
             if (response.success) {

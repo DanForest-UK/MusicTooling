@@ -52,7 +52,7 @@ namespace MusicTools.NativeModules
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting state: {ex.Message}");
-                return Task.FromResult("{}");
+                return Task.FromResult("{}"); // todo this breaks the UI need something better
             }
         }
 

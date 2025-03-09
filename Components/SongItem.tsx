@@ -2,7 +2,8 @@ import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import { styles } from '../styles';
-import { SongInfo } from '../types';
+import { SongInfo, SpotifyStatus } from '../types';
+import SpotifyStatusComponent from './SpotifyStatus';
 
 // Windows-specific tooltip support
 const TooltipView = (props) => {
@@ -20,10 +21,11 @@ interface SongItemProps {
     item: SongInfo;
     isSelected: boolean;
     onToggle: (id: string) => void;
+    showSpotifyStatus?: boolean;
 }
 
 // Using memo to prevent unnecessary re-renders
-const SongItem = memo(({ item, isSelected, onToggle }: SongItemProps) => {
+const SongItem = memo(({ item, isSelected, onToggle, showSpotifyStatus = false }: SongItemProps) => {
     const renderStars = (rating: number) => (
         <View style={styles.starsContainer}>
             {[...Array(rating)].map((_, index) => (
@@ -53,8 +55,11 @@ const SongItem = memo(({ item, isSelected, onToggle }: SongItemProps) => {
                     />
                 </TouchableOpacity>
 
-                {/* Content area */}
-                <View style={styles.songContentContainer}>
+                {/* Content area - adjust spacing when status is shown */}
+                <View style={[
+                    styles.songContentContainer,
+                    showSpotifyStatus && { paddingRight: 120 } // Make space for the status when it's shown
+                ]}>
                     <TouchableOpacity onPress={handleToggle} style={styles.songContent}>
                         <View style={styles.fileTextContainer}>
                             <Text style={styles.fileText}>
@@ -82,6 +87,9 @@ const SongItem = memo(({ item, isSelected, onToggle }: SongItemProps) => {
                         </View>
                     </TouchableOpacity>
                 </View>
+
+                {/* Spotify status on the right */}
+                <SpotifyStatusComponent item={item} showStatus={showSpotifyStatus} />
             </View>
         </TooltipView>
     );

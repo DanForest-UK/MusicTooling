@@ -33,7 +33,7 @@ namespace MusicTools.NativeModules
         bool isAuthenticated = false;
         public const string spotifyAuthUriKey = "spotifyAuthUri";
         public const string redirectUrl = "musictools://auth/callback";
-        const int delayTime = 200; // Delay in API requests to prevent too many requests error
+        int delayTime = 200; // Delay in API requests to prevent too many requests error
 
         /// <summary>
         /// Initializes a new instance of the SpotifyModule class
@@ -41,7 +41,8 @@ namespace MusicTools.NativeModules
         public SpotifyModule()
         {
             var settings = LoadSettings();
-            spotifyApi = Runtime.GetSpotifyAPI(settings.ClientId, settings.ClientSecret, redirectUrl);
+            spotifyApi = Runtime.GetSpotifyAPI(settings.ClientId, settings.ClientSecret, redirectUrl, settings.ApiWait);
+            delayTime = settings.ApiWait;
             isInitialised = true;
         }
 
@@ -57,7 +58,7 @@ namespace MusicTools.NativeModules
                 if (!File.Exists(path))
                 {
                     Debug.WriteLine("Warning: spotifySettings.json file does not exist!");
-                    return new SpotifySettings("", "");
+                    return new SpotifySettings("", "", 0);
                 }
 
                 var json = File.ReadAllText(path);
@@ -66,7 +67,7 @@ namespace MusicTools.NativeModules
                 if (settings == null)
                 {
                     Debug.WriteLine("Warning: Failed to deserialize Spotify settings");
-                    return new SpotifySettings("", "");
+                    return new SpotifySettings("", "", 0);
                 }
                 return settings;
             }
@@ -74,7 +75,7 @@ namespace MusicTools.NativeModules
             {
                 Debug.WriteLine($"Error loading settings: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
-                return new SpotifySettings("", ""); // Return empty settings
+                return new SpotifySettings("", "", 0); // Return empty settings
             }
         }
 

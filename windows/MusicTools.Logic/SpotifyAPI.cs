@@ -22,6 +22,8 @@ namespace MusicTools.Logic
         readonly string clientId;
         readonly string clientSecret;
         readonly string redirectUri;
+        readonly int apiWait;
+
         Option<SpotifyClient> spotifyClient;
         DateTime tokenExpiry = DateTime.MinValue;
         const int TooManyRequests = 429;
@@ -32,11 +34,12 @@ namespace MusicTools.Logic
         /// <summary>
         /// Initializes a new instance of the SpotifyApi class
         /// </summary>
-        public SpotifyApi(string clientId, string clientSecret, string redirectUri)
+        public SpotifyApi(string clientId, string clientSecret, string redirectUri, int apiWait)
         {
             this.clientId = clientId;
             this.clientSecret = clientSecret;
             this.redirectUri = redirectUri;
+            this.apiWait = apiWait;
         }
 
         SpotifyClient SpotifyClient => spotifyClient.IfNoneThrow("Spotify client not initialized");
@@ -275,16 +278,8 @@ namespace MusicTools.Logic
         /// <summary>
         /// Handles rate limit errors from Spotify API
         /// </summary>
-        SpotifyErrors.RateLimitError HandleRateLimitError(APIException ex, string resource)
-        {
-            var retryAfter = 60; // Default
-
-            if (ex.Response?.Headers.TryGetValue("Retry-After", out var values) == true &&
-                values.Any() && int.TryParse(values, out var seconds))
-                retryAfter = seconds;
-
-            return new SpotifyErrors.RateLimitError(resource, retryAfter);
-        }
+        SpotifyErrors.RateLimitError HandleRateLimitError(APIException ex, string resource) =>
+            new SpotifyErrors.RateLimitError(resource);
 
         int GetStatusCode(IResponse response) => Optional(response).Map(r => (int)r.StatusCode).IfNone(500);
 

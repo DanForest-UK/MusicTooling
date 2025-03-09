@@ -2,7 +2,7 @@ import React from 'react';
 import { useSpotifyIntegration, SpotifyIntegrationProps } from './SpotifyIntegrationLogic';
 import SpotifyIntegrationUI from './SpotifyIntegrationUI';
 
-const SpotifyIntegration: React.FC<SpotifyIntegrationProps> = ({ appState, onClose }) => {
+const SpotifyIntegration: React.FC<SpotifyIntegrationProps> = ({ appState, onClose, onSpotifyAction }) => {
     const {
         isAuthenticated,
         isAuthenticating,
@@ -11,7 +11,7 @@ const SpotifyIntegration: React.FC<SpotifyIntegrationProps> = ({ appState, onClo
         handleAuthenticate,
         handleLikeSongs,
         handleFollowArtists
-    } = useSpotifyIntegration(appState);
+    } = useSpotifyIntegration(appState, onSpotifyAction);
 
     return (
         <SpotifyIntegrationUI

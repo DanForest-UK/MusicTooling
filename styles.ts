@@ -263,5 +263,33 @@ export const styles = StyleSheet.create({
         color: 'white',
         fontSize: 14,
         fontWeight: 'bold',
-    }
+    },
+    // Spotify status styles
+    spotifyStatusContainer: {
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 120,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#2D3748',
+        borderTopRightRadius: 3,
+        borderBottomRightRadius: 3,
+        paddingHorizontal: 8,
+    },
+    spotifyStatusText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    spotifyStatusArtistText: {
+        marginTop: 8,
+    },
+    spotifyStatusSuccess: {
+        color: '#1DB954', // Spotify green
+    },
+    spotifyStatusError: {
+        color: '#FF6B6B', // Red for errors
+    },
 });

@@ -4,13 +4,14 @@ using System;
 using System.Collections.Generic;
 using static LanguageExt.Prelude;
 using System.Linq;
+using System.Collections.Concurrent;
 
 namespace MusicTools.Core
 {
     public static class Types
     {
         // Records for application state
-        public record AppModel(Dictionary<int, SongInfo> Songs, int[] ChosenSongs, int MinimumRating)
+        public record AppModel(ConcurrentDictionary<int, SongInfo> Songs, int[] ChosenSongs, int MinimumRating)
         {
             public Seq<SongInfo> FilteredSongs()
             {
@@ -69,7 +70,7 @@ namespace MusicTools.Core
         /// <param name="SongStatus"></param>
         public record SongInfo(int Id, string Name, string Path, string[] Artist, string Album, int Rating, SpotifyStatus ArtistStatus, SpotifyStatus SongStatus);
 
-        public record SpotifySettings(string ClientId, string ClientSecret);
+        public record SpotifySettings(string ClientId, string ClientSecret, int ApiWait);
 
         // Spotify domain models
         public record SpotifyTrack(
@@ -109,8 +110,8 @@ namespace MusicTools.Core
         public record AuthenticationError(string ErrorMessage)
             : SpotifyError("AUTH_ERROR", $"Authentication failed: {ErrorMessage}", "auth");
 
-        public record RateLimitError(string Resource, int RetryAfterSeconds)
-            : SpotifyError("RATE_LIMIT", $"Rate limit exceeded for {Resource}. Retry after {RetryAfterSeconds} seconds", Resource);
+        public record RateLimitError(string Resource)
+            : SpotifyError("RATE_LIMIT", $"Rate limit exceeded for {Resource}.", Resource);
 
         public record ApiError(string Resource, int StatusCode, string ErrorMessage)
             : SpotifyError("API_ERROR", $"API error ({StatusCode}): {ErrorMessage}", Resource);

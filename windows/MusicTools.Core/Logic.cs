@@ -31,7 +31,7 @@ namespace MusicTools.Core
 
             return current with
             {
-                Songs = songs.ToDictionary(s => s.Id),
+                Songs = songs.ToConcurrentDictionary(s => s.Id),
                 ChosenSongs = chosenSongs
             };
         }
@@ -43,7 +43,7 @@ namespace MusicTools.Core
             songId.Iter(songId =>
             {
                 if (songs.ContainsKey(songId))
-                    songs[songId] = songs[songId] with { SongStatus = SpotifyStatus.NotFound };
+                    songs[songId] = songs[songId] with { SongStatus = status };
             });
             return current with { Songs = songs };
         }

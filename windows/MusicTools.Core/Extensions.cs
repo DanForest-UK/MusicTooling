@@ -16,6 +16,18 @@ namespace MusicTools.Core
             ? Some(value!)
             : None;
 
+        public static ConcurrentDictionary<TKey, TSource> ToConcurrentDictionary<TSource, TKey>(
+            this IEnumerable<TSource> source,
+            Func<TSource, TKey> keySelector)
+            {
+                var dictionary = new ConcurrentDictionary<TKey, TSource>();
+                foreach (var item in source)
+                {
+                    dictionary.TryAdd(keySelector(item), item);
+                }
+                return dictionary;
+            }
+
         public static Option<T> ValueOrNone<S, T>(this IDictionary<S,T> dictionary, S key) =>
             dictionary.ContainsKey(key)
                 ? Some(dictionary[key])
