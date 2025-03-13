@@ -24,6 +24,13 @@ namespace MusicTools
             Runtime.WithStream = React.WithStream;
             Runtime.GetSpotifyAPI = (clientId, clientSecret, redirectUri, apiDelay) => new SpotifyApi(clientId, clientSecret, redirectUri, apiDelay);
 
+            // Initialize status reporting functions
+            Runtime.Info = message => StatusHelper.Info(message);
+            Runtime.Success = message => StatusHelper.Success(message);
+            Runtime.Warning = message => StatusHelper.Warning(message);
+            Runtime.Error = message => StatusHelper.Error(message);
+            Runtime.Status = (message, level) => StatusHelper.SendStatus(message, level);
+
 #if BUNDLE
             JavaScriptBundleFile = "index.windows";
             InstanceSettings.UseFastRefresh = false;

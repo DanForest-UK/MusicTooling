@@ -42,6 +42,23 @@ namespace MusicTools.Core
         }
 
         /// <summary>
+        /// Status message severity levels
+        /// </summary>
+        public enum StatusLevel
+        {
+            Info,
+            Success,
+            Warning,
+            Error
+        }
+
+        public record StatusMessage(string Text, StatusLevel Level, Guid Id, DateTime Timestamp)
+        {
+            public static StatusMessage Create(string text, StatusLevel level) =>
+                new StatusMessage(text, level, Guid.NewGuid(), DateTime.Now);
+        }
+
+        /// <summary>
         /// New type for spotify artist ID - for compile time safety avoid clashes with artist name
         /// </summary>
         public class SpotifyArtistId : NewType<SpotifyArtistId, string>

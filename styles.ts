@@ -292,4 +292,48 @@ export const styles = StyleSheet.create({
     spotifyStatusError: {
         color: '#FF6B6B', // Red for errors
     },
+
+    // Status bar styles
+    statusBar: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderTopWidth: 1,
+        borderTopColor: '#3D4852',
+        zIndex: 40,
+    },
+    statusBarInfo: {
+        backgroundColor: '#2D3748',
+    },
+    statusBarSuccess: {
+        backgroundColor: '#1C6937',
+    },
+    statusBarWarning: {
+        backgroundColor: '#974C10',
+    },
+    statusBarError: {
+        backgroundColor: '#A12121',
+    },
+    statusText: {
+        color: 'white',
+        flex: 1,
+        marginRight: 10,
+    },
+    statusIcon: {
+        marginRight: 10,
+        color: 'white',
+        fontSize: 16,
+    },
+    clearButton: {
+        padding: 5,
+    },
+    clearIcon: {
+        color: 'white',
+        fontSize: 16,
+    },
 });

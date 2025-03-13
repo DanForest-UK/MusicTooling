@@ -58,15 +58,17 @@ namespace MusicTools.NativeModules
                 if (!File.Exists(path))
                 {
                     Debug.WriteLine("Warning: spotifySettings.json file does not exist!");
+                    Runtime.Warning("Spotify settings file not found");
                     return new SpotifySettings("", "", 0);
                 }
 
                 var json = File.ReadAllText(path);
-               
+
                 var settings = JsonConvert.DeserializeObject<SpotifySettings>(json);
                 if (settings == null)
                 {
                     Debug.WriteLine("Warning: Failed to deserialize Spotify settings");
+                    Runtime.Warning("Failed to parse Spotify settings");
                     return new SpotifySettings("", "", 0);
                 }
                 return settings;
@@ -75,6 +77,7 @@ namespace MusicTools.NativeModules
             {
                 Debug.WriteLine($"Error loading settings: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
+                Runtime.Error($"Error loading Spotify settings: {ex.Message}");
                 return new SpotifySettings("", "", 0); // Return empty settings
             }
         }
@@ -88,6 +91,7 @@ namespace MusicTools.NativeModules
             try
             {
                 EnsureInitialized();
+                Runtime.Info("Preparing Spotify authorization...");
                 var url = spotifyApi.GetAuthorizationUrl();
                 return Task.FromResult(url);
             }
@@ -95,6 +99,7 @@ namespace MusicTools.NativeModules
             {
                 Debug.WriteLine($"Error getting auth URL: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
+                Runtime.Error($"Error generating authorization URL: {ex.Message}");
                 return Task.FromResult(string.Empty);
             }
         }
@@ -104,7 +109,7 @@ namespace MusicTools.NativeModules
         /// </summary>
         [ReactMethod("CheckAuthStatus")]
         public Task<bool> CheckAuthStatus() =>
-             Task.FromResult(isAuthenticated);        
+             Task.FromResult(isAuthenticated);
 
         /// <summary>
         /// Exchanges authorization code for an access token
@@ -116,9 +121,12 @@ namespace MusicTools.NativeModules
             {
                 EnsureInitialized();
 
+                Runtime.Info("Connecting to Spotify...");
+
                 if (!code.HasValue())
                 {
                     Debug.WriteLine("Error: No authorization code provided");
+                    Runtime.Error("No authorization code provided");
                     return Task.FromResult(JsonConvert.SerializeObject(
                         new { success = false, error = "No authorization code provided" }));
                 }
@@ -136,10 +144,12 @@ namespace MusicTools.NativeModules
                         var response = result.Match(
                             Right: success => {
                                 isAuthenticated = true;
+                                Runtime.Success("Connected to Spotify successfully");
                                 return new { success = true, error = SpotifyErrors.Empty };
                             },
                             Left: error => {
                                 Debug.WriteLine($"Authorization failed: {error.Message}");
+                                Runtime.Error($"Spotify authentication failed: {error.Message}");
                                 return new { success = false, error };
                             });
 
@@ -149,6 +159,7 @@ namespace MusicTools.NativeModules
                     {
                         Debug.WriteLine($"Error exchanging code: {ex.Message}");
                         Debug.WriteLine(ex.StackTrace);
+                        Runtime.Error($"Error exchanging code: {ex.Message}");
                         return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
                     }
                 });
@@ -157,6 +168,7 @@ namespace MusicTools.NativeModules
             {
                 Debug.WriteLine($"Error in ExchangeCodeForToken: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
+                Runtime.Error($"Error in ExchangeCodeForToken: {ex.Message}");
                 return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = ex.Message }));
             }
         }
@@ -169,15 +181,16 @@ namespace MusicTools.NativeModules
         {
             try
             {
-                if (ApplicationData.Current.LocalSettings.Values.TryGetValue(spotifyAuthUriKey, out object uriString) && uriString is string uri)              
+                if (ApplicationData.Current.LocalSettings.Values.TryGetValue(spotifyAuthUriKey, out object uriString) && uriString is string uri)
                     return Task.FromResult(uri);
-                
+
                 Debug.WriteLine("No stored auth URI found");
                 return Task.FromResult("");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error getting stored URI: {ex.Message}");
+                Runtime.Warning($"Error retrieving stored auth URI: {ex.Message}");
                 return Task.FromResult("");
             }
         }
@@ -194,7 +207,6 @@ namespace MusicTools.NativeModules
                 if (localSettings.Values.ContainsKey(spotifyAuthUriKey))
                 {
                     localSettings.Values.Remove(spotifyAuthUriKey);
-
                 }
 
                 return Task.FromResult("success");
@@ -202,6 +214,7 @@ namespace MusicTools.NativeModules
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error clearing stored URI: {ex.Message}");
+                Runtime.Warning($"Error clearing stored auth URI: {ex.Message}");
                 return Task.FromResult("error");
             }
         }
@@ -218,20 +231,24 @@ namespace MusicTools.NativeModules
 
                 var distinctArtists = ObservableState.Current.DistinctArtists();
                 if (!distinctArtists.Any())
+                {
+                    Runtime.Warning("No artists to follow");
                     return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = "No songs provided" }));
+                }
+
+                Runtime.Info($"Searching for {distinctArtists.Count()} artists on Spotify...");
 
                 return Task.Run(async () => {
                     try
                     {
-
                         var errors = new ConcurrentBag<SpotifyError>();
                         var foundArtists = new ConcurrentDictionary<SpotifyArtistId, string>();// lookup of spotify artist id to name
-                                               
+
                         distinctArtists.ToArray().Iter(async artist =>
                         {
                             var result = await SearchForArtist(artist);
                             result.Match(
-                               Right: foundArtistId => 
+                               Right: foundArtistId =>
                                {
                                    foundArtists.TryAdd(foundArtistId, artist);
                                    ObservableState.Current.UpdateArtistsStatus(new string[] { artist }, SpotifyStatus.Found);
@@ -250,9 +267,14 @@ namespace MusicTools.NativeModules
                             await Task.Delay(delayTime); // Prevent too many requests from spotify
                         });
 
+                        // Periodically update status with progress
+                        Runtime.Info($"Found {foundArtists.Count} of {distinctArtists.Count()} artists on Spotify");
+
                         // Second phase: Like all found artists in a single batch operation
                         if (foundArtists.Any())
                         {
+                            Runtime.Info($"Following {foundArtists.Count} artists on Spotify...");
+
                             var result = await spotifyApi.FollowArtistsAsync(foundArtists.Keys.ToArray()); // sending spotify song ID to api
                             result.Errors.Iter(errors.Add);
 
@@ -262,16 +284,37 @@ namespace MusicTools.NativeModules
                             if (followedArtistNames.Count() != result.FollowedArtists.Count())
                             {
                                 Console.Write("Unexpected: not all liked artists in artists found");
+                                Runtime.Warning("Some artist mappings were lost during processing");
                             }
 
                             ObservableState.UpdateArtistStatus(followedArtistNames.ToArray(), SpotifyStatus.Liked);
+
+                            if (followedArtistNames.Count() > 0)
+                            {
+                                Runtime.Success($"Successfully followed {followedArtistNames.Count()} artists on Spotify");
+                            }
+                            else if (errors.Any())
+                            {
+                                Runtime.Error("Failed to follow any artists on Spotify");
+                            }
+                        }
+                        else
+                        {
+                            if (errors.Any())
+                            {
+                                Runtime.Error("Failed to find any artists on Spotify");
+                            }
+                            else
+                            {
+                                Runtime.Warning("No artists found on Spotify");
+                            }
                         }
 
                         return JsonConvert.SerializeObject(errors.Any()
                             ? new
                             {
                                 success = false,
-                                partialSuccess = errors.Any(), // todo do we need this 
+                                partialSuccess = errors.Any() && foundArtists.Any(),
                                 errors
                             }
                             : new { success = true });
@@ -280,6 +323,7 @@ namespace MusicTools.NativeModules
                     {
                         Debug.WriteLine($"Error in FollowArtists task: {ex.Message}");
                         Debug.WriteLine(ex.StackTrace);
+                        Runtime.Error($"Error following artists: {ex.Message}");
                         return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
                     }
                 });
@@ -287,6 +331,7 @@ namespace MusicTools.NativeModules
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error in FollowArtists: {ex.Message}");
+                Runtime.Error($"Error in FollowArtists: {ex.Message}");
                 return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = ex.Message }));
             }
         }
@@ -304,7 +349,12 @@ namespace MusicTools.NativeModules
                 var filteredSongs = ObservableState.Current.FilteredSongs();
 
                 if (!filteredSongs.Any())
+                {
+                    Runtime.Warning("No songs provided to like");
                     return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = "No songs provided" }));
+                }
+
+                Runtime.Info($"Preparing to like {filteredSongs.Count()} songs on Spotify...");
 
                 return Task.Run(async () => {
                     try
@@ -312,15 +362,26 @@ namespace MusicTools.NativeModules
                         var errors = new ConcurrentBag<SpotifyError>();
 
                         var foundSongs = new ConcurrentDictionary<SpotifySongId, int>(); // lookup from spotify song id to our song id
-                        
+
+                        int processedCount = 0;
+                        int totalCount = filteredSongs.Count();
+
                         filteredSongs.ToArray().Iter(async song =>
-                        {                            
+                        {
                             var result = await SearchForSong(song);
+                            processedCount++;
+
+                            // Periodically update status
+                            if (processedCount % 10 == 0 || processedCount == totalCount)
+                            {
+                                Runtime.Info($"Searching for songs on Spotify ({processedCount}/{totalCount})...");
+                            }
+
                             result.Match(
                                Right: id =>
                                {
                                    foundSongs.TryAdd(id, song.Id);
-                                   ObservableState.Current.UpdateSongsStatus(new int[] {song.Id},  SpotifyStatus.Found);
+                                   ObservableState.Current.UpdateSongsStatus(new int[] { song.Id }, SpotifyStatus.Found);
                                },
                               Left: error =>
                               {
@@ -333,12 +394,15 @@ namespace MusicTools.NativeModules
                                       errors.Add(error);
                                   }
                               });
-                               await Task.Delay(delayTime); // Prevent too many requests from spotify
+                            await Task.Delay(delayTime); // Prevent too many requests from spotify
                         });
+
+                        Runtime.Info($"Found {foundSongs.Count} of {filteredSongs.Count()} songs on Spotify");
 
                         // Second phase: Like all found songs in a single batch operation
                         if (foundSongs.Any())
-                        {                           
+                        {
+                            Runtime.Info($"Liking {foundSongs.Count} songs on Spotify...");
                             var result = await spotifyApi.LikeSongsAsync(foundSongs.Keys.ToArray()); // sending spotify song ID to api
                             result.Errors.Iter(errors.Add);
 
@@ -346,20 +410,48 @@ namespace MusicTools.NativeModules
 
                             // Convert spotify liked song ID to our song ID
                             var likedSongIds = result.LikedSongs.Select(id => foundSongs.ValueOrNone(id)).Somes();
-                            
+
                             if (likedSongIds.Count() != result.LikedSongs.Count())
                             {
                                 Console.Write("Unexpected: not all liked songs in found songs");
+                                Runtime.Warning("Some song mappings were lost during processing");
                             }
 
-                            ObservableState.UpdateSongStatus(likedSongIds.ToArray(), SpotifyStatus.Liked);                            
+                            ObservableState.UpdateSongStatus(likedSongIds.ToArray(), SpotifyStatus.Liked);
+
+                            if (likedSongIds.Count() > 0)
+                            {
+                                if (likedSongIds.Count() < foundSongs.Count)
+                                {
+                                    Runtime.Warning($"Partial success: Liked {likedSongIds.Count()} of {foundSongs.Count} songs");
+                                }
+                                else
+                                {
+                                    Runtime.Success($"Successfully liked {likedSongIds.Count()} songs on Spotify");
+                                }
+                            }
+                            else if (errors.Any())
+                            {
+                                Runtime.Error("Failed to like any songs on Spotify");
+                            }
+                        }
+                        else
+                        {
+                            if (errors.Any())
+                            {
+                                Runtime.Error("Failed to find any songs on Spotify");
+                            }
+                            else
+                            {
+                                Runtime.Warning("No songs found on Spotify");
+                            }
                         }
 
                         return JsonConvert.SerializeObject(errors.Any()
                             ? new
                             {
                                 success = false,
-                                partialSuccess = errors.Any(),
+                                partialSuccess = errors.Any() && foundSongs.Any(),
                                 errors
                             }
                             : new { success = true });
@@ -368,6 +460,7 @@ namespace MusicTools.NativeModules
                     {
                         Debug.WriteLine($"Error in LikeSongs task: {ex.Message}");
                         Debug.WriteLine(ex.StackTrace);
+                        Runtime.Error($"Error liking songs: {ex.Message}");
                         return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
                     }
                 });
@@ -375,6 +468,7 @@ namespace MusicTools.NativeModules
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error in LikeSongs: {ex.Message}");
+                Runtime.Error($"Error in LikeSongs: {ex.Message}");
                 return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = ex.Message }));
             }
         }
@@ -385,20 +479,21 @@ namespace MusicTools.NativeModules
         async Task<Either<SpotifyError, SpotifySongId>> SearchForSong(SongInfo song)
         {
             var searchResult = await spotifyApi.SearchSongAsync(song.Id, song.Name, song.Artist);
-            return searchResult.Map(v => v.Id);              
+            return searchResult.Map(v => v.Id);
         }
 
         async Task<Either<SpotifyError, SpotifyArtistId>> SearchForArtist(string artistName)
         {
             var searchResult = await spotifyApi.SearchArtistAsync(artistName);
             return searchResult.Map(v => v.Id);
-        }        
+        }
 
         void EnsureInitialized()
         {
             if (!isInitialised)
             {
                 Debug.WriteLine("SpotifyModule is not properly initialized");
+                Runtime.Error("SpotifyModule is not properly initialized");
                 throw new InvalidOperationException("SpotifyModule is not properly initialized");
             }
         }

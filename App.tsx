@@ -10,6 +10,9 @@ import { AppModel, SpotifyStatus, SongInfo } from './types';
 import SongItem from './Components/SongItem';
 // Import the SpotifyIntegration component 
 import SpotifyIntegration from './Components/SpotifyIntegration';
+// Import the StatusProvider and StatusBar
+import { StatusProvider } from './StatusContext';
+import StatusBar from './Components/StatusBar';
 
 // Native modules are imported at the top
 const { FileScannerModule, StateModule } = NativeModules;
@@ -151,101 +154,106 @@ const App = () => {
     }, [hasProcessedSpotifyItems]);
 
     return (
-        <SafeAreaView style={{ flex: 1 }}>
-            <View style={styles.container}>
-                <View style={styles.controlsContainer}>
-                    <View style={styles.buttonWrapper}>
-                        <Button
-                            title="Scan files"
-                            onPress={scanFiles}
-                            disabled={loading}
-                            color={loading ? '#A9A9A9' : '#007AFF'}
-                        />
-                    </View>
-                    <Text style={styles.pickerLabel}>Minimum rating:</Text>
-                    <Picker
-                        selectedValue={String(appState.minimumRating)}
-                        style={styles.picker}
-                        onValueChange={handleRatingChange}
-                    >
-                        <Picker.Item label="Any" value="0" />
-                        <Picker.Item label="1 star" value="1" />
-                        <Picker.Item label="2 stars" value="2" />
-                        <Picker.Item label="3 stars" value="3" />
-                        <Picker.Item label="4 stars" value="4" />
-                        <Picker.Item label="5 stars" value="5" />
-                    </Picker>
-                </View>
-
-                <View style={styles.statsContainer}>
-                    <Text style={styles.statsText}>
-                        Showing {filteredSongs.length} of {appState.songs ? Object.keys(appState.songs).length : 0} songs
-                    </Text>
-                    <Text style={styles.statsText}>
-                        {appState.chosenSongs.length} songs selected
-                    </Text>
-                </View>
-
-                {loading && (
-                    <View style={styles.loadingOverlay}>
-                        <ActivityIndicator style={styles.activityIndicator} size={100} color="#0000ff" />
-                        <Text style={styles.loadingText}>Scanning files...</Text>
-                    </View>
-                )}
-
-                {hasScanned && filteredSongs.length === 0 && !loading && (
-                    <Text style={styles.emptyText}>No files found matching your criteria.</Text>
-                )}
-
-                <FlatList
-                    data={filteredSongs}
-                    contentContainerStyle={styles.listContainer}
-                    keyExtractor={item => item.id}
-                    renderItem={({ item }) => (
-                        <SongItem
-                            item={item}
-                            isSelected={appState.chosenSongs.includes(item.id)}
-                            onToggle={toggleSongSelection}
-                            showSpotifyStatus={showSpotifyStatus}
-                        />
-                    )}
-                />
-
-                {/* Spotify Toggle - Only show after scanning files with results */}
-                {hasScanned && filteredSongs.length > 0 && (
-                    <View style={styles.spotifyToggleContainer}>
-                        <TouchableOpacity
-                            style={styles.spotifyOptionsButton}
-                            onPress={toggleSpotifyPanel}
+        <StatusProvider>
+            <SafeAreaView style={{ flex: 1 }}>
+                <View style={styles.container}>
+                    <View style={styles.controlsContainer}>
+                        <View style={styles.buttonWrapper}>
+                            <Button
+                                title="Scan files"
+                                onPress={scanFiles}
+                                disabled={loading}
+                                color={loading ? '#A9A9A9' : '#007AFF'}
+                            />
+                        </View>
+                        <Text style={styles.pickerLabel}>Minimum rating:</Text>
+                        <Picker
+                            selectedValue={String(appState.minimumRating)}
+                            style={styles.picker}
+                            onValueChange={handleRatingChange}
                         >
-                            <Text style={styles.spotifyOptionsButtonText}>
-                                {showSpotify ? "Hide Spotify" : "Spotify Options"}
-                            </Text>
-                        </TouchableOpacity>
+                            <Picker.Item label="Any" value="0" />
+                            <Picker.Item label="1 star" value="1" />
+                            <Picker.Item label="2 stars" value="2" />
+                            <Picker.Item label="3 stars" value="3" />
+                            <Picker.Item label="4 stars" value="4" />
+                            <Picker.Item label="5 stars" value="5" />
+                        </Picker>
                     </View>
-                )}
 
-                {/* Spotify Integration Panel */}
-                {showSpotify && hasScanned && filteredSongs.length > 0 && (
-                    <View style={styles.spotifyContainer}>
-                        <View style={styles.spotifyHeader}>
-                            <Text style={styles.spotifyTitle}>Spotify Integration</Text>
+                    <View style={styles.statsContainer}>
+                        <Text style={styles.statsText}>
+                            Showing {filteredSongs.length} of {appState.songs ? Object.keys(appState.songs).length : 0} songs
+                        </Text>
+                        <Text style={styles.statsText}>
+                            {appState.chosenSongs.length} songs selected
+                        </Text>
+                    </View>
+
+                    {loading && (
+                        <View style={styles.loadingOverlay}>
+                            <ActivityIndicator style={styles.activityIndicator} size={100} color="#0000ff" />
+                            <Text style={styles.loadingText}>Scanning files...</Text>
+                        </View>
+                    )}
+
+                    {hasScanned && filteredSongs.length === 0 && !loading && (
+                        <Text style={styles.emptyText}>No files found matching your criteria.</Text>
+                    )}
+
+                    <FlatList
+                        data={filteredSongs}
+                        contentContainerStyle={styles.listContainer}
+                        keyExtractor={item => item.id}
+                        renderItem={({ item }) => (
+                            <SongItem
+                                item={item}
+                                isSelected={appState.chosenSongs.includes(item.id)}
+                                onToggle={toggleSongSelection}
+                                showSpotifyStatus={showSpotifyStatus}
+                            />
+                        )}
+                    />
+
+                    {/* Spotify Toggle - Only show after scanning files with results */}
+                    {hasScanned && filteredSongs.length > 0 && (
+                        <View style={styles.spotifyToggleContainer}>
                             <TouchableOpacity
-                                style={styles.spotifyCloseButton}
+                                style={styles.spotifyOptionsButton}
                                 onPress={toggleSpotifyPanel}
                             >
-                                <FontAwesomeIcon name="times" style={styles.spotifyCloseIcon} />
+                                <Text style={styles.spotifyOptionsButtonText}>
+                                    {showSpotify ? "Hide Spotify" : "Spotify Options"}
+                                </Text>
                             </TouchableOpacity>
                         </View>
-                        <SpotifyIntegration
-                            appState={appState}
-                            onClose={toggleSpotifyPanel}
-                            onSpotifyAction={handleSpotifyAction}
-                        />
-                    </View>
-                )}
-            </View>
-        </SafeAreaView>
+                    )}
+
+                    {/* Spotify Integration Panel */}
+                    {showSpotify && hasScanned && filteredSongs.length > 0 && (
+                        <View style={styles.spotifyContainer}>
+                            <View style={styles.spotifyHeader}>
+                                <Text style={styles.spotifyTitle}>Spotify Integration</Text>
+                                <TouchableOpacity
+                                    style={styles.spotifyCloseButton}
+                                    onPress={toggleSpotifyPanel}
+                                >
+                                    <FontAwesomeIcon name="times" style={styles.spotifyCloseIcon} />
+                                </TouchableOpacity>
+                            </View>
+                            <SpotifyIntegration
+                                appState={appState}
+                                onClose={toggleSpotifyPanel}
+                                onSpotifyAction={handleSpotifyAction}
+                            />
+                        </View>
+                    )}
+
+                    {/* Status Bar - will appear at the bottom */}
+                    <StatusBar />
+                </View>
+            </SafeAreaView>
+        </StatusProvider>
     );
 };
 

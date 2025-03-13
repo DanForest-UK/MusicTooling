@@ -24,6 +24,8 @@ namespace MusicTools.NativeModules
             var path = @"C:\Dan\Dropbox\Dropbox\[Music]\[Folk]\[Acapella]";
             React.AssertFileAccess();
 
+            Runtime.Info("Starting music file scan...");
+
             try
             {
                 var results = await ScanFiles.ScanFilesAsync();
@@ -35,14 +37,22 @@ namespace MusicTools.NativeModules
                                            where song.Rating >= ObservableState.Current.MinimumRating
                                            select song;
 
+                        Runtime.Info($"Found {list.Count()} music files, filtering...");
                         ObservableState.SetSongs(filteredList);
+
+                        Runtime.Success($"Scan complete: {filteredList.Count()} files match your criteria");
                         return unit;
                     },
-                    Left: error => throw new ReactException(error.Message)
+                    Left: error =>
+                    {
+                        Runtime.Error($"Scan failed: {error.Message}");
+                        throw new ReactException(error.Message);
+                    }
                 );
             }
             catch (Exception ex)
             {
+                Runtime.Error($"Error scanning files: {ex.Message}");
                 throw new ReactException(ex.Message);
             }
         }

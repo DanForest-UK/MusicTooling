@@ -38,6 +38,21 @@ export interface SpotifyError {
     ResourceId: string;
 }
 
+export enum StatusLevel {
+    Info = 0,
+    Success = 1,
+    Warning = 2,
+    Error = 3
+}
+
+// Status message interface
+export interface StatusMessage {
+    text: string;
+    level: StatusLevel;
+    id: string;
+    timestamp: string;
+}
+
 // Specific error types matching the C# counterparts
 export interface AlreadyAuthenticatedError extends SpotifyError {
     ErrorCode: 'ALREADY_AUTHENTICATED';
