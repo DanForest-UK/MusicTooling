@@ -6,6 +6,8 @@ using System.Text;
 using static MusicTools.Core.Types;
 using static MusicTools.Core.Extensions;
 using System.Linq;
+using MusicTools.Logic;
+using static LanguageExt.Prelude;
 
 namespace MusicTools.Logic
 {
@@ -16,44 +18,64 @@ namespace MusicTools.Logic
         /// </summary>
         public static SongInfo ReadSongInfo(string path, Stream stream)
         {
-            // Use TagLib to read metadata
-            var tagFile = TagLib.File.Create(new StreamFileAbstraction(Path.GetFileName(path), stream));
-            var id3v2Tag = tagFile.GetTag(TagLib.TagTypes.Id3v2) as TagLib.Id3v2.Tag;
-            var rating = 0;
-
-            if (id3v2Tag != null)
+            try
             {
-                var frameSet = id3v2Tag.GetFrames<TagLib.Id3v2.PopularimeterFrame>();
+                // Use TagLib to read metadata
+                var tagFile = TagLib.File.Create(new StreamFileAbstraction(Path.GetFileName(path), stream));
+                var id3v2Tag = tagFile.GetTag(TagLib.TagTypes.Id3v2) as TagLib.Id3v2.Tag;
+                var rating = 0;
 
-                if (frameSet.Any())
+                if (id3v2Tag != null)
                 {
-                    var maxRating = frameSet.Max(f => f.Rating);
+                    var frameSet = id3v2Tag.GetFrames<TagLib.Id3v2.PopularimeterFrame>();
 
-                    rating = maxRating switch
+                    if (frameSet.Any())
                     {
-                        >= 255 => 5,  // 255 is always 5 stars
-                        >= 192 => 4,  // 192-254 is 4 stars
-                        >= 128 => 3,  // 128-191 is 3 stars
-                        >= 64 => 2,  // 64-127 is 2 stars
-                        >= 1 => 1,  // 1-63 is 1 star
-                        _ => 0   // 0 means no rating
-                    };
-                }
-            }
-            else
-                Console.WriteLine("No ID3v2 tag found.");
+                        var maxRating = frameSet.Max(f => f.Rating);
 
-            // This happens synchronously so ordering/duplication is not an issue
-            // although the order is reinforced in the state when a new set of songs is loaded
-            return new SongInfo(
-                ObservableState.Current.Songs.Count(), 
-                tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
-                path,
-                tagFile.Tag.AlbumArtists.Union(tagFile.Tag.Artists).ToArray(),
-                tagFile.Tag.Album.ValueOrNone().IfNone("[No album]"),
-                rating, 
-                SpotifyStatus.NotSearched,
-                SpotifyStatus.NotSearched);
+                        rating = maxRating switch
+                        {
+                            >= 255 => 5,  // 255 is always 5 stars
+                            >= 192 => 4,  // 192-254 is 4 stars
+                            >= 128 => 3,  // 128-191 is 3 stars
+                            >= 64 => 2,  // 64-127 is 2 stars
+                            >= 1 => 1,  // 1-63 is 1 star
+                            _ => 0   // 0 means no rating
+                        };
+                    }
+                }
+                else
+                {
+                    Runtime.Info("No ID3v2 tag found in file");
+                }
+
+                // This happens synchronously so ordering/duplication is not an issue
+                // although the order is reinforced in the state when a new set of songs is loaded
+                return new SongInfo(
+                    ObservableState.Current.Songs.Count(),
+                    tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
+                    path,
+                    tagFile.Tag.AlbumArtists.Union(tagFile.Tag.Artists).ToArray(),
+                    tagFile.Tag.Album.ValueOrNone().IfNone("[No album]"),
+                    rating,
+                    SpotifyStatus.NotSearched,
+                    SpotifyStatus.NotSearched);
+            }
+            catch (Exception ex)
+            {
+                Runtime.Error($"Error reading tag information from {path}", Some(ex));
+
+                // Return a placeholder song info with error indicators
+                return new SongInfo(
+                    ObservableState.Current.Songs.Count(),
+                    "[Error reading file]",
+                    path,
+                    new[] { "[Error]" },
+                    "[Error]",
+                    0,
+                    SpotifyStatus.NotSearched,
+                    SpotifyStatus.NotSearched);
+            }
         }
 
         /// <summary>

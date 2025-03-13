@@ -57,7 +57,6 @@ namespace MusicTools.NativeModules
 
                 if (!File.Exists(path))
                 {
-                    Debug.WriteLine("Warning: spotifySettings.json file does not exist!");
                     Runtime.Warning("Spotify settings file not found");
                     return new SpotifySettings("", "", 0);
                 }
@@ -67,7 +66,6 @@ namespace MusicTools.NativeModules
                 var settings = JsonConvert.DeserializeObject<SpotifySettings>(json);
                 if (settings == null)
                 {
-                    Debug.WriteLine("Warning: Failed to deserialize Spotify settings");
                     Runtime.Warning("Failed to parse Spotify settings");
                     return new SpotifySettings("", "", 0);
                 }
@@ -75,9 +73,7 @@ namespace MusicTools.NativeModules
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error loading settings: {ex.Message}");
-                Debug.WriteLine(ex.StackTrace);
-                Runtime.Error($"Error loading Spotify settings: {ex.Message}");
+                Runtime.Error($"Error loading Spotify settings", ex);
                 return new SpotifySettings("", "", 0); // Return empty settings
             }
         }
@@ -97,9 +93,7 @@ namespace MusicTools.NativeModules
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error getting auth URL: {ex.Message}");
-                Debug.WriteLine(ex.StackTrace);
-                Runtime.Error($"Error generating authorization URL: {ex.Message}");
+                Runtime.Error($"Error generating authorization URL", ex);
                 return Task.FromResult(string.Empty);
             }
         }
@@ -125,8 +119,7 @@ namespace MusicTools.NativeModules
 
                 if (!code.HasValue())
                 {
-                    Debug.WriteLine("Error: No authorization code provided");
-                    Runtime.Error("No authorization code provided");
+                    Runtime.Error("No authorization code provided", None);
                     return Task.FromResult(JsonConvert.SerializeObject(
                         new { success = false, error = "No authorization code provided" }));
                 }
@@ -148,8 +141,7 @@ namespace MusicTools.NativeModules
                                 return new { success = true, error = SpotifyErrors.Empty };
                             },
                             Left: error => {
-                                Debug.WriteLine($"Authorization failed: {error.Message}");
-                                Runtime.Error($"Spotify authentication failed: {error.Message}");
+                                Runtime.Error($"Spotify authentication failed", None);
                                 return new { success = false, error };
                             });
 
@@ -157,18 +149,14 @@ namespace MusicTools.NativeModules
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Error exchanging code: {ex.Message}");
-                        Debug.WriteLine(ex.StackTrace);
-                        Runtime.Error($"Error exchanging code: {ex.Message}");
+                        Runtime.Error($"Error exchanging code", ex);
                         return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
                     }
                 });
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error in ExchangeCodeForToken: {ex.Message}");
-                Debug.WriteLine(ex.StackTrace);
-                Runtime.Error($"Error in ExchangeCodeForToken: {ex.Message}");
+                Runtime.Error($"Error in ExchangeCodeForToken", ex);
                 return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = ex.Message }));
             }
         }
@@ -189,8 +177,7 @@ namespace MusicTools.NativeModules
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error getting stored URI: {ex.Message}");
-                Runtime.Warning($"Error retrieving stored auth URI: {ex.Message}");
+                Runtime.Warning($"Error retrieving stored auth URI");
                 return Task.FromResult("");
             }
         }
@@ -213,8 +200,7 @@ namespace MusicTools.NativeModules
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error clearing stored URI: {ex.Message}");
-                Runtime.Warning($"Error clearing stored auth URI: {ex.Message}");
+                Runtime.Warning($"Error clearing stored auth URI");
                 return Task.FromResult("error");
             }
         }
@@ -283,7 +269,6 @@ namespace MusicTools.NativeModules
 
                             if (followedArtistNames.Count() != result.FollowedArtists.Count())
                             {
-                                Console.Write("Unexpected: not all liked artists in artists found");
                                 Runtime.Warning("Some artist mappings were lost during processing");
                             }
 
@@ -295,14 +280,14 @@ namespace MusicTools.NativeModules
                             }
                             else if (errors.Any())
                             {
-                                Runtime.Error("Failed to follow any artists on Spotify");
+                                Runtime.Error("Failed to follow any artists on Spotify", None);
                             }
                         }
                         else
                         {
                             if (errors.Any())
                             {
-                                Runtime.Error("Failed to find any artists on Spotify");
+                                Runtime.Error("Failed to find any artists on Spotify", None);
                             }
                             else
                             {
@@ -321,17 +306,14 @@ namespace MusicTools.NativeModules
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Error in FollowArtists task: {ex.Message}");
-                        Debug.WriteLine(ex.StackTrace);
-                        Runtime.Error($"Error following artists: {ex.Message}");
+                        Runtime.Error($"Error following artists", ex);
                         return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
                     }
                 });
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error in FollowArtists: {ex.Message}");
-                Runtime.Error($"Error in FollowArtists: {ex.Message}");
+                Runtime.Error($"Error in FollowArtists", ex);
                 return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = ex.Message }));
             }
         }
@@ -406,14 +388,11 @@ namespace MusicTools.NativeModules
                             var result = await spotifyApi.LikeSongsAsync(foundSongs.Keys.ToArray()); // sending spotify song ID to api
                             result.Errors.Iter(errors.Add);
 
-                            // todo consider new type to avoid confusion between spotify track id and our track id
-
                             // Convert spotify liked song ID to our song ID
                             var likedSongIds = result.LikedSongs.Select(id => foundSongs.ValueOrNone(id)).Somes();
 
                             if (likedSongIds.Count() != result.LikedSongs.Count())
                             {
-                                Console.Write("Unexpected: not all liked songs in found songs");
                                 Runtime.Warning("Some song mappings were lost during processing");
                             }
 
@@ -432,14 +411,14 @@ namespace MusicTools.NativeModules
                             }
                             else if (errors.Any())
                             {
-                                Runtime.Error("Failed to like any songs on Spotify");
+                                Runtime.Error("Failed to like any songs on Spotify", None);
                             }
                         }
                         else
                         {
                             if (errors.Any())
                             {
-                                Runtime.Error("Failed to find any songs on Spotify");
+                                Runtime.Error("Failed to find any songs on Spotify", None);
                             }
                             else
                             {
@@ -458,17 +437,14 @@ namespace MusicTools.NativeModules
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Error in LikeSongs task: {ex.Message}");
-                        Debug.WriteLine(ex.StackTrace);
-                        Runtime.Error($"Error liking songs: {ex.Message}");
+                        Runtime.Error($"Error liking songs", ex);
                         return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
                     }
                 });
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error in LikeSongs: {ex.Message}");
-                Runtime.Error($"Error in LikeSongs: {ex.Message}");
+                Runtime.Error($"Error in LikeSongs", ex);
                 return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = ex.Message }));
             }
         }
@@ -492,8 +468,7 @@ namespace MusicTools.NativeModules
         {
             if (!isInitialised)
             {
-                Debug.WriteLine("SpotifyModule is not properly initialized");
-                Runtime.Error("SpotifyModule is not properly initialized");
+                Runtime.Error("SpotifyModule is not properly initialized", None);
                 throw new InvalidOperationException("SpotifyModule is not properly initialized");
             }
         }

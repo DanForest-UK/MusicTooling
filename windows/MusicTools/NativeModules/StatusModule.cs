@@ -5,6 +5,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using static MusicTools.Core.Types;
+using MusicTools.Logic;
+using LanguageExt;
+using static LanguageExt.Prelude;
 
 namespace MusicTools.NativeModules
 {
@@ -30,7 +33,7 @@ namespace MusicTools.NativeModules
         [ReactInitializer]
         public void Initialize(ReactContext reactContext) =>
             this.reactContext = reactContext;
-
+      
         /// <summary>
         /// Adds a new status message to the queue
         /// </summary>
@@ -54,7 +57,7 @@ namespace MusicTools.NativeModules
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error getting current status: {ex.Message}");
+                Runtime.Error($"Error getting current status", ex);
                 promise.Reject(new ReactError { Message = ex.Message });
             }
         }
@@ -73,7 +76,7 @@ namespace MusicTools.NativeModules
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error adding listener: {ex.Message}");
+                Runtime.Error($"Error adding listener", ex);
                 promise.Reject(new ReactError { Message = ex.Message });
             }
         }
@@ -94,7 +97,7 @@ namespace MusicTools.NativeModules
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error emitting status update: {ex.Message}");
+                    Runtime.Error($"Error emitting status update", ex);
                 }
             }
         }
@@ -142,7 +145,7 @@ namespace MusicTools.NativeModules
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error starting status updates: {ex.Message}");
+                Runtime.Error($"Error starting status updates", ex);
                 promise.Reject(new ReactError { Message = ex.Message });
             }
         }

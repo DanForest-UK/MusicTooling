@@ -95,7 +95,6 @@ namespace MusicTools.Logic
                 // Exchange code for token
                 var tokenResponse = await oauth.RequestToken(tokenRequest);
 
-
                 // Create the Spotify client with the access token
                 spotifyClient = new SpotifyClient(tokenResponse.AccessToken);
 
@@ -106,11 +105,13 @@ namespace MusicTools.Logic
             }
             catch (APIException ex)
             {
+                Runtime.Error($"API Error during authentication: {ex.Message}", ex as Exception);
                 return new SpotifyErrors.AuthenticationError(
                     $"API Error: {ex.Message}, Status: {ex.Response?.StatusCode}, Body: {ex.Response?.Body}");
             }
             catch (Exception ex)
             {
+                Runtime.Error($"Authentication error: {ex.Message}", Some(ex));
                 return new SpotifyErrors.AuthenticationError(ex.Message);
             }
         }
@@ -278,8 +279,12 @@ namespace MusicTools.Logic
         /// <summary>
         /// Handles rate limit errors from Spotify API
         /// </summary>
-        SpotifyErrors.RateLimitError HandleRateLimitError(APIException ex, string resource) =>
-            new SpotifyErrors.RateLimitError(resource);
+        SpotifyErrors.RateLimitError HandleRateLimitError(APIException ex, string resource)
+        {
+            // Cast to Exception before wrapping in Option
+            Runtime.Error($"Rate limit exceeded for {resource}", Some((Exception)ex));
+            return new SpotifyErrors.RateLimitError(resource);
+        }
 
         int GetStatusCode(IResponse response) => Optional(response).Map(r => (int)r.StatusCode).IfNone(500);
 
@@ -291,10 +296,14 @@ namespace MusicTools.Logic
             }
             if (ex is APIException apiEx2)
             {
-                return new SpotifyErrors.ApiError(resource, GetStatusCode(apiEx2.Response!), ex.Message);
+                var statusCode = GetStatusCode(apiEx2.Response!);
+                // Cast to ensure type compatibility with Option<Exception>
+                Runtime.Error($"API error ({statusCode}): {ex.Message}", Some((Exception)ex));
+                return new SpotifyErrors.ApiError(resource, statusCode, ex.Message);
             }
             else
             {
+                Runtime.Error($"General error for {resource}: {ex.Message}", Some(ex));
                 return new SpotifyErrors.ApiError(resource, 500, ex.Message);
             }
         }

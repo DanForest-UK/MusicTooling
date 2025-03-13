@@ -14,10 +14,6 @@ namespace MusicTools
     {
         public App()
         {
-            // The firewall exception is no longer needed since we're not using a localhost server
-            // You can remove this if you're no longer using port 8888 for anything else
-            // AddFirewallException();
-
             // Dependency injection
             Runtime.GetFilesWithExtensionAsync = React.GetFilesWithExtensionAsync;
             Runtime.ReadSongInfo = ReadTag.ReadSongInfo;
@@ -25,10 +21,11 @@ namespace MusicTools
             Runtime.GetSpotifyAPI = (clientId, clientSecret, redirectUri, apiDelay) => new SpotifyApi(clientId, clientSecret, redirectUri, apiDelay);
 
             // Initialize status reporting functions
-            Runtime.Info = message => StatusHelper.Info(message);
-            Runtime.Success = message => StatusHelper.Success(message);
-            Runtime.Warning = message => StatusHelper.Warning(message);
-            Runtime.Error = message => StatusHelper.Error(message);
+          
+            Runtime.Info = StatusHelper.Info;
+            Runtime.Success = StatusHelper.Success;
+            Runtime.Warning = StatusHelper.Warning;
+            Runtime.Error = (message, ex) => StatusHelper.Error(message, ex);
             Runtime.Status = (message, level) => StatusHelper.SendStatus(message, level);
 
 #if BUNDLE

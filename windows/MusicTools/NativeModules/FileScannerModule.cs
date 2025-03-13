@@ -26,35 +26,23 @@ namespace MusicTools.NativeModules
 
             Runtime.Info("Starting music file scan...");
 
-            try
-            {
-                var results = await ScanFiles.ScanFilesAsync();
+            var results = await ScanFiles.ScanFilesAsync();
 
-                results.Match(
-                    Right: list =>
-                    {
-                        var filteredList = from song in list
-                                           where song.Rating >= ObservableState.Current.MinimumRating
-                                           select song;
+            // Error handling is done in the ScanFiles      
+            results.Match(
+                Right: list =>
+                {
+                    var filteredList = from song in list
+                                       where song.Rating >= ObservableState.Current.MinimumRating
+                                       select song;
 
-                        Runtime.Info($"Found {list.Count()} music files, filtering...");
-                        ObservableState.SetSongs(filteredList);
+                    Runtime.Info($"Found {list.Count()} music files, filtering...");
+                    ObservableState.SetSongs(filteredList);
 
-                        Runtime.Success($"Scan complete: {filteredList.Count()} files match your criteria");
-                        return unit;
-                    },
-                    Left: error =>
-                    {
-                        Runtime.Error($"Scan failed: {error.Message}");
-                        throw new ReactException(error.Message);
-                    }
-                );
-            }
-            catch (Exception ex)
-            {
-                Runtime.Error($"Error scanning files: {ex.Message}");
-                throw new ReactException(ex.Message);
-            }
+                    Runtime.Success($"Scan complete: {filteredList.Count()} files match your criteria");
+                    return unit;
+                },
+                Left: error => unit);
         }
     }
 }

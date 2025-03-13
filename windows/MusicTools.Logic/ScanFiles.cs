@@ -30,13 +30,14 @@ namespace MusicTools.Logic
                 mp3Files.Iter(async file => await AddFileInfo(file, list));
                 return list.ToSeq();
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
+                Runtime.Error("Access to path denied", Some(ex as Exception));
                 return AppErrors.AccessToPathDenied(path);
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Runtime.Error("Problem scanning files", ex);
                 return AppErrors.ThereWasAProblem;
             }
         }
@@ -49,11 +50,13 @@ namespace MusicTools.Logic
             try
             {
                 await Runtime.WithStream(path, async stream =>
-                    await Task.Run(() => list.Add(Runtime.ReadSongInfo(path, stream))));
+                {
+                    list.Add(Runtime.ReadSongInfo(path, stream));
+                });
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error reading metadata for {path}: {ex.Message}");
+                Runtime.Error($"Error reading metadata for {path}", ex);
             }
         }
     }

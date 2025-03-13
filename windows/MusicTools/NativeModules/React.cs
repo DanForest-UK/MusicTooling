@@ -9,6 +9,8 @@ using Windows.Storage;
 using System.IO;
 using Microsoft.ReactNative.Managed;
 using Windows.Security.Authorization.AppCapabilityAccess;
+using static LanguageExt.Prelude;
+using MusicTools.Logic;
 
 namespace MusicTools.NativeModules
 {
@@ -50,8 +52,9 @@ namespace MusicTools.NativeModules
         public static void AssertFileAccess()
         {
             var status = AppCapability.Create("broadFileSystemAccess").CheckAccess();
+
             if (status != AppCapabilityAccessStatus.Allowed)
-                throw new ReactException("File access needs to be granted for this app in Privacy & Security -> File system");
+                Runtime.Error("File access needs to be granted for this app in Privacy & Security -> File system", None);            
         }
 
         /// <summary>
