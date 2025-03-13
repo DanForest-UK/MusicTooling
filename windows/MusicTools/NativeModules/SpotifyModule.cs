@@ -33,7 +33,7 @@ namespace MusicTools.NativeModules
         bool isAuthenticated = false;
         public const string spotifyAuthUriKey = "spotifyAuthUri";
         public const string redirectUrl = "musictools://auth/callback";
-        int delayTime = 200; // Delay in API requests to prevent too many requests error
+        int delayTime = 500; // Delay in API requests to prevent too many requests error
 
         /// <summary>
         /// Initializes a new instance of the SpotifyModule class
@@ -41,7 +41,7 @@ namespace MusicTools.NativeModules
         public SpotifyModule()
         {
             var settings = LoadSettings();
-            spotifyApi = Runtime.GetSpotifyAPI(settings.ClientId, settings.ClientSecret, redirectUrl, settings.ApiWait);
+            spotifyApi = Runtime.GetSpotifyAPI(settings.ClientId, settings.ClientSecret, redirectUrl);
             delayTime = settings.ApiWait;
             isInitialised = true;
         }
@@ -230,9 +230,20 @@ namespace MusicTools.NativeModules
                         var errors = new ConcurrentBag<SpotifyError>();
                         var foundArtists = new ConcurrentDictionary<SpotifyArtistId, string>();// lookup of spotify artist id to name
 
+                        int processedCount = 0;
+                        int totalCount = distinctArtists.Count();
+
                         distinctArtists.ToArray().Iter(async artist =>
                         {
                             var result = await SearchForArtist(artist);
+                            processedCount++;
+
+                            // Periodically update status
+                            if (processedCount % 5 == 0 || processedCount == totalCount)
+                            {
+                                Runtime.Info($"Searching for artists on Spotify ({processedCount}/{totalCount})...");
+                            }
+
                             result.Match(
                                Right: foundArtistId =>
                                {
@@ -348,7 +359,7 @@ namespace MusicTools.NativeModules
                         int processedCount = 0;
                         int totalCount = filteredSongs.Count();
 
-                        filteredSongs.ToArray().Iter(async song =>
+                        foreach (var song in filteredSongs.ToArray())
                         {
                             var result = await SearchForSong(song);
                             processedCount++;
@@ -377,7 +388,7 @@ namespace MusicTools.NativeModules
                                   }
                               });
                             await Task.Delay(delayTime); // Prevent too many requests from spotify
-                        });
+                        }                      
 
                         Runtime.Info($"Found {foundSongs.Count} of {filteredSongs.Count()} songs on Spotify");
 
@@ -450,17 +461,60 @@ namespace MusicTools.NativeModules
         }
 
         /// <summary>
-        /// Search for single song
+        /// Search for single song with improved status reporting
         /// </summary>
         async Task<Either<SpotifyError, SpotifySongId>> SearchForSong(SongInfo song)
         {
+            Runtime.Info($"Searching for song: '{song.Name}' by {string.Join(", ", song.Artist)}");
             var searchResult = await spotifyApi.SearchSongAsync(song.Id, song.Name, song.Artist);
+
+            searchResult.Match(
+                Right: track =>
+                {
+                    Runtime.Success($"Found song: '{song.Name}' by {string.Join(", ", song.Artist)}");
+                },
+                Left: error =>
+                {
+                    if (error is SongNotFound)
+                    {
+                        Runtime.Warning($"Song not found: '{song.Name}' by {string.Join(", ", song.Artist)}");
+                    }
+                    else
+                    {
+                        Runtime.Error($"Error searching for song: '{song.Name}'", None);
+                    }
+                }
+            );
+
             return searchResult.Map(v => v.Id);
         }
 
+        /// <summary>
+        /// Search for single artist with improved status reporting
+        /// </summary>
         async Task<Either<SpotifyError, SpotifyArtistId>> SearchForArtist(string artistName)
         {
+            Runtime.Info($"Searching for artist: '{artistName}'");
             var searchResult = await spotifyApi.SearchArtistAsync(artistName);
+
+            searchResult.Match(
+                Right: artist =>
+                {
+                    Runtime.Success($"Found artist: '{artistName}'");
+                },
+                Left: error =>
+                {
+                    if (error is ArtistNotFound)
+                    {
+                        Runtime.Warning($"Artist not found: '{artistName}'");
+                    }
+                    else
+                    {
+                        Runtime.Error($"Error searching for artist: '{artistName}'", None);
+                    }
+                }
+            );
+
             return searchResult.Map(v => v.Id);
         }
 

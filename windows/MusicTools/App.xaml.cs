@@ -18,7 +18,7 @@ namespace MusicTools
             Runtime.GetFilesWithExtensionAsync = React.GetFilesWithExtensionAsync;
             Runtime.ReadSongInfo = ReadTag.ReadSongInfo;
             Runtime.WithStream = React.WithStream;
-            Runtime.GetSpotifyAPI = (clientId, clientSecret, redirectUri, apiDelay) => new SpotifyApi(clientId, clientSecret, redirectUri, apiDelay);
+            Runtime.GetSpotifyAPI = (clientId, clientSecret, redirectUri) => new SpotifyApi(clientId, clientSecret, redirectUri);
 
             // Initialize status reporting functions
           
@@ -26,7 +26,7 @@ namespace MusicTools
             Runtime.Success = StatusHelper.Success;
             Runtime.Warning = StatusHelper.Warning;
             Runtime.Error = (message, ex) => StatusHelper.Error(message, ex);
-            Runtime.Status = (message, level) => StatusHelper.SendStatus(message, level);
+            Runtime.Status = (message, level) => StatusModule.AddStatus(message, level);
 
 #if BUNDLE
             JavaScriptBundleFile = "index.windows";

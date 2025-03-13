@@ -22,7 +22,6 @@ namespace MusicTools.Logic
         readonly string clientId;
         readonly string clientSecret;
         readonly string redirectUri;
-        readonly int apiWait;
 
         Option<SpotifyClient> spotifyClient;
         DateTime tokenExpiry = DateTime.MinValue;
@@ -31,15 +30,18 @@ namespace MusicTools.Logic
         // Maximum number of IDs per batch for Spotify API limits
         private const int MAX_BATCH_SIZE = 50;
 
+        // Backoff system constants
+        private const int MAX_RETRY_ATTEMPTS = 10;
+        private const int BACKOFF_MS = 60000;  // Backoff for 1 minute
+
         /// <summary>
         /// Initializes a new instance of the SpotifyApi class
         /// </summary>
-        public SpotifyApi(string clientId, string clientSecret, string redirectUri, int apiWait)
+        public SpotifyApi(string clientId, string clientSecret, string redirectUri)
         {
             this.clientId = clientId;
             this.clientSecret = clientSecret;
             this.redirectUri = redirectUri;
-            this.apiWait = apiWait;
         }
 
         SpotifyClient SpotifyClient => spotifyClient.IfNoneThrow("Spotify client not initialized");
@@ -126,8 +128,64 @@ namespace MusicTools.Logic
                     new SpotifyErrors.AuthenticationError("Token expired or not initialized"));
 
         /// <summary>
-        /// Searches for a song on Spotify
-        /// todo - try individual artists if multiple artists search fails
+        /// Executes an API operation with exponential backoff retry for rate limiting
+        /// </summary>
+        /// <typeparam name="T">The return type of the operation</typeparam>
+        /// <param name="operation">The async operation to execute</param>
+        /// <param name="resourceName">Name of the resource being accessed (for error reporting)</param>
+        /// <param name="itemName">Optional item name for detailed status reporting</param>
+        /// <returns>The result of the operation wrapped in Either</returns>
+        public async Task<Either<SpotifyErrors.SpotifyError, T>> WithBackoff<T>(
+            Func<Task<Either<SpotifyErrors.SpotifyError, T>>> operation,
+            string resourceName,
+            string itemName = null)
+        {
+            int attempt = 0;
+
+            while (attempt < MAX_RETRY_ATTEMPTS)
+            {
+                try
+                {
+                    var result = await operation();
+
+                    if (result.IsLeft)
+                    {
+                        // Check if it's a rate limit error
+                        var error = result.LeftToList().First();
+                        if (error is SpotifyErrors.RateLimitError)
+                        {
+                            attempt = attempt++;
+
+                            string itemInfo = string.IsNullOrEmpty(itemName) ? "" : $" for {itemName}";
+                            StatusHelper.Warning($"Rate limit reached{itemInfo}. Waiting {BACKOFF_MS / 1000} seconds before retrying...");
+
+                            await Task.Delay(BACKOFF_MS);
+
+                            StatusHelper.Info($"Retrying {resourceName}{itemInfo} (attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS})...");
+                            continue;
+                        }
+                    }
+
+                    return result;
+                }
+                catch (Exception ex)
+                {
+                    // If it's not a rate limit exception, don't retry
+                    if (!(ex is APIException apiEx &&
+                          apiEx.Response != null &&
+                          (int)apiEx.Response.StatusCode == TooManyRequests))
+                    {
+                        return HandleApiException<T>(ex, resourceName);
+                    }                  
+                }
+            }
+
+            // If we reach here, all attempts failed due to rate limiting
+            return new SpotifyErrors.RateLimitError(resourceName);
+        }
+
+        /// <summary>
+        /// Searches for a song on Spotify with backoff retry for rate limits
         /// </summary>
         public async Task<Either<SpotifyErrors.SpotifyError, SpotifyTrack>> SearchSongAsync(int id, string title, string[] artists)
         {
@@ -135,27 +193,34 @@ namespace MusicTools.Logic
             if (tokenCheck.IsLeft)
                 return tokenCheck.LeftToList().First();
 
-            try
-            {
-                var query = $"track:{title} artist:{string.Join(" ", artists)}";
-                var searchRequest = new SearchRequest(SearchRequest.Types.Track, query);
-                var searchResponse = await SpotifyClient.Search.Item(searchRequest);
+            StatusHelper.Info($"Searching for song: {title} by {string.Join(", ", artists)}...");
 
-                if (searchResponse.Tracks.Items == null || !searchResponse.Tracks.Items.Any())
-                    return new SpotifyErrors.SongNotFound(id, title, artists, "No tracks found matching criteria");
-
-                // Convert to our domain model
-                var spotifyTrack = searchResponse.Tracks.Items.First();
-                return ToSpotifyTrack(spotifyTrack);
-            }
-            catch (Exception ex)
+            string itemName = $"{title} by {string.Join(", ", artists)}";
+           
+            return await WithBackoff(async () =>
             {
-                return HandleApiException<SpotifyTrack>(ex, "search");
-            }
+                try
+                {
+                    var query = $"track:{title} artist:{string.Join(" ", artists)}";
+                    var searchRequest = new SearchRequest(SearchRequest.Types.Track, query);
+                    var searchResponse = await SpotifyClient.Search.Item(searchRequest);
+
+                    if (searchResponse.Tracks.Items == null || !searchResponse.Tracks.Items.Any())
+                        return new SpotifyErrors.SongNotFound(id, title, artists, "No tracks found matching criteria");
+
+                    // Convert to our domain model
+                    var spotifyTrack = searchResponse.Tracks.Items.First();
+                    return ToSpotifyTrack(spotifyTrack);
+                }
+                catch (Exception ex)
+                {
+                    return HandleApiException<SpotifyTrack>(ex, "search");
+                }
+            }, "song search", itemName);
         }
 
         /// <summary>
-        /// Searches for an artist on Spotify
+        /// Searches for an artist on Spotify with backoff retry for rate limits
         /// </summary>
         public async Task<Either<SpotifyErrors.SpotifyError, SpotifyArtist>> SearchArtistAsync(string artistName)
         {
@@ -163,27 +228,33 @@ namespace MusicTools.Logic
             if (tokenCheck.IsLeft)
                 return tokenCheck.LeftToList().First();
 
-            try
+            StatusHelper.Info($"Searching for artist: {artistName}...");
+                      
+            // Use the backoff system with the captured operation
+            return await WithBackoff(async () =>
             {
-                var query = $"artist:{artistName}";
-                var searchRequest = new SearchRequest(SearchRequest.Types.Artist, query);
-                var searchResponse = await SpotifyClient.Search.Item(searchRequest);
+                try
+                {
+                    var query = $"artist:{artistName}";
+                    var searchRequest = new SearchRequest(SearchRequest.Types.Artist, query);
+                    var searchResponse = await SpotifyClient.Search.Item(searchRequest);
 
-                if (searchResponse.Artists.Items == null || !searchResponse.Artists.Items.Any())
-                    return new SpotifyErrors.ArtistNotFound(artistName, "No artists found matching criteria");
+                    if (searchResponse.Artists.Items == null || !searchResponse.Artists.Items.Any())
+                        return new SpotifyErrors.ArtistNotFound(artistName, "No artists found matching criteria");
 
-                // Convert to our domain model
-                var spotifyArtist = searchResponse.Artists.Items.First();
-                return ToSpotifyArtist(spotifyArtist);
-            }
-            catch (Exception ex)
-            {
-                return HandleApiException<SpotifyArtist>(ex, "search");
-            }
+                    // Convert to our domain model
+                    var spotifyArtist = searchResponse.Artists.Items.First();
+                    return ToSpotifyArtist(spotifyArtist);
+                }
+                catch (Exception ex)
+                {
+                    return HandleApiException<SpotifyArtist>(ex, "search");
+                }
+            }, "artist search", artistName);
         }
 
         /// <summary>
-        /// Likes multiple songs on Spotify, processing in batches and handling errors
+        /// Likes multiple songs on Spotify, processing in batches and handling errors with backoff
         /// </summary>
         public async Task<(SpotifyErrors.SpotifyError[] Errors, SpotifySongId[] LikedSongs)> LikeSongsAsync(SpotifySongId[] spotifyTrackIds)
         {
@@ -196,41 +267,60 @@ namespace MusicTools.Logic
                 return (new SpotifyErrors.SpotifyError[0], new SpotifySongId[0]); // Nothing to do
 
             var errors = new List<SpotifyErrors.SpotifyError>();
-            void HandleException(Exception ex) =>
-                HandleApiException<Unit>(ex, "like_tracks").Match(
+
+            try
+            {
+                // Handle Spotify API limit of 50 IDs per request
+                int batchCount = 1;
+                int totalBatches = (int)Math.Ceiling((double)spotifyTrackIds.Length / MAX_BATCH_SIZE);
+
+                foreach (var batch in spotifyTrackIds.ToBatchArray(MAX_BATCH_SIZE))
+                {
+                    StatusHelper.Info($"Liking songs batch {batchCount}/{totalBatches} ({batch.Length} songs)...");
+
+                    var result = await WithBackoff(async () =>
+                    {
+                        try
+                        {
+                            await SpotifyClient.Library.SaveTracks(new LibrarySaveTracksRequest(batch.Select(v => v.Value).ToArray()));
+                            return true;
+                        }
+                        catch (Exception ex)
+                        {
+                            return HandleApiException<bool>(ex, "like_songs_batch");
+                        }
+                    }, "like songs", $"batch {batchCount}/{totalBatches}");
+
+                    result.Match(
+                        Right: success =>
+                        {
+                            likedSongs.AddRange(batch);
+                        },
+                        Left: error =>
+                        {
+                            errors.Add(error);
+                        });
+
+                    batchCount++;
+                }
+            }
+            catch (Exception ex)
+            {
+                var error = HandleApiException<Unit>(ex, "like_songs");
+                error.Match(
                     Left: err =>
                     {
                         errors.Add(err);
                         return unit;
                     },
                     Right: _ => unit);
-
-            try
-            {
-                // Handle Spotify API limit of 50 IDs per request
-                foreach (var batch in spotifyTrackIds.ToBatchArray(MAX_BATCH_SIZE))
-                {
-                    try
-                    {
-                        await SpotifyClient.Library.SaveTracks(new LibrarySaveTracksRequest(batch.Select(v => v.Value).ToArray()));
-                        likedSongs.AddRange(batch);
-                    }
-                    catch (Exception ex)
-                    {
-                        HandleException(ex);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex);
             }
 
             return (errors.ToArray(), likedSongs.ToArray());
         }
 
         /// <summary>
-        /// Follows multiple artists on Spotify, processing in batches and handling errors
+        /// Follows multiple artists on Spotify, processing in batches and handling errors with backoff
         /// </summary>
         public async Task<(SpotifyErrors.SpotifyError[] Errors, SpotifyArtistId[] FollowedArtists)> FollowArtistsAsync(SpotifyArtistId[] spotifyArtistIds)
         {
@@ -243,34 +333,53 @@ namespace MusicTools.Logic
                 return (new SpotifyErrors.SpotifyError[0], new SpotifyArtistId[0]); // Nothing to do
 
             var errors = new List<SpotifyErrors.SpotifyError>();
-            void HandleException(Exception ex) =>
-                HandleApiException<Unit>(ex, "follow_artists").Match(
+
+            try
+            {
+                // Handle Spotify API limit of 50 IDs per request
+                int batchCount = 1;
+                int totalBatches = (int)Math.Ceiling((double)spotifyArtistIds.Length / MAX_BATCH_SIZE);
+
+                foreach (var batch in spotifyArtistIds.ToBatchArray(MAX_BATCH_SIZE))
+                {
+                    StatusHelper.Info($"Following artists batch {batchCount}/{totalBatches} ({batch.Length} artists)...");
+
+                    var result = await WithBackoff(async () =>
+                    {
+                        try
+                        {
+                            await SpotifyClient.Follow.Follow(new FollowRequest(FollowRequest.Type.Artist, batch.Select(v => v.Value).ToArray()));
+                            return true;
+                        }
+                        catch (Exception ex)
+                        {
+                            return HandleApiException<bool>(ex, "follow_artists_batch");
+                        }
+                    }, "follow artists", $"batch {batchCount}/{totalBatches}");
+
+                    result.Match(
+                        Right: success =>
+                        {
+                            followedArtists.AddRange(batch);
+                        },
+                        Left: error =>
+                        {
+                            errors.Add(error);
+                        });
+
+                    batchCount++;
+                }
+            }
+            catch (Exception ex)
+            {
+                var error = HandleApiException<Unit>(ex, "follow_artists");
+                error.Match(
                     Left: err =>
                     {
                         errors.Add(err);
                         return unit;
                     },
                     Right: _ => unit);
-
-            try
-            {
-                // Handle Spotify API limit of 50 IDs per request
-                foreach (var batch in spotifyArtistIds.ToBatchArray(MAX_BATCH_SIZE))
-                {
-                    try
-                    {
-                        await SpotifyClient.Follow.Follow(new FollowRequest(FollowRequest.Type.Artist, batch.Select(v => v.Value).ToArray()));
-                        followedArtists.AddRange(batch);
-                    }
-                    catch (Exception ex)
-                    {
-                        HandleException(ex);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex);
             }
 
             return (errors.ToArray(), followedArtists.ToArray());

@@ -8,6 +8,7 @@ using static MusicTools.Core.Types;
 using MusicTools.Logic;
 using LanguageExt;
 using static LanguageExt.Prelude;
+using System.ComponentModel.Design;
 
 namespace MusicTools.NativeModules
 {
@@ -37,11 +38,12 @@ namespace MusicTools.NativeModules
         /// <summary>
         /// Adds a new status message to the queue
         /// </summary>
-        public static void AddStatus(string message, StatusLevel level = StatusLevel.Info)
+        public static Unit AddStatus(string message, StatusLevel level = StatusLevel.Info)
         {
             var statusMessage = new StatusMessage(message, level, Guid.NewGuid(), DateTime.UtcNow);
             statusQueue.Enqueue(statusMessage);
             lastMessage = statusMessage;
+            return unit;
         }
 
         /// <summary>
