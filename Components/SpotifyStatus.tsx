@@ -15,7 +15,6 @@ const SpotifyStatusComponent: React.FC<SpotifyStatusProps> = ({ item, showStatus
 
 
     const getSongStatusText = (status: number) => {
-        console.log(status); // debug why we are not finding Liked
         switch (status) {
             case SpotifyStatus.NotSearched:
                 return 'Song not searched';

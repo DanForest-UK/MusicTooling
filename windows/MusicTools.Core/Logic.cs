@@ -1,5 +1,6 @@
 ﻿using LanguageExt;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -36,14 +37,14 @@ namespace MusicTools.Core
             };
         }
 
-        // todo move logic to core
-        public static AppModel UpdateSongsStatus(this AppModel current, int[] songId, SpotifyStatus status)
+
+        public static AppModel UpdateSongsStatus(this AppModel current, (int SongId, SpotifyStatus Status)[] updates)
         {
             var songs = current.Songs;
-            songId.Iter(songId =>
+            updates.Iter(update =>
             {
-                if (songs.ContainsKey(songId))
-                    songs[songId] = songs[songId] with { SongStatus = status };
+                if (songs.ContainsKey(update.SongId))
+                    songs[update.SongId] = songs[update.SongId] with { SongStatus = update.Status };
             });
             return current with { Songs = songs };
         }

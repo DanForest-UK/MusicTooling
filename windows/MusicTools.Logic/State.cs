@@ -59,8 +59,8 @@ namespace MusicTools.Logic
         public static void SetMinimumRating(int rating) =>
             stateAtom.Swap(state => state with { MinimumRating = rating });
 
-        public static void UpdateSongStatus(int[] songIds, SpotifyStatus status) =>
-            stateAtom.Swap(state => state.UpdateSongsStatus(songIds, status));
+        public static void UpdateSongStatus((int SongId, SpotifyStatus Status)[] updates) =>
+            stateAtom.Swap(state => state.UpdateSongsStatus(updates));
 
         public static void UpdateArtistStatus(string[] artists, SpotifyStatus status) =>
             stateAtom.Swap(state => state.UpdateArtistsStatus(artists, status));

@@ -14,8 +14,8 @@ namespace MusicTools.Logic
         /// <summary>
         /// Sends an info status message
         /// </summary>
-        public static Unit Info(string message) => unit;
-        //    SendStatus(message, StatusLevel.Info);
+        public static Unit Info(string message) =>
+            SendStatus(message, StatusLevel.Info);
 
         /// <summary>
         /// Sends a success status message

@@ -352,9 +352,11 @@ namespace MusicTools.NativeModules
                 return Task.Run(async () => {
                     try
                     {
-                        var errors = new ConcurrentBag<SpotifyError>();
+                        var errors = new List<SpotifyError>();
 
-                        var foundSongs = new ConcurrentDictionary<SpotifySongId, int>(); // lookup from spotify song id to our song id
+                        var foundSongs = new Dictionary<SpotifySongId, int>(); // lookup from spotify song id to our song id
+                       // Update state in batches to avoid unecessary re-renders of the UI
+                        var songStatusUpdates = new List<(int SongId, SpotifyStatus SpotifyStatus)>();
 
                         int processedCount = 0;
                         int totalCount = filteredSongs.Count();
@@ -374,19 +376,25 @@ namespace MusicTools.NativeModules
                                Right: id =>
                                {
                                    foundSongs.TryAdd(id, song.Id);
-                                   ObservableState.Current.UpdateSongsStatus(new int[] { song.Id }, SpotifyStatus.Found);
+                                   songStatusUpdates.Add((song.Id, SpotifyStatus.Found));
                                },
                               Left: error =>
                               {
                                   if (error is SongNotFound songNotFound)
                                   {
-                                      ObservableState.UpdateSongStatus(new int[] { song.Id }, SpotifyStatus.NotFound);
+                                      songStatusUpdates.Add((song.Id, SpotifyStatus.NotFound));
                                   }
                                   else
                                   {
                                       errors.Add(error);
                                   }
                               });
+
+                            if (songStatusUpdates.Count >= 10 || processedCount == totalCount)
+                            {
+                                ObservableState.UpdateSongStatus(songStatusUpdates.ToArray());
+                                songStatusUpdates.Clear();
+                            }
                             await Task.Delay(delayTime); // Prevent too many requests from spotify
                         }                      
 
@@ -407,7 +415,7 @@ namespace MusicTools.NativeModules
                                 Runtime.Warning("Some song mappings were lost during processing");
                             }
 
-                            ObservableState.UpdateSongStatus(likedSongIds.ToArray(), SpotifyStatus.Liked);
+                            ObservableState.UpdateSongStatus(likedSongIds.Select(id => (id, SpotifyStatus.Liked)).ToArray());
 
                             if (likedSongIds.Count() > 0)
                             {

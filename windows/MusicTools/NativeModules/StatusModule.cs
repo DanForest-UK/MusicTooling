@@ -8,7 +8,6 @@ using static MusicTools.Core.Types;
 using MusicTools.Logic;
 using LanguageExt;
 using static LanguageExt.Prelude;
-using System.ComponentModel.Design;
 
 namespace MusicTools.NativeModules
 {
@@ -27,6 +26,11 @@ namespace MusicTools.NativeModules
         // Last message sent, for new subscribers
         static StatusMessage lastMessage = StatusMessage.Create("", StatusLevel.Info);
 
+        // Message throttling parameters
+        private const int THROTTLE_INTERVAL_MS = 500; // Minimum time between messages
+        private static DateTime lastMessageTime = DateTime.MinValue;
+        private static readonly object throttleLock = new object();
+
         // ReactContext instance
         ReactContext reactContext;
 
@@ -34,16 +38,47 @@ namespace MusicTools.NativeModules
         [ReactInitializer]
         public void Initialize(ReactContext reactContext) =>
             this.reactContext = reactContext;
-      
+
         /// <summary>
-        /// Adds a new status message to the queue
+        /// Adds a new status message to the queue with throttling
         /// </summary>
-        public static Unit AddStatus(string message, StatusLevel level = StatusLevel.Info)
+        public static Unit AddStatus(string message, StatusLevel level)
         {
+            // Create status message with unique ID and timestamp
             var statusMessage = new StatusMessage(message, level, Guid.NewGuid(), DateTime.UtcNow);
-            statusQueue.Enqueue(statusMessage);
-            lastMessage = statusMessage;
-            return unit;
+
+            // Apply throttling for similar messages to prevent flooding UI
+            bool shouldQueue = true;
+
+            lock (throttleLock)
+            {
+                // Check if we should throttle based on time and content
+                var now = DateTime.UtcNow;
+                if ((now - lastMessageTime).TotalMilliseconds < THROTTLE_INTERVAL_MS)
+                {
+                    // If recent message is similar to this one and is the same level, skip it
+                    if (lastMessage.Text.StartsWith(message.Substring(0, Math.Min(10, message.Length))) &&
+                        lastMessage.Level == level)
+                    {
+                        // Skip this message since it's too similar to a recent one
+                        shouldQueue = false;
+                    }
+                    else if (message.Contains("Searching for") && lastMessage.Text.Contains("Searching for"))
+                    {
+                        // Special case: throttle repeated searching messages
+                        shouldQueue = false;
+                    }
+                }
+
+                if (shouldQueue)
+                {
+                    lastMessageTime = now;
+                    statusQueue.Enqueue(statusMessage);
+                    lastMessage = statusMessage;
+                }
+
+                return unit;
+            }
         }
 
         /// <summary>
@@ -118,6 +153,7 @@ namespace MusicTools.NativeModules
                         EmitStatusUpdate(message);
                     }
 
+                    // Throttle the processing of the queue
                     await Task.Delay(100, cancellationToken);
                 }
             }, cancellationToken);
