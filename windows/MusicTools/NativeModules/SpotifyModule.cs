@@ -457,8 +457,6 @@ namespace MusicTools.NativeModules
                     phase = "initializing",
                     totalSongs = filteredSongs.Count(),
                     processed = 0,
-                    found = 0,
-                    liked = 0,
                     message = $"Preparing to process {filteredSongs.Count()} songs"
                 });
 
@@ -475,7 +473,6 @@ namespace MusicTools.NativeModules
                     phase = "searching",
                     totalSongs = totalCount,
                     processed = processedCount,
-                    found = 0,
                     message = "Searching for songs on Spotify..."
                 });
 
@@ -531,7 +528,6 @@ namespace MusicTools.NativeModules
                             phase = "searching",
                             totalSongs = totalCount,
                             processed = processedCount,
-                            found = foundSongs.Count,
                             message = $"Searching for songs on Spotify ({processedCount}/{totalCount})..."
                         });
 
@@ -575,7 +571,6 @@ namespace MusicTools.NativeModules
                     phase = "searchComplete",
                     totalSongs = totalCount,
                     processed = processedCount,
-                    found = foundSongs.Count,
                     message = $"Found {foundSongs.Count} of {filteredSongs.Count()} songs"
                 });
 
@@ -588,7 +583,6 @@ namespace MusicTools.NativeModules
                         phase = "liking",
                         totalSongs = totalCount,
                         processed = processedCount,
-                        found = foundSongs.Count,
                         message = $"Liking {foundSongs.Count} songs on Spotify..."
                     });
 
@@ -623,10 +617,6 @@ namespace MusicTools.NativeModules
                             {
                                 success = true,
                                 partialSuccess = likedSongIds.Count() < foundSongs.Count,
-                                totalSongs = totalCount,
-                                processed = processedCount,
-                                found = foundSongs.Count,
-                                liked = likedSongIds.Count(),
                                 message = $"Successfully liked {likedSongIds.Count()} songs on Spotify",
                                 errors = errors.Any() ? errors.ToArray() : null
                             });
@@ -645,10 +635,6 @@ namespace MusicTools.NativeModules
                             EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
                             {
                                 success = false,
-                                totalSongs = totalCount,
-                                processed = processedCount,
-                                found = foundSongs.Count,
-                                liked = 0,
                                 message = "Failed to like any songs on Spotify",
                                 errors = errors.ToArray()
                             });
@@ -670,9 +656,6 @@ namespace MusicTools.NativeModules
                             EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
                             {
                                 success = false,
-                                totalSongs = totalCount,
-                                processed = processedCount,
-                                found = 0,
                                 message = "Failed to find any songs on Spotify",
                                 errors = errors.ToArray()
                             });
@@ -691,9 +674,6 @@ namespace MusicTools.NativeModules
                             EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
                             {
                                 success = false,
-                                totalSongs = totalCount,
-                                processed = processedCount,
-                                found = 0,
                                 message = "No songs found on Spotify"
                             });
                         }

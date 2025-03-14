@@ -336,41 +336,32 @@ export const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
     },
-    // Progress display styles
+    // Simplified progress display styles with compact cancel button
     spotifyProgressContainer: {
         marginVertical: 10,
         backgroundColor: '#3E3E3E',
         padding: 12,
         borderRadius: 6,
     },
+    spotifyProgressHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+    },
     spotifyProgressTitle: {
         color: 'white',
         fontWeight: 'bold',
-        marginBottom: 8,
         fontSize: 14,
+        flex: 1,
     },
-    spotifyProgressBarContainer: {
-        marginVertical: 8,
-    },
-    spotifyProgressBar: {
-        width: '100%',
-        height: 8,
-    },
-    spotifyProgressStats: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 5,
-    },
-    spotifyProgressStatText: {
-        color: '#CCC',
-        fontSize: 12,
-    },
-    spotifyCancelButton: {
-        marginTop: 12,
+    // Updated compact cancel button style
+    spotifyCancelButtonCompact: {
         backgroundColor: '#B71C1C',
-        padding: 8,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
         borderRadius: 4,
-        alignItems: 'center',
+        alignSelf: 'flex-start',
+        marginLeft: 10,
     },
     spotifyCancelButtonText: {
         color: 'white',

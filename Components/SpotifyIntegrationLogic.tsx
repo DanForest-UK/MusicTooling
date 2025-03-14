@@ -15,13 +15,11 @@ const SPOTIFY_OPERATION_PROGRESS = "spotifyOperationProgress";
 const SPOTIFY_OPERATION_COMPLETE = "spotifyOperationComplete";
 const SPOTIFY_OPERATION_ERROR = "spotifyOperationError";
 
-// Progress state interface
+// Simplified Progress state interface
 interface ProgressState {
     phase: 'idle' | 'initializing' | 'searching' | 'searchComplete' | 'liking' | 'complete';
     totalSongs: number;
     processed: number;
-    found: number;
-    liked: number;
     message: string;
     isComplete: boolean;
     isError: boolean;
@@ -32,8 +30,6 @@ const defaultProgressState: ProgressState = {
     phase: 'idle',
     totalSongs: 0,
     processed: 0,
-    found: 0,
-    liked: 0,
     message: '',
     isComplete: false,
     isError: false,
@@ -238,8 +234,6 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
                         phase: data.phase || prev.phase,
                         totalSongs: data.totalSongs || prev.totalSongs,
                         processed: data.processed || prev.processed,
-                        found: data.found || prev.found,
-                        liked: data.liked || prev.liked,
                         message: data.message || prev.message,
                         isComplete: false,
                         isError: false,
@@ -267,7 +261,6 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
                     setProgress(prev => ({
                         ...prev,
                         phase: 'complete',
-                        liked: data.liked || prev.liked,
                         message: data.message || 'Operation complete',
                         isComplete: true,
                         isError: false,
@@ -298,7 +291,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
                     } else if (data.success) {
                         if (data.partialSuccess) {
                             Alert.alert('Partial Success',
-                                `Liked ${data.liked} out of ${data.found} found songs. Some operations had errors.`);
+                                `Operation completed with some errors.`);
                         } else {
                             Alert.alert('Success', data.message || 'Operation completed successfully');
                         }
@@ -476,7 +469,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         }
     };
 
-    // New version of handleLikeSongs that uses event-based approach
+    // Updated version of handleLikeSongs for the simplified UI
     const handleLikeSongs = () => {
         if (!isAuthenticated) {
             Alert.alert('Error', 'Please authenticate with Spotify first');
@@ -515,8 +508,6 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
                                 phase: data.phase || prev.phase,
                                 totalSongs: data.totalSongs || prev.totalSongs,
                                 processed: data.processed || prev.processed,
-                                found: data.found || prev.found,
-                                liked: data.liked || prev.liked,
                                 message: data.message || prev.message,
                                 isComplete: false,
                                 isError: false,
@@ -593,7 +584,6 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         }
 
         // Use the last valid state if current state is invalid
-        // Check specifically for object validity rather than just truthiness
         const stateToUse = appState && typeof appState.songs === 'object' && Array.isArray(appState.chosenSongs) ?
             appState : lastValidAppState.current;
 
@@ -618,18 +608,15 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
                 onSpotifyAction();
             }
 
-            // Check for either PascalCase or camelCase properties
             if (response.success) {
                 console.log('All artists followed successfully');
                 Alert.alert('Success', 'Artists have been followed on Spotify!');
             } else if (response.partialSuccess) {
-                // Get errors array from either PascalCase or camelCase
                 const errorsArray = response.errors || [];
                 console.log(`Partial success: ${errorsArray.length} errors`);
                 setErrors(errorsArray);
                 Alert.alert('Partial Success', 'Some artists were followed, but there were errors. See details below.');
             } else {
-                // Get errors array from either PascalCase or camelCase
                 const errorsArray = response.errors || [];
                 console.error('Failed to follow artists:', errorsArray);
                 setErrors(errorsArray);
@@ -647,12 +634,12 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         isAuthenticated,
         isAuthenticating,
         isProcessing,
-        progress,  // New progress state
+        progress,
         errors,
-        operationRunning, // Flag indicating if an operation is running
+        operationRunning,
         handleAuthenticate,
         handleLikeSongs,
         handleFollowArtists,
-        cancelOperation  // New method to cancel operations
+        cancelOperation
     };
 };

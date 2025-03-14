@@ -1,15 +1,13 @@
 import React from 'react';
-import { View, Text, Button, TouchableOpacity, ActivityIndicator, ScrollView, ProgressBarAndroid } from 'react-native';
+import { View, Text, Button, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { styles } from '../styles';
 import { SpotifyError } from '../types';
 
-// Progress state interface matching the hook
+// Simplified progress state interface
 interface ProgressState {
     phase: 'idle' | 'initializing' | 'searching' | 'searchComplete' | 'liking' | 'complete';
     totalSongs: number;
     processed: number;
-    found: number;
-    liked: number;
     message: string;
     isComplete: boolean;
     isError: boolean;
@@ -20,8 +18,6 @@ const defaultProgressState: ProgressState = {
     phase: 'idle',
     totalSongs: 0,
     processed: 0,
-    found: 0,
-    liked: 0,
     message: '',
     isComplete: false,
     isError: false,
@@ -83,64 +79,26 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
         );
     };
 
-    // Component to render progress information
+    // Simplified component to render progress information
     const renderProgress = () => {
         if (progress.phase === 'idle') return null;
 
-        // Calculate progress percentage for the progress bar
-        let progressPercentage = 0;
-        if (progress.totalSongs > 0) {
-            if (progress.phase === 'searching' || progress.phase === 'searchComplete') {
-                progressPercentage = progress.processed / progress.totalSongs;
-            } else if (progress.phase === 'liking') {
-                progressPercentage = 0.5 + (progress.liked / (progress.found || 1) * 0.5); // 50-100% for liking phase
-            } else if (progress.phase === 'complete') {
-                progressPercentage = 1; // 100% complete
-            }
-        }
-
         return (
             <View style={styles.spotifyProgressContainer}>
-                <Text style={styles.spotifyProgressTitle}>
-                    {progress.message || 'Processing songs...'}
-                </Text>
+                <View style={styles.spotifyProgressHeader}>
+                    <Text style={styles.spotifyProgressTitle}>
+                        {progress.message || 'Processing songs...'}
+                    </Text>
 
-                <View style={styles.spotifyProgressBarContainer}>
-                    <ProgressBarAndroid
-                        styleAttr="Horizontal"
-                        indeterminate={progress.phase === 'initializing'}
-                        progress={progressPercentage}
-                        color="#1DB954"
-                        style={styles.spotifyProgressBar}
-                    />
-                </View>
-
-                <View style={styles.spotifyProgressStats}>
-                    {progress.phase !== 'idle' && progress.phase !== 'initializing' && (
-                        <>
-                            <Text style={styles.spotifyProgressStatText}>
-                                Processed: {progress.processed}/{progress.totalSongs}
-                            </Text>
-                            <Text style={styles.spotifyProgressStatText}>
-                                Found: {progress.found}
-                            </Text>
-                            {progress.phase === 'liking' || progress.phase === 'complete' ? (
-                                <Text style={styles.spotifyProgressStatText}>
-                                    Liked: {progress.liked}
-                                </Text>
-                            ) : null}
-                        </>
+                    {operationRunning && (
+                        <TouchableOpacity
+                            style={styles.spotifyCancelButtonCompact}
+                            onPress={onCancelOperation}
+                        >
+                            <Text style={styles.spotifyCancelButtonText}>Cancel Operation</Text>
+                        </TouchableOpacity>
                     )}
                 </View>
-
-                {operationRunning && (
-                    <TouchableOpacity
-                        style={styles.spotifyCancelButton}
-                        onPress={onCancelOperation}
-                    >
-                        <Text style={styles.spotifyCancelButtonText}>Cancel Operation</Text>
-                    </TouchableOpacity>
-                )}
             </View>
         );
     };
