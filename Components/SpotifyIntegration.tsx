@@ -24,7 +24,6 @@ const SpotifyIntegration: React.FC<SpotifyIntegrationProps> = ({ appState, onClo
             progress={progress}
             operationRunning={operationRunning}
             errors={errors}
-            selectedSongsCount={appState.chosenSongs.length}
             onAuthenticate={handleAuthenticate}
             onLikeSongs={handleLikeSongs}
             onFollowArtists={handleFollowArtists}

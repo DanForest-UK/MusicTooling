@@ -31,7 +31,6 @@ interface SpotifyIntegrationUIProps {
     progress: ProgressState;
     operationRunning: boolean;
     errors: SpotifyError[];
-    selectedSongsCount: number;
     onAuthenticate: () => void;
     onLikeSongs: () => void;
     onFollowArtists: () => void;
@@ -46,7 +45,6 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
     progress = defaultProgressState,
     operationRunning,
     errors,
-    selectedSongsCount,
     onAuthenticate,
     onLikeSongs,
     onFollowArtists,
@@ -67,7 +65,7 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
         return (
             <View style={styles.spotifyErrorContainer}>
                 <Text style={styles.spotifyErrorTitle}>Error Details:</Text>
-                <ScrollView style={{ maxHeight: 120 }}>
+                <ScrollView style={styles.spotifyErrorScroll}>
                     {errors.map((error, index) => (
                         <View key={index} style={styles.spotifyErrorItem}>
                             <Text style={styles.spotifyErrorCode}>{error.ErrorCode}</Text>
@@ -106,9 +104,9 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
     return (
         <View>
             {isAuthenticating ? (
-                <View style={{ alignItems: 'center', marginVertical: 15 }}>
+                <View style={styles.authLoadingContainer}>
                     <ActivityIndicator size="large" color="#1DB954" />
-                    <Text style={{ color: 'white', marginTop: 10 }}>Authenticating with Spotify...</Text>
+                    <Text style={styles.authLoadingText}>Authenticating with Spotify...</Text>
                 </View>
             ) : (
                 !isAuthenticated && (
@@ -126,12 +124,6 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
                         Connected to Spotify
                     </Text>
 
-                    <View style={{ backgroundColor: '#3E3E3E', padding: 10, borderRadius: 4, marginBottom: 10 }}>
-                        <Text style={{ color: 'white', fontSize: 12 }}>
-                            Selected: {selectedSongsCount} songs
-                        </Text>
-                    </View>
-
                     {/* Render progress component */}
                     {renderProgress()}
 
@@ -139,7 +131,7 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
                     {!operationRunning && (
                         <View style={styles.spotifyButtonRow}>
                             <TouchableOpacity
-                                style={[styles.spotifyButton, isProcessing && { opacity: 0.6 }]}
+                                style={[styles.spotifyButton, isProcessing && styles.spotifyButtonDisabled]}
                                 onPress={onLikeSongs}
                                 disabled={isProcessing || operationRunning}
                             >
@@ -147,7 +139,7 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                style={[styles.spotifyButton, isProcessing && { opacity: 0.6 }]}
+                                style={[styles.spotifyButton, isProcessing && styles.spotifyButtonDisabled]}
                                 onPress={onFollowArtists}
                                 disabled={isProcessing || operationRunning}
                             >
@@ -157,9 +149,9 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
                     )}
 
                     {isProcessing && !operationRunning && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10 }}>
+                        <View style={styles.processingContainer}>
                             <ActivityIndicator size="small" color="#1DB954" />
-                            <Text style={{ color: 'white', marginLeft: 10 }}>Processing...</Text>
+                            <Text style={styles.processingText}>Processing...</Text>
                         </View>
                     )}
                 </View>

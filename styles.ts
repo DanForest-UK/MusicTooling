@@ -217,6 +217,9 @@ export const styles = StyleSheet.create({
         alignItems: 'center',
         marginHorizontal: 5,
     },
+    spotifyButtonDisabled: {
+        opacity: 0.6,
+    },
     spotifyButtonText: {
         color: 'white',
         fontWeight: 'bold',
@@ -226,12 +229,16 @@ export const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 10,
     },
+    // Error display styles
     spotifyErrorContainer: {
         marginTop: 15,
         backgroundColor: '#3E3E3E',
         padding: 10,
         borderRadius: 6,
         maxHeight: 150,
+    },
+    spotifyErrorScroll: {
+        maxHeight: 120,
     },
     spotifyErrorTitle: {
         color: '#FF6B6B',
@@ -335,6 +342,35 @@ export const styles = StyleSheet.create({
     clearIcon: {
         color: 'white',
         fontSize: 16,
+    },
+    // Authentication and processing styles
+    authLoadingContainer: {
+        alignItems: 'center',
+        marginVertical: 15,
+    },
+    authLoadingText: {
+        color: 'white',
+        marginTop: 10,
+    },
+    processingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 10,
+    },
+    processingText: {
+        color: 'white',
+        marginLeft: 10,
+    },
+    selectedSongsContainer: {
+        backgroundColor: '#3E3E3E',
+        padding: 10,
+        borderRadius: 4,
+        marginBottom: 10,
+    },
+    selectedSongsText: {
+        color: 'white',
+        fontSize: 12,
     },
     // Simplified progress display styles with compact cancel button
     spotifyProgressContainer: {
