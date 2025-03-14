@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, Linking, EmitterSubscription } from 'react-native';
+import { Alert, Linking, EmitterSubscription, DeviceEventEmitter } from 'react-native';
 import { NativeModules } from 'react-native';
 import { AppModel, SpotifyStatus } from '../types';
 import {
@@ -9,6 +9,36 @@ import {
 } from '../types';
 
 const { SpotifyModule } = NativeModules;
+
+// New event constants to match C# side
+const SPOTIFY_OPERATION_PROGRESS = "spotifyOperationProgress";
+const SPOTIFY_OPERATION_COMPLETE = "spotifyOperationComplete";
+const SPOTIFY_OPERATION_ERROR = "spotifyOperationError";
+
+// Progress state interface
+interface ProgressState {
+    phase: 'idle' | 'initializing' | 'searching' | 'searchComplete' | 'liking' | 'complete';
+    totalSongs: number;
+    processed: number;
+    found: number;
+    liked: number;
+    message: string;
+    isComplete: boolean;
+    isError: boolean;
+    isCancelled: boolean;
+}
+
+const defaultProgressState: ProgressState = {
+    phase: 'idle',
+    totalSongs: 0,
+    processed: 0,
+    found: 0,
+    liked: 0,
+    message: '',
+    isComplete: false,
+    isError: false,
+    isCancelled: false
+};
 
 export interface SpotifyIntegrationProps {
     appState: AppModel;
@@ -20,7 +50,13 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [progress, setProgress] = useState<ProgressState>(defaultProgressState);
     const [errors, setErrors] = useState<SpotifyError[]>([]);
+    const [operationRunning, setOperationRunning] = useState(false);
+
+    // Ref to track if component is mounted
+    const isMountedRef = useRef(true);
+
     // Keep a local copy of the last valid state
     const lastValidAppState = useRef<AppModel | null>(null);
 
@@ -112,6 +148,8 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
     const codeExchangeInProgress = useRef(false);
     // Add a ref to store the last used code to prevent duplicate usage
     const lastUsedCode = useRef<string | null>(null);
+    // Store event subscriptions
+    const eventSubscriptions = useRef<EmitterSubscription[]>([]);
 
     // Handle authentication error
     const handleAuthError = useCallback((error: string) => {
@@ -180,6 +218,152 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
             console.log('Error checking stored auth URI:', error);
         }
     }, [handleAuthCallbackUrl]);
+
+    // Set up event listeners for Spotify operations and track component mounting
+    useEffect(() => {
+        // Set mounted ref to true on initialization
+        isMountedRef.current = true;
+
+        // Create listeners for Spotify operation events
+        const progressSubscription = DeviceEventEmitter.addListener(
+            SPOTIFY_OPERATION_PROGRESS,
+            (progressData) => {
+                console.log('Operation progress:', progressData);
+                const data = typeof progressData === 'string' ? JSON.parse(progressData) : progressData;
+
+                // Only update state if component is still mounted
+                if (isMountedRef.current) {
+                    setProgress(prev => ({
+                        ...prev,
+                        phase: data.phase || prev.phase,
+                        totalSongs: data.totalSongs || prev.totalSongs,
+                        processed: data.processed || prev.processed,
+                        found: data.found || prev.found,
+                        liked: data.liked || prev.liked,
+                        message: data.message || prev.message,
+                        isComplete: false,
+                        isError: false,
+                        isCancelled: false
+                    }));
+                }
+            }
+        );
+
+        const completeSubscription = DeviceEventEmitter.addListener(
+            SPOTIFY_OPERATION_COMPLETE,
+            (completeData) => {
+                console.log('Operation complete:', completeData);
+                const data = typeof completeData === 'string' ? JSON.parse(completeData) : completeData;
+
+                // Clean up event subscriptions immediately to prevent further events
+                if (eventSubscriptions.current.length > 0) {
+                    console.log('Cleaning up event subscriptions on completion');
+                    eventSubscriptions.current.forEach(sub => sub.remove());
+                    eventSubscriptions.current = [];
+                }
+
+                // Only update state if component is still mounted
+                if (isMountedRef.current) {
+                    setProgress(prev => ({
+                        ...prev,
+                        phase: 'complete',
+                        liked: data.liked || prev.liked,
+                        message: data.message || 'Operation complete',
+                        isComplete: true,
+                        isError: false,
+                        isCancelled: data.cancelled || false
+                    }));
+
+                    // If there are errors, update the errors state
+                    if (data.errors && Array.isArray(data.errors)) {
+                        setErrors(data.errors);
+                    }
+
+                    // Add a small delay before changing component state
+                    setTimeout(() => {
+                        if (isMountedRef.current) {
+                            setIsProcessing(false);
+                            setOperationRunning(false);
+                        }
+                    }, 100);
+
+                    // Call onSpotifyAction to update parent component
+                    if (onSpotifyAction) {
+                        onSpotifyAction();
+                    }
+
+                    // Show appropriate message based on result
+                    if (data.cancelled) {
+                        Alert.alert('Cancelled', 'Operation was cancelled');
+                    } else if (data.success) {
+                        if (data.partialSuccess) {
+                            Alert.alert('Partial Success',
+                                `Liked ${data.liked} out of ${data.found} found songs. Some operations had errors.`);
+                        } else {
+                            Alert.alert('Success', data.message || 'Operation completed successfully');
+                        }
+                    } else {
+                        Alert.alert('Operation Failed', data.message || 'Operation failed to complete');
+                    }
+                }
+            }
+        );
+
+        const errorSubscription = DeviceEventEmitter.addListener(
+            SPOTIFY_OPERATION_ERROR,
+            (errorData) => {
+                console.log('Operation error:', errorData);
+                const data = typeof errorData === 'string' ? JSON.parse(errorData) : errorData;
+
+                // Clean up event subscriptions immediately
+                if (eventSubscriptions.current.length > 0) {
+                    console.log('Cleaning up event subscriptions on error');
+                    eventSubscriptions.current.forEach(sub => sub.remove());
+                    eventSubscriptions.current = [];
+                }
+
+                // Only update state if component is still mounted
+                if (isMountedRef.current) {
+                    setProgress(prev => ({
+                        ...prev,
+                        phase: 'complete',
+                        message: data.error || 'Operation failed',
+                        isComplete: true,
+                        isError: true,
+                        isCancelled: false
+                    }));
+
+                    // Add a small delay before changing component state
+                    setTimeout(() => {
+                        if (isMountedRef.current) {
+                            setIsProcessing(false);
+                            setOperationRunning(false);
+                        }
+                    }, 100);
+
+                    Alert.alert('Error', data.error || 'An unknown error occurred');
+                }
+            }
+        );
+
+        // Store the subscriptions for cleanup
+        eventSubscriptions.current = [
+            progressSubscription,
+            completeSubscription,
+            errorSubscription
+        ];
+
+        // Cleanup function
+        return () => {
+            console.log('Component unmounting, cleaning up resources');
+            // Mark component as unmounted
+            isMountedRef.current = false;
+
+            // Clean up event subscriptions
+            eventSubscriptions.current.forEach(subscription => subscription.remove());
+            eventSubscriptions.current = [];
+        };
+    }, [onSpotifyAction]);
 
     // Handle URL events (from deep linking)
     useEffect(() => {
@@ -292,14 +476,20 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         }
     };
 
-    const handleLikeSongs = async () => {
+    // New version of handleLikeSongs that uses event-based approach
+    const handleLikeSongs = () => {
         if (!isAuthenticated) {
             Alert.alert('Error', 'Please authenticate with Spotify first');
             return;
         }
 
+        // Don't start a new operation if one is already running
+        if (operationRunning) {
+            Alert.alert('Operation in Progress', 'A Spotify operation is already running.');
+            return;
+        }
+
         // Use the last valid state if current state is invalid
-        // Check specifically for object validity rather than just truthiness
         const stateToUse = appState && typeof appState.songs === 'object' && Array.isArray(appState.chosenSongs) ?
             appState : lastValidAppState.current;
 
@@ -308,44 +498,91 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
             return;
         }
 
-        setIsProcessing(true);
-        setErrors([]);
-
         try {
-            console.log(`Liking ${stateToUse.chosenSongs.length} songs on Spotify`);
+            // Clean up any existing event subscriptions first
+            if (eventSubscriptions.current.length > 0) {
+                console.log('Cleaning up existing subscriptions before starting new operation');
+                eventSubscriptions.current.forEach(sub => sub.remove());
 
-            const result = await SpotifyModule.LikeSongs();
-            console.log('Like songs request completed, parsing response');
-            const response = JSON.parse(result) as SpotifyResponse;
-            console.log('Parsed like songs response:', response);
+                // Re-create the event subscriptions
+                const progressSubscription = DeviceEventEmitter.addListener(
+                    SPOTIFY_OPERATION_PROGRESS,
+                    (progressData) => {
+                        if (isMountedRef.current) {
+                            const data = typeof progressData === 'string' ? JSON.parse(progressData) : progressData;
+                            setProgress(prev => ({
+                                ...prev,
+                                phase: data.phase || prev.phase,
+                                totalSongs: data.totalSongs || prev.totalSongs,
+                                processed: data.processed || prev.processed,
+                                found: data.found || prev.found,
+                                liked: data.liked || prev.liked,
+                                message: data.message || prev.message,
+                                isComplete: false,
+                                isError: false,
+                                isCancelled: false
+                            }));
+                        }
+                    }
+                );
 
-            // Notify parent component to show Spotify status
-            if (onSpotifyAction) {
-                onSpotifyAction();
+                const completeSubscription = DeviceEventEmitter.addListener(
+                    SPOTIFY_OPERATION_COMPLETE,
+                    (completeData) => {
+                        if (isMountedRef.current) {
+                            // Implementation handled in the main useEffect
+                            console.log('Operation complete event received');
+                        }
+                    }
+                );
+
+                const errorSubscription = DeviceEventEmitter.addListener(
+                    SPOTIFY_OPERATION_ERROR,
+                    (errorData) => {
+                        if (isMountedRef.current) {
+                            // Implementation handled in the main useEffect
+                            console.log('Operation error event received');
+                        }
+                    }
+                );
+
+                eventSubscriptions.current = [
+                    progressSubscription,
+                    completeSubscription,
+                    errorSubscription
+                ];
             }
 
-            // Check for either PascalCase or camelCase properties
-            if (response.success) {
-                console.log('All songs liked successfully');
-                Alert.alert('Success', 'Songs have been liked on Spotify!');
-            } else if (response.partialSuccess) {
-                // Get errors array from either PascalCase or camelCase
-                const errorsArray = response.errors || [];
-                console.log(`Partial success: ${errorsArray.length} errors`);
-                setErrors(errorsArray);
-                Alert.alert('Partial Success', 'Some songs were liked, but there were errors. See details below.');
-            } else {
-                // Get errors array from either PascalCase or camelCase
-                const errorsArray = response.errors || [];
-                console.error('Failed to like songs:', errorsArray);
-                setErrors(errorsArray);
-                Alert.alert('Error', 'Failed to like songs on Spotify. See details below.');
-            }
+            // Reset progress state
+            setProgress(defaultProgressState);
+            setErrors([]);
+            setIsProcessing(true);
+            setOperationRunning(true);
+
+            console.log(`Starting like songs operation for ${stateToUse.chosenSongs.length} songs`);
+
+            // Call the method but don't await - will get updates via events
+            SpotifyModule.LikeSongs();
+
         } catch (error) {
-            console.error('Error liking songs:', error);
-            Alert.alert('Error', `An unexpected error occurred: ${error}`);
-        } finally {
-            setIsProcessing(false);
+            console.error('Error starting like songs operation:', error);
+            if (isMountedRef.current) {
+                setIsProcessing(false);
+                setOperationRunning(false);
+                Alert.alert('Error', `Failed to start operation: ${error}`);
+            }
+        }
+    };
+
+    // Cancel the current operation
+    const cancelOperation = () => {
+        if (operationRunning) {
+            try {
+                console.log('Cancelling Spotify operation');
+                SpotifyModule.CancelSpotifyOperation();
+            } catch (error) {
+                console.error('Error cancelling operation:', error);
+            }
         }
     };
 
@@ -410,9 +647,12 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         isAuthenticated,
         isAuthenticating,
         isProcessing,
+        progress,  // New progress state
         errors,
+        operationRunning, // Flag indicating if an operation is running
         handleAuthenticate,
         handleLikeSongs,
         handleFollowArtists,
+        cancelOperation  // New method to cancel operations
     };
 };

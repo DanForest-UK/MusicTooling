@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { useSpotifyIntegration, SpotifyIntegrationProps } from './SpotifyIntegrationLogic';
 import SpotifyIntegrationUI from './SpotifyIntegrationUI';
 
@@ -7,10 +7,13 @@ const SpotifyIntegration: React.FC<SpotifyIntegrationProps> = ({ appState, onClo
         isAuthenticated,
         isAuthenticating,
         isProcessing,
+        progress,
         errors,
+        operationRunning,
         handleAuthenticate,
         handleLikeSongs,
-        handleFollowArtists
+        handleFollowArtists,
+        cancelOperation
     } = useSpotifyIntegration(appState, onSpotifyAction);
 
     return (
@@ -18,11 +21,14 @@ const SpotifyIntegration: React.FC<SpotifyIntegrationProps> = ({ appState, onClo
             isAuthenticated={isAuthenticated}
             isAuthenticating={isAuthenticating}
             isProcessing={isProcessing}
+            progress={progress}
+            operationRunning={operationRunning}
             errors={errors}
             selectedSongsCount={appState.chosenSongs.length}
             onAuthenticate={handleAuthenticate}
             onLikeSongs={handleLikeSongs}
             onFollowArtists={handleFollowArtists}
+            onCancelOperation={cancelOperation}
             onClose={onClose}
         />
     );

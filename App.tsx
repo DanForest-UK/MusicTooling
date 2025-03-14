@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, Button, FlatList, ActivityIndicator, Alert, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { NativeModules } from 'react-native';
@@ -28,6 +28,9 @@ const App = () => {
     const [showSpotifyStatus, setShowSpotifyStatus] = useState(false);
     const [lastValidFilteredSongs, setLastValidFilteredSongs] = useState<SongInfo[]>([]);
 
+    // Track if we've had songs at least once - this prevents the panel from disappearing during operations
+    const hasHadSongsRef = useRef(false);
+
     // App state from C# backend
     const [appState, setAppState] = useState<AppModel>({
         songs: {},
@@ -48,16 +51,20 @@ const App = () => {
             // We update lastValidFilteredSongs even if filtered.length is 0,
             // as long as appState.songs is a valid object
             setLastValidFilteredSongs(filtered);
+
+            // If we ever have songs, mark that we've had them
+            if (filtered.length > 0) {
+                hasHadSongsRef.current = true;
+            }
         }
     }, [appState.songs, appState.minimumRating]);
 
     // Calculate filtered songs in the frontend - convert dictionary to array and filter by rating
     // Now with fallback to lastValidFilteredSongs if appState.songs is undefined
-    const filteredSongs = useMemo(() => {
+    const filteredSongs = React.useMemo(() => {
         // Only fall back if appState.songs is undefined or not an object
         // This ensures we show empty results when the filter genuinely produces no results
         if (!appState.songs || typeof appState.songs !== 'object') {
-            console.log('Using fallback filtered songs due to invalid appState.songs');
             return lastValidFilteredSongs;
         }
 
@@ -136,7 +143,7 @@ const App = () => {
     };
 
     // Determine if we should show Spotify statuses by checking if any songs or artists have been processed
-    const hasProcessedSpotifyItems = useMemo(() => {
+    const hasProcessedSpotifyItems = React.useMemo(() => {
         if (!appState.songs || typeof appState.songs !== 'object') {
             return false;
         }
@@ -152,6 +159,10 @@ const App = () => {
             setShowSpotifyStatus(true);
         }
     }, [hasProcessedSpotifyItems]);
+
+    // Determines whether we should show the Spotify toggle button
+    // Shows if we have songs now OR we've had songs at some point (prevent toggle disappearing)
+    const shouldShowSpotifyToggle = hasScanned && (filteredSongs.length > 0 || hasHadSongsRef.current);
 
     return (
         <StatusProvider>
@@ -216,7 +227,7 @@ const App = () => {
                     />
 
                     {/* Spotify Toggle - Only show after scanning files with results */}
-                    {hasScanned && filteredSongs.length > 0 && (
+                    {shouldShowSpotifyToggle && (
                         <View style={styles.spotifyToggleContainer}>
                             <TouchableOpacity
                                 style={styles.spotifyOptionsButton}
@@ -230,7 +241,7 @@ const App = () => {
                     )}
 
                     {/* Spotify Integration Panel */}
-                    {showSpotify && hasScanned && filteredSongs.length > 0 && (
+                    {showSpotify && hasScanned && hasHadSongsRef.current && (
                         <View style={styles.spotifyContainer}>
                             <View style={styles.spotifyHeader}>
                                 <Text style={styles.spotifyTitle}>Spotify Integration</Text>

@@ -35,6 +35,17 @@ namespace MusicTools.NativeModules
         public const string redirectUrl = "musictools://auth/callback";
         int delayTime = 500; // Delay in API requests to prevent too many requests error
 
+        // React context for emitting events
+        ReactContext reactContext;
+
+        // Constants for event names
+        private const string SPOTIFY_OPERATION_PROGRESS = "spotifyOperationProgress";
+        private const string SPOTIFY_OPERATION_COMPLETE = "spotifyOperationComplete";
+        private const string SPOTIFY_OPERATION_ERROR = "spotifyOperationError";
+
+        // Cancellation token source for cancellable operations
+        private CancellationTokenSource cancelSource;
+
         /// <summary>
         /// Initializes a new instance of the SpotifyModule class
         /// </summary>
@@ -44,6 +55,15 @@ namespace MusicTools.NativeModules
             spotifyApi = Runtime.GetSpotifyAPI(settings.ClientId, settings.ClientSecret, redirectUrl);
             delayTime = settings.ApiWait;
             isInitialised = true;
+        }
+
+        /// <summary>
+        /// Initialize method called by React Native runtime
+        /// </summary>
+        [ReactInitializer]
+        public void Initialize(ReactContext reactContext)
+        {
+            this.reactContext = reactContext;
         }
 
         /// <summary>
@@ -206,6 +226,24 @@ namespace MusicTools.NativeModules
         }
 
         /// <summary>
+        /// Cancels any ongoing Spotify operations
+        /// </summary>
+        [ReactMethod("CancelSpotifyOperation")]
+        public void CancelSpotifyOperation()
+        {
+            try
+            {
+                cancelSource?.Cancel();
+                EmitEvent(SPOTIFY_OPERATION_COMPLETE, new { success = false, cancelled = true });
+                Runtime.Warning("Spotify operation cancelled by user");
+            }
+            catch (Exception ex)
+            {
+                Runtime.Error("Error cancelling Spotify operation", ex);
+            }
+        }
+
+        /// <summary>
         /// Follows artists from chosen songs on Spotify - optimized with batch processing
         /// </summary>
         [ReactMethod("FollowArtists")]
@@ -224,6 +262,9 @@ namespace MusicTools.NativeModules
 
                 Runtime.Info($"Searching for {distinctArtists.Count()} artists on Spotify...");
 
+                // Create a new cancellation token source for this operation
+                var cts = new CancellationTokenSource();
+
                 return Task.Run(async () => {
                     try
                     {
@@ -233,9 +274,16 @@ namespace MusicTools.NativeModules
                         int processedCount = 0;
                         int totalCount = distinctArtists.Count();
 
-                        distinctArtists.ToArray().Iter(async artist =>
+                        foreach (var artist in distinctArtists.ToArray())
                         {
-                            var result = await SearchForArtist(artist);
+                            // Check for cancellation
+                            if (cts.Token.IsCancellationRequested)
+                            {
+                                Runtime.Warning("Artist search operation was cancelled");
+                                break;
+                            }
+
+                            var result = await SearchForArtist(artist, cts.Token);
                             processedCount++;
 
                             // Periodically update status
@@ -261,18 +309,28 @@ namespace MusicTools.NativeModules
                                       errors.Add(error);
                                   }
                               });
-                            await Task.Delay(delayTime); // Prevent too many requests from spotify
-                        });
+
+                            // Add delay with cancellation token
+                            try
+                            {
+                                await Task.Delay(delayTime, cts.Token);
+                            }
+                            catch (TaskCanceledException)
+                            {
+                                Runtime.Warning("Artist search was cancelled during delay");
+                                break;
+                            }
+                        }
 
                         // Periodically update status with progress
                         Runtime.Info($"Found {foundArtists.Count} of {distinctArtists.Count()} artists on Spotify");
 
                         // Second phase: Like all found artists in a single batch operation
-                        if (foundArtists.Any())
+                        if (foundArtists.Any() && !cts.Token.IsCancellationRequested)
                         {
                             Runtime.Info($"Following {foundArtists.Count} artists on Spotify...");
 
-                            var result = await spotifyApi.FollowArtistsAsync(foundArtists.Keys.ToArray()); // sending spotify song ID to api
+                            var result = await spotifyApi.FollowArtistsAsync(foundArtists.Keys.ToArray(), cts.Token); // sending spotify song ID to api
                             result.Errors.Iter(errors.Add);
 
                             // Convert spotify artist id to artist name
@@ -296,7 +354,11 @@ namespace MusicTools.NativeModules
                         }
                         else
                         {
-                            if (errors.Any())
+                            if (cts.Token.IsCancellationRequested)
+                            {
+                                Runtime.Warning("Operation was cancelled before following artists");
+                            }
+                            else if (errors.Any())
                             {
                                 Runtime.Error("Failed to find any artists on Spotify", None);
                             }
@@ -315,10 +377,25 @@ namespace MusicTools.NativeModules
                             }
                             : new { success = true });
                     }
+                    catch (TaskCanceledException)
+                    {
+                        Runtime.Warning("Artist follow operation was cancelled");
+                        return JsonConvert.SerializeObject(new
+                        {
+                            success = false,
+                            cancelled = true,
+                            error = "Operation was cancelled"
+                        });
+                    }
                     catch (Exception ex)
                     {
                         Runtime.Error($"Error following artists", ex);
                         return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
+                    }
+                    finally
+                    {
+                        // Dispose of the cancellation token source
+                        cts.Dispose();
                     }
                 });
             }
@@ -330,13 +407,39 @@ namespace MusicTools.NativeModules
         }
 
         /// <summary>
-        /// Searches for and likes songs on Spotify - optimized with batch processing
+        /// Starts the process to like songs on Spotify - event-based approach
         /// </summary>
         [ReactMethod("LikeSongs")]
-        public Task<string> LikeSongs()
+        public void LikeSongs()
         {
-            EnsureInitialized();
+            try
+            {
+                EnsureInitialized();
 
+                // Dispose of any existing cancellation token source
+                cancelSource?.Dispose();
+
+                // Create a new cancellation token for this operation
+                cancelSource = new CancellationTokenSource();
+                var token = cancelSource.Token;
+
+                // Start the operation in a background task
+                Task.Run(async () => await LikeSongsProcessAsync(token), token);
+
+                // Return immediately, status will be sent via events
+            }
+            catch (Exception ex)
+            {
+                Runtime.Error($"Error starting LikeSongs operation", ex);
+                EmitEvent(SPOTIFY_OPERATION_ERROR, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Processes the like songs operation and sends progress events
+        /// </summary>
+        private async Task LikeSongsProcessAsync(CancellationToken cancellationToken)
+        {
             try
             {
                 var filteredSongs = ObservableState.Current.FilteredSongs();
@@ -344,186 +447,426 @@ namespace MusicTools.NativeModules
                 if (!filteredSongs.Any())
                 {
                     Runtime.Warning("No songs provided to like");
-                    return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = "No songs provided" }));
+                    EmitEvent(SPOTIFY_OPERATION_ERROR, new { error = "No songs provided" });
+                    return;
                 }
 
                 Runtime.Info($"Preparing to like {filteredSongs.Count()} songs on Spotify...");
+                EmitEvent(SPOTIFY_OPERATION_PROGRESS, new
+                {
+                    phase = "initializing",
+                    totalSongs = filteredSongs.Count(),
+                    processed = 0,
+                    found = 0,
+                    liked = 0,
+                    message = $"Preparing to process {filteredSongs.Count()} songs"
+                });
 
-                return Task.Run(async () => {
+                var errors = new List<SpotifyError>();
+                var foundSongs = new Dictionary<SpotifySongId, int>(); // lookup from spotify song id to our song id
+                var songStatusUpdates = new List<(int SongId, SpotifyStatus SpotifyStatus)>();
+
+                int processedCount = 0;
+                int totalCount = filteredSongs.Count();
+
+                // Phase 1: Search for songs
+                EmitEvent(SPOTIFY_OPERATION_PROGRESS, new
+                {
+                    phase = "searching",
+                    totalSongs = totalCount,
+                    processed = processedCount,
+                    found = 0,
+                    message = "Searching for songs on Spotify..."
+                });
+
+                foreach (var song in filteredSongs.ToArray())
+                {
+                    // Check for cancellation
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        Runtime.Warning("Song liking operation was cancelled");
+                        EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
+                        {
+                            success = false,
+                            cancelled = true,
+                            message = "Operation cancelled by user"
+                        });
+                        return;
+                    }
+
+                    // Pass the cancellation token to SearchForSong
+                    var result = await SearchForSong(song, cancellationToken);
+                    processedCount++;
+
+                    result.Match(
+                       Right: id =>
+                       {
+                           foundSongs.TryAdd(id, song.Id);
+                           songStatusUpdates.Add((song.Id, SpotifyStatus.Found));
+                       },
+                      Left: error =>
+                      {
+                          if (error is SongNotFound songNotFound)
+                          {
+                              songStatusUpdates.Add((song.Id, SpotifyStatus.NotFound));
+                          }
+                          else
+                          {
+                              errors.Add(error);
+                          }
+                      });
+
+                    // Update status in batches to reduce UI updates
+                    if (songStatusUpdates.Count >= 10 || processedCount == totalCount)
+                    {
+                        ObservableState.UpdateSongStatus(songStatusUpdates.ToArray());
+                        songStatusUpdates.Clear();
+                    }
+
+                    // Send progress event
+                    if (processedCount % 5 == 0 || processedCount == totalCount)
+                    {
+                        EmitEvent(SPOTIFY_OPERATION_PROGRESS, new
+                        {
+                            phase = "searching",
+                            totalSongs = totalCount,
+                            processed = processedCount,
+                            found = foundSongs.Count,
+                            message = $"Searching for songs on Spotify ({processedCount}/{totalCount})..."
+                        });
+
+                        Runtime.Info($"Searching for songs on Spotify ({processedCount}/{totalCount})...");
+                    }
+
+                    // Use try-catch specifically for Task.Delay with cancellation token
                     try
                     {
-                        var errors = new List<SpotifyError>();
-
-                        var foundSongs = new Dictionary<SpotifySongId, int>(); // lookup from spotify song id to our song id
-                       // Update state in batches to avoid unecessary re-renders of the UI
-                        var songStatusUpdates = new List<(int SongId, SpotifyStatus SpotifyStatus)>();
-
-                        int processedCount = 0;
-                        int totalCount = filteredSongs.Count();
-
-                        foreach (var song in filteredSongs.ToArray())
+                        await Task.Delay(delayTime, cancellationToken); // Prevent too many requests from spotify
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        Runtime.Warning("Operation was cancelled during delay");
+                        EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
                         {
-                            var result = await SearchForSong(song);
-                            processedCount++;
+                            success = false,
+                            cancelled = true,
+                            message = "Operation cancelled by user"
+                        });
+                        return;
+                    }
+                }
 
-                            // Periodically update status
-                            if (processedCount % 10 == 0 || processedCount == totalCount)
-                            {
-                                Runtime.Info($"Searching for songs on Spotify ({processedCount}/{totalCount})...");
-                            }
+                // Check for cancellation before moving to phase 2
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    Runtime.Warning("Song liking operation was cancelled");
+                    EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
+                    {
+                        success = false,
+                        cancelled = true,
+                        message = "Operation cancelled by user"
+                    });
+                    return;
+                }
 
-                            result.Match(
-                               Right: id =>
-                               {
-                                   foundSongs.TryAdd(id, song.Id);
-                                   songStatusUpdates.Add((song.Id, SpotifyStatus.Found));
-                               },
-                              Left: error =>
-                              {
-                                  if (error is SongNotFound songNotFound)
-                                  {
-                                      songStatusUpdates.Add((song.Id, SpotifyStatus.NotFound));
-                                  }
-                                  else
-                                  {
-                                      errors.Add(error);
-                                  }
-                              });
+                Runtime.Info($"Found {foundSongs.Count} of {filteredSongs.Count()} songs on Spotify");
+                EmitEvent(SPOTIFY_OPERATION_PROGRESS, new
+                {
+                    phase = "searchComplete",
+                    totalSongs = totalCount,
+                    processed = processedCount,
+                    found = foundSongs.Count,
+                    message = $"Found {foundSongs.Count} of {filteredSongs.Count()} songs"
+                });
 
-                            if (songStatusUpdates.Count >= 10 || processedCount == totalCount)
-                            {
-                                ObservableState.UpdateSongStatus(songStatusUpdates.ToArray());
-                                songStatusUpdates.Clear();
-                            }
-                            await Task.Delay(delayTime); // Prevent too many requests from spotify
-                        }                      
+                // Phase 2: Like the found songs
+                if (foundSongs.Any())
+                {
+                    Runtime.Info($"Liking {foundSongs.Count} songs on Spotify...");
+                    EmitEvent(SPOTIFY_OPERATION_PROGRESS, new
+                    {
+                        phase = "liking",
+                        totalSongs = totalCount,
+                        processed = processedCount,
+                        found = foundSongs.Count,
+                        message = $"Liking {foundSongs.Count} songs on Spotify..."
+                    });
 
-                        Runtime.Info($"Found {foundSongs.Count} of {filteredSongs.Count()} songs on Spotify");
+                    var result = await spotifyApi.LikeSongsAsync(foundSongs.Keys.ToArray(), cancellationToken); // sending spotify song ID to api
+                    result.Errors.Iter(errors.Add);
 
-                        // Second phase: Like all found songs in a single batch operation
-                        if (foundSongs.Any())
+                    // Convert spotify liked song ID to our song ID
+                    var likedSongIds = result.LikedSongs.Select(id => foundSongs.ValueOrNone(id)).Somes();
+
+                    if (likedSongIds.Count() != result.LikedSongs.Count())
+                    {
+                        Runtime.Warning("Some song mappings were lost during processing");
+                    }
+
+                    ObservableState.UpdateSongStatus(likedSongIds.Select(id => (id, SpotifyStatus.Liked)).ToArray());
+
+                    if (likedSongIds.Count() > 0)
+                    {
+                        if (likedSongIds.Count() < foundSongs.Count)
                         {
-                            Runtime.Info($"Liking {foundSongs.Count} songs on Spotify...");
-                            var result = await spotifyApi.LikeSongsAsync(foundSongs.Keys.ToArray()); // sending spotify song ID to api
-                            result.Errors.Iter(errors.Add);
-
-                            // Convert spotify liked song ID to our song ID
-                            var likedSongIds = result.LikedSongs.Select(id => foundSongs.ValueOrNone(id)).Somes();
-
-                            if (likedSongIds.Count() != result.LikedSongs.Count())
-                            {
-                                Runtime.Warning("Some song mappings were lost during processing");
-                            }
-
-                            ObservableState.UpdateSongStatus(likedSongIds.Select(id => (id, SpotifyStatus.Liked)).ToArray());
-
-                            if (likedSongIds.Count() > 0)
-                            {
-                                if (likedSongIds.Count() < foundSongs.Count)
-                                {
-                                    Runtime.Warning($"Partial success: Liked {likedSongIds.Count()} of {foundSongs.Count} songs");
-                                }
-                                else
-                                {
-                                    Runtime.Success($"Successfully liked {likedSongIds.Count()} songs on Spotify");
-                                }
-                            }
-                            else if (errors.Any())
-                            {
-                                Runtime.Error("Failed to like any songs on Spotify", None);
-                            }
+                            Runtime.Warning($"Partial success: Liked {likedSongIds.Count()} of {foundSongs.Count} songs");
                         }
                         else
                         {
-                            if (errors.Any())
-                            {
-                                Runtime.Error("Failed to find any songs on Spotify", None);
-                            }
-                            else
-                            {
-                                Runtime.Warning("No songs found on Spotify");
-                            }
+                            Runtime.Success($"Successfully liked {likedSongIds.Count()} songs on Spotify");
                         }
 
-                        return JsonConvert.SerializeObject(errors.Any()
-                            ? new
+                        try
+                        {
+                            // Final success event
+                            EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
+                            {
+                                success = true,
+                                partialSuccess = likedSongIds.Count() < foundSongs.Count,
+                                totalSongs = totalCount,
+                                processed = processedCount,
+                                found = foundSongs.Count,
+                                liked = likedSongIds.Count(),
+                                message = $"Successfully liked {likedSongIds.Count()} songs on Spotify",
+                                errors = errors.Any() ? errors.ToArray() : null
+                            });
+                        }
+                        catch (Exception finalEx)
+                        {
+                            Debug.WriteLine($"Error emitting final success event: {finalEx.Message}");
+                            Runtime.Error($"Error emitting final event", finalEx);
+                        }
+                    }
+                    else if (errors.Any())
+                    {
+                        Runtime.Error("Failed to like any songs on Spotify", None);
+                        try
+                        {
+                            EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
                             {
                                 success = false,
-                                partialSuccess = errors.Any() && foundSongs.Any(),
-                                errors
-                            }
-                            : new { success = true });
+                                totalSongs = totalCount,
+                                processed = processedCount,
+                                found = foundSongs.Count,
+                                liked = 0,
+                                message = "Failed to like any songs on Spotify",
+                                errors = errors.ToArray()
+                            });
+                        }
+                        catch (Exception finalEx)
+                        {
+                            Debug.WriteLine($"Error emitting final error event: {finalEx.Message}");
+                            Runtime.Error($"Error emitting final event", finalEx);
+                        }
                     }
-                    catch (Exception ex)
+                }
+                else
+                {
+                    if (errors.Any())
                     {
-                        Runtime.Error($"Error liking songs", ex);
-                        return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
+                        Runtime.Error("Failed to find any songs on Spotify", None);
+                        try
+                        {
+                            EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
+                            {
+                                success = false,
+                                totalSongs = totalCount,
+                                processed = processedCount,
+                                found = 0,
+                                message = "Failed to find any songs on Spotify",
+                                errors = errors.ToArray()
+                            });
+                        }
+                        catch (Exception finalEx)
+                        {
+                            Debug.WriteLine($"Error emitting final event (no songs found): {finalEx.Message}");
+                            Runtime.Error($"Error emitting final event", finalEx);
+                        }
                     }
+                    else
+                    {
+                        Runtime.Warning("No songs found on Spotify");
+                        try
+                        {
+                            EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
+                            {
+                                success = false,
+                                totalSongs = totalCount,
+                                processed = processedCount,
+                                found = 0,
+                                message = "No songs found on Spotify"
+                            });
+                        }
+                        catch (Exception finalEx)
+                        {
+                            Debug.WriteLine($"Error emitting final event (no songs): {finalEx.Message}");
+                            Runtime.Error($"Error emitting final event", finalEx);
+                        }
+                    }
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                Runtime.Warning("Song liking operation was cancelled");
+                EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
+                {
+                    success = false,
+                    cancelled = true,
+                    message = "Operation cancelled by user"
                 });
             }
             catch (Exception ex)
             {
-                Runtime.Error($"Error in LikeSongs", ex);
-                return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = ex.Message }));
+                Runtime.Error($"Error liking songs", ex);
+                EmitEvent(SPOTIFY_OPERATION_ERROR, new { error = ex.Message });
+            }
+            finally
+            {
+                // Clean up the cancellation token source
+                cancelSource?.Dispose();
+                cancelSource = null;
+            }
+        }
+
+        /// <summary>
+        /// Emits an event to the React Native JavaScript side
+        /// </summary>
+        private void EmitEvent(string eventName, object data)
+        {
+            try
+            {
+                // Make a local copy of reactContext to prevent race conditions
+                var context = reactContext;
+                if ((object)context != null)
+                {
+                    // Serialize data first to identify any serialization issues
+                    string jsonData;
+                    try
+                    {
+                        jsonData = JsonConvert.SerializeObject(data);
+                    }
+                    catch (Exception serEx)
+                    {
+                        Debug.WriteLine($"Error serializing event data for {eventName}: {serEx.Message}");
+                        Runtime.Error($"Error serializing event data", serEx);
+
+                        // Use a simplified fallback object if serialization fails
+                        jsonData = JsonConvert.SerializeObject(new
+                        {
+                            error = $"Error serializing event data: {serEx.Message}",
+                            simplifiedData = true
+                        });
+                    }
+
+                    context.EmitJSEvent(
+                        "RCTDeviceEventEmitter",
+                        eventName,
+                        jsonData);
+                }
+                else
+                {
+                    Debug.WriteLine($"Cannot emit event {eventName}: reactContext is null");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error emitting event {eventName}: {ex.Message}");
+                Runtime.Error($"Error emitting event {eventName}", ex);
             }
         }
 
         /// <summary>
         /// Search for single song with improved status reporting
         /// </summary>
-        async Task<Either<SpotifyError, SpotifySongId>> SearchForSong(SongInfo song)
+        async Task<Either<SpotifyError, SpotifySongId>> SearchForSong(SongInfo song, CancellationToken cancellationToken)
         {
             Runtime.Info($"Searching for song: '{song.Name}' by {string.Join(", ", song.Artist)}");
-            var searchResult = await spotifyApi.SearchSongAsync(song.Id, song.Name, song.Artist);
 
-            searchResult.Match(
-                Right: track =>
-                {
-                    Runtime.Success($"Found song: '{song.Name}' by {string.Join(", ", song.Artist)}");
-                },
-                Left: error =>
-                {
-                    if (error is SongNotFound)
-                    {
-                        Runtime.Warning($"Song not found: '{song.Name}' by {string.Join(", ", song.Artist)}");
-                    }
-                    else
-                    {
-                        Runtime.Error($"Error searching for song: '{song.Name}'", None);
-                    }
-                }
-            );
+            // Log cancellation token status at start of search
+            Debug.WriteLine($"SearchForSong: CancellationToken.IsCancellationRequested = {cancellationToken.IsCancellationRequested}");
 
-            return searchResult.Map(v => v.Id);
+            try
+            {
+                // Pass the cancellation token to the SpotifyAPI
+                var searchResult = await spotifyApi.SearchSongAsync(song.Id, song.Name, song.Artist, cancellationToken);
+
+                // Log cancellation token status after search
+                Debug.WriteLine($"SearchForSong (after API call): CancellationToken.IsCancellationRequested = {cancellationToken.IsCancellationRequested}");
+
+                searchResult.Match(
+                    Right: track =>
+                    {
+                        Runtime.Success($"Found song: '{song.Name}' by {string.Join(", ", song.Artist)}");
+                    },
+                    Left: error =>
+                    {
+                        if (error is SongNotFound)
+                        {
+                            Runtime.Warning($"Song not found: '{song.Name}' by {string.Join(", ", song.Artist)}");
+                        }
+                        else
+                        {
+                            Runtime.Error($"Error searching for song: '{song.Name}'", None);
+                        }
+                    }
+                );
+
+                return searchResult.Map(v => v.Id);
+            }
+            catch (TaskCanceledException)
+            {
+                Runtime.Warning($"Song search was cancelled: '{song.Name}'");
+                return new SpotifyErrors.ApiError("search", 0, "Operation was canceled");
+            }
+            catch (Exception ex)
+            {
+                Runtime.Error($"Exception in SearchForSong: {ex.Message}", ex);
+                return new SpotifyErrors.ApiError("search", 500, ex.Message);
+            }
         }
 
         /// <summary>
         /// Search for single artist with improved status reporting
         /// </summary>
-        async Task<Either<SpotifyError, SpotifyArtistId>> SearchForArtist(string artistName)
+        async Task<Either<SpotifyError, SpotifyArtistId>> SearchForArtist(string artistName, CancellationToken cancellationToken)
         {
             Runtime.Info($"Searching for artist: '{artistName}'");
-            var searchResult = await spotifyApi.SearchArtistAsync(artistName);
 
-            searchResult.Match(
-                Right: artist =>
-                {
-                    Runtime.Success($"Found artist: '{artistName}'");
-                },
-                Left: error =>
-                {
-                    if (error is ArtistNotFound)
-                    {
-                        Runtime.Warning($"Artist not found: '{artistName}'");
-                    }
-                    else
-                    {
-                        Runtime.Error($"Error searching for artist: '{artistName}'", None);
-                    }
-                }
-            );
+            try
+            {
+                // Pass the cancellation token to the SpotifyAPI
+                var searchResult = await spotifyApi.SearchArtistAsync(artistName, cancellationToken);
 
-            return searchResult.Map(v => v.Id);
+                searchResult.Match(
+                    Right: artist =>
+                    {
+                        Runtime.Success($"Found artist: '{artistName}'");
+                    },
+                    Left: error =>
+                    {
+                        if (error is ArtistNotFound)
+                        {
+                            Runtime.Warning($"Artist not found: '{artistName}'");
+                        }
+                        else
+                        {
+                            Runtime.Error($"Error searching for artist: '{artistName}'", None);
+                        }
+                    }
+                );
+
+                return searchResult.Map(v => v.Id);
+            }
+            catch (TaskCanceledException)
+            {
+                Runtime.Warning($"Artist search was cancelled: '{artistName}'");
+                return new SpotifyErrors.ApiError("search", 0, "Operation was canceled");
+            }
+            catch (Exception ex)
+            {
+                Runtime.Error($"Exception in SearchForArtist: {ex.Message}", ex);
+                return new SpotifyErrors.ApiError("search", 500, ex.Message);
+            }
         }
 
         void EnsureInitialized()
