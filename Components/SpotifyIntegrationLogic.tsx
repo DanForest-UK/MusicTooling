@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, Linking, EmitterSubscription, DeviceEventEmitter } from 'react-native';
 import { NativeModules } from 'react-native';
-import { AppModel, SpotifyStatus } from '../types';
+import { AppModel } from '../types';
 import {
     SpotifyError,
     SpotifyResponse,
@@ -528,7 +528,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
 
                 const completeSubscription = DeviceEventEmitter.addListener(
                     SPOTIFY_OPERATION_COMPLETE,
-                    (completeData) => {
+                    (_) => {
                         if (isMountedRef.current) {
                             // Implementation handled in the main useEffect
                             console.log('Operation complete event received');
@@ -538,7 +538,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
 
                 const errorSubscription = DeviceEventEmitter.addListener(
                     SPOTIFY_OPERATION_ERROR,
-                    (errorData) => {
+                    (_) => {
                         if (isMountedRef.current) {
                             // Implementation handled in the main useEffect
                             console.log('Operation error event received');
