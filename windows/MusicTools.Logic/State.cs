@@ -39,19 +39,9 @@ namespace MusicTools.Logic
         {
             var oldState = stateAtom.Value;
             stateAtom.Swap(_ => newState);
-
-            if (!oldState.Equals(newState))
-            {
-                try
-                {
-                    StateChanged?.Invoke(null, newState);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error in state change notification: {ex.Message}");
-                }
-            }
+            StateChanged?.Invoke(null, newState);  
         }
+
 
         /// <summary>
         /// Sets the minimum rating filter
