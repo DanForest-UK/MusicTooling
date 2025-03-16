@@ -709,51 +709,10 @@ namespace MusicTools.NativeModules
         }
 
         /// <summary>
-        /// Emits an event to the React Native JavaScript side
+        /// Emits an event to the React Native JavaScript side using the shared helper
         /// </summary>
-        private void EmitEvent(string eventName, object data)
-        {
-            try
-            {
-                // Make a local copy of reactContext to prevent race conditions
-                var context = reactContext;
-                if ((object)context != null)
-                {
-                    // Serialize data first to identify any serialization issues
-                    string jsonData;
-                    try
-                    {
-                        jsonData = JsonConvert.SerializeObject(data);
-                    }
-                    catch (Exception serEx)
-                    {
-                        Debug.WriteLine($"Error serializing event data for {eventName}: {serEx.Message}");
-                        Runtime.Error($"Error serializing event data", serEx);
-
-                        // Use a simplified fallback object if serialization fails
-                        jsonData = JsonConvert.SerializeObject(new
-                        {
-                            error = $"Error serializing event data: {serEx.Message}",
-                            simplifiedData = true
-                        });
-                    }
-
-                    context.EmitJSEvent(
-                        "RCTDeviceEventEmitter",
-                        eventName,
-                        jsonData);
-                }
-                else
-                {
-                    Debug.WriteLine($"Cannot emit event {eventName}: reactContext is null");
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error emitting event {eventName}: {ex.Message}");
-                Runtime.Error($"Error emitting event {eventName}", ex);
-            }
-        }
+        private void EmitEvent(string eventName, object data) =>
+            JsEmitterHelper.EmitEvent(reactContext, eventName, data);        
 
         /// <summary>
         /// Search for single song with improved status reporting

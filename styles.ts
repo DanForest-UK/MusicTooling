@@ -136,6 +136,9 @@ export const styles = StyleSheet.create({
     songContentContainer: {
         flex: 1,
     },
+    withSpotifyStatus: {
+        paddingRight: 120,
+    },
     songContent: {
         flex: 1,
     },

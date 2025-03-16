@@ -75,3 +75,4 @@ yarn-error.log
 !.yarn/sdks
 !.yarn/versions
 /windows/MusicTools/spotifySettings.json
+/.vscode/launch.json

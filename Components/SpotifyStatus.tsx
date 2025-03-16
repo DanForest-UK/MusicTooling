@@ -13,6 +13,9 @@ const SpotifyStatusComponent: React.FC<SpotifyStatusProps> = ({ item, showStatus
         return null;
     }
 
+    // Defensive checks for item properties
+    const songStatus = typeof item?.SongStatus === 'number' ? item.SongStatus : SpotifyStatus.NotSearched;
+    const artistStatus = typeof item?.ArtistStatus === 'number' ? item.ArtistStatus : SpotifyStatus.NotSearched;
 
     const getSongStatusText = (status: number) => {
         switch (status) {
@@ -56,19 +59,19 @@ const SpotifyStatusComponent: React.FC<SpotifyStatusProps> = ({ item, showStatus
         <View style={styles.spotifyStatusContainer}>
             <Text style={[
                 styles.spotifyStatusText,
-                isSuccessStatus(item.songStatus) ? styles.spotifyStatusSuccess :
-                    isErrorStatus(item.songStatus) ? styles.spotifyStatusError : null
+                isSuccessStatus(songStatus) ? styles.spotifyStatusSuccess :
+                    isErrorStatus(songStatus) ? styles.spotifyStatusError : null
             ]}>
-                {getSongStatusText(item.songStatus)}
+                {getSongStatusText(songStatus)}
             </Text>
 
             <Text style={[
                 styles.spotifyStatusText,
                 styles.spotifyStatusArtistText,
-                isSuccessStatus(item.artistStatus) ? styles.spotifyStatusSuccess :
-                    isErrorStatus(item.artistStatus) ? styles.spotifyStatusError : null
+                isSuccessStatus(artistStatus) ? styles.spotifyStatusSuccess :
+                    isErrorStatus(artistStatus) ? styles.spotifyStatusError : null
             ]}>
-                {getArtistStatusText(item.artistStatus)}
+                {getArtistStatusText(artistStatus)}
             </Text>
         </View>
     );

@@ -26,6 +26,5 @@ namespace MusicTools.Logic
         public static Func<string, Unit> Warning = _ => throw new NotImplementedException();
         public static Func<string, Option<Exception>, Unit> Error = (_, __) => throw new NotImplementedException();
         public static Func<string, StatusLevel, Unit> Status = (_, __) => throw new NotImplementedException();
-
     }
 }

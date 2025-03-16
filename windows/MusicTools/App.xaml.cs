@@ -15,18 +15,23 @@ namespace MusicTools
         public App()
         {
             // Dependency injection
-            Runtime.GetFilesWithExtensionAsync = React.GetFilesWithExtensionAsync;
-            Runtime.ReadSongInfo = ReadTag.ReadSongInfo;
-            Runtime.WithStream = React.WithStream;
-            Runtime.GetSpotifyAPI = (clientId, clientSecret, redirectUri) => new SpotifyApi(clientId, clientSecret, redirectUri);
 
-            // Initialize status reporting functions
-          
-            Runtime.Info = StatusHelper.Info;
-            Runtime.Success = StatusHelper.Success;
-            Runtime.Warning = StatusHelper.Warning;
+            Runtime.Status = StatusModule.AddStatus;
+
+            // Wire up the other status event handlers to use the same mechanism
+            Runtime.Info = message => StatusHelper.Info(message);
+            Runtime.Success = message => StatusHelper.Success(message);
+            Runtime.Warning = message => StatusHelper.Warning(message);
             Runtime.Error = (message, ex) => StatusHelper.Error(message, ex);
-            Runtime.Status = (message, level) => StatusModule.AddStatus(message, level);
+
+            // Initialize file system access methods
+            Runtime.GetFilesWithExtensionAsync = React.GetFilesWithExtensionAsync;
+            Runtime.WithStream = React.WithStream;
+            Runtime.ReadSongInfo = ReadTag.ReadSongInfo;
+
+            // Initialize Spotify API
+            Runtime.GetSpotifyAPI = (clientId, clientSecret, redirectUri) =>
+                new SpotifyApi(clientId, clientSecret, redirectUri);
 
 #if BUNDLE
             JavaScriptBundleFile = "index.windows";

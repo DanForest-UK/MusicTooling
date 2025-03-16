@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using static MusicTools.Core.Types;
@@ -20,10 +21,8 @@ namespace MusicTools.Core
         public static AppModel SetSongs(this AppModel current, Seq<SongInfo> songs)
         {
             // Ensure sequential ordering
+            songs = songs.Select((s, i) => s with { Id = i + 1 }).ToSeq();
             if (songs.Select(s => s.Id).Distinct().Count() != songs.Count())
-            {
-                songs = songs.Select((s, i) => s with { Id = i + 1 }).ToSeq();
-            }
 
             // Initialize ChosenSongs with all song IDs if it's empty
             var chosenSongs = current.ChosenSongs.Length == 0

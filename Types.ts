@@ -9,14 +9,14 @@ export enum SpotifyStatus {
 }
 
 export interface SongInfo {
-    id: string;
-    name: string;
-    artist: string[];
-    album: string;
-    rating: number;
-    path: string;
-    songStatus: SpotifyStatus;
-    artistStatus: SpotifyStatus;
+    Id: string;
+    Name: string;
+    Artist: string[];
+    Album: string;
+    Rating: number;
+    Path: string;
+    ArtistStatus: SpotifyStatus;
+    SongStatus: SpotifyStatus;
 }
 
 // Dictionary type for songs
@@ -25,14 +25,14 @@ export interface SongsDictionary {
 }
 
 export interface AppModel {
-    songs: SongsDictionary;
-    chosenSongs: string[];
-    minimumRating: number;
+    Songs: SongsDictionary;
+    ChosenSongs: string[];
+    MinimumRating: number;
 }
 
 // Spotify Error Types
 export interface SpotifyError {
-    // Match the PascalCase from C# reord serialization
+    // Match the PascalCase from C# record serialization
     ErrorCode: string;
     Message: string;
     ResourceId: string;
@@ -47,10 +47,10 @@ export enum StatusLevel {
 
 // Status message interface
 export interface StatusMessage {
-    text: string;
-    level: StatusLevel;
-    id: string;
-    timestamp: string;
+    Text: string;
+    Level: StatusLevel;
+    Id: string;
+    Timestamp: string;
 }
 
 // Specific error types matching the C# counterparts

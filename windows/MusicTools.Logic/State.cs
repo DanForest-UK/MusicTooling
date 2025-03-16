@@ -57,30 +57,36 @@ namespace MusicTools.Logic
         /// Sets the minimum rating filter
         /// </summary>
         public static void SetMinimumRating(int rating) =>
-            stateAtom.Swap(state => state with { MinimumRating = rating });
+            Update(stateAtom.Value with { MinimumRating = rating });
 
+        /// <summary>
+        /// Updates song statuses
+        /// </summary>
         public static void UpdateSongStatus((int SongId, SpotifyStatus Status)[] updates) =>
-            stateAtom.Swap(state => state.UpdateSongsStatus(updates));
+            Update(stateAtom.Value.UpdateSongsStatus(updates));
 
+        /// <summary>
+        /// Updates artist statuses
+        /// </summary>
         public static void UpdateArtistStatus(string[] artists, SpotifyStatus status) =>
-            stateAtom.Swap(state => state.UpdateArtistsStatus(artists, status));
-          
+            Update(stateAtom.Value.UpdateArtistsStatus(artists, status));
+
         /// <summary>
         /// Sets the song collection and initializes chosen songs if not set
         /// </summary>
         public static void SetSongs(Seq<SongInfo> songs) =>
-            stateAtom.Swap(state => state.SetSongs(songs));
+            Update(stateAtom.Value.SetSongs(songs));
 
         /// <summary>
         /// Sets the chosen songs
         /// </summary>
         public static void SetChosenSongs(int[] songIds) =>
-            stateAtom.Swap(state => state with { ChosenSongs = songIds });
+            Update(stateAtom.Value with { ChosenSongs = songIds });
 
         /// <summary>
         /// Toggles the selection state of a song
         /// </summary>
-        public static void ToggleSongSelection(int songId) =>       
-            stateAtom.Swap(state => state.ToggleSongSelection(songId));
+        public static void ToggleSongSelection(int songId) =>
+            Update(stateAtom.Value.ToggleSongSelection(songId));
     }
 }

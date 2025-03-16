@@ -49,7 +49,6 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
     onLikeSongs,
     onFollowArtists,
     onCancelOperation,
-    onClose
 }) => {
     // Track mounting/unmounting for debugging
     React.useEffect(() => {
@@ -79,7 +78,7 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
 
     // Simplified component to render progress information
     const renderProgress = () => {
-        if (progress.phase === 'idle') return null;
+        if (progress.phase === 'idle') { return null; }
 
         return (
             <View style={styles.spotifyProgressContainer}>

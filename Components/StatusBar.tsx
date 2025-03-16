@@ -23,7 +23,7 @@ const StatusBar: React.FC = () => {
 
     // Show animation when status updates
     useEffect(() => {
-        if (status.text) {
+        if (status.Text) {
             setVisible(true);
             Animated.timing(opacity, {
                 toValue: 1,
@@ -32,7 +32,7 @@ const StatusBar: React.FC = () => {
             }).start();
 
             // Auto-hide success messages after 5 seconds
-            if (status.level === StatusLevel.Success) {
+            if (status.Level === StatusLevel.Success) {
                 const timer = setTimeout(() => {
                     handleHide();
                 }, 5000);
@@ -42,13 +42,13 @@ const StatusBar: React.FC = () => {
         }
     }, [status, handleHide, opacity]);
 
-    if (!visible || !status.text) {
+    if (!visible || !status.Text) {
         return null;
     }
 
     // Get the appropriate style based on status level
     const getStatusStyle = () => {
-        switch (status.level) {
+        switch (status.Level) {
             case StatusLevel.Success:
                 return styles.statusBarSuccess;
             case StatusLevel.Warning:
@@ -62,7 +62,7 @@ const StatusBar: React.FC = () => {
 
     // Get the appropriate icon based on status level
     const getStatusIcon = () => {
-        switch (status.level) {
+        switch (status.Level) {
             case StatusLevel.Success:
                 return 'check-circle';
             case StatusLevel.Warning:
@@ -79,7 +79,7 @@ const StatusBar: React.FC = () => {
             style={[
                 styles.statusBar,
                 getStatusStyle(),
-                { opacity: opacity }
+                { opacity: opacity },
             ]}
         >
             <FontAwesomeIcon
@@ -87,7 +87,7 @@ const StatusBar: React.FC = () => {
                 style={styles.statusIcon}
             />
             <Text style={styles.statusText} numberOfLines={1}>
-                {status.text}
+                {status.Text}
             </Text>
             <TouchableOpacity
                 style={styles.clearButton}

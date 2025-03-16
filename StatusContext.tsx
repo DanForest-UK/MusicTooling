@@ -13,18 +13,18 @@ export enum StatusLevel {
 
 // Status message interface
 export interface StatusMessage {
-    text: string;
-    level: StatusLevel;
-    id: string;
-    timestamp: string;
+    Text: string;
+    Level: StatusLevel;
+    Id: string;
+    Timestamp: string;
 }
 
 // Default/empty status message
 const defaultStatus: StatusMessage = {
-    text: '',
-    level: StatusLevel.Info,
-    id: '',
-    timestamp: new Date().toISOString()
+    Text: '',
+    Level: StatusLevel.Info,
+    Id: '',
+    Timestamp: new Date().toISOString()
 };
 
 // Context interface
@@ -68,15 +68,15 @@ export const StatusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             (statusJson: string) => {
                 try {
                     console.log("Received status update:", statusJson);
-                    // Parse the JSON and convert to camelCase
+                    // Parse the JSON
                     const statusData = JSON.parse(statusJson);
 
-                    // Convert from PascalCase to camelCase for consistency with React
+                    // Set status using PascalCase properties
                     setStatus({
-                        text: statusData.Text,
-                        level: statusData.Level,
-                        id: statusData.Id,
-                        timestamp: statusData.Timestamp
+                        Text: statusData.Text,
+                        Level: statusData.Level,
+                        Id: statusData.Id,
+                        Timestamp: statusData.Timestamp
                     });
                 } catch (error) {
                     console.error('Error parsing status update:', error);
@@ -93,10 +93,10 @@ export const StatusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     const statusData = JSON.parse(statusJson);
                     if (statusData.Text) {
                         setStatus({
-                            text: statusData.Text,
-                            level: statusData.Level,
-                            id: statusData.Id,
-                            timestamp: statusData.Timestamp
+                            Text: statusData.Text,
+                            Level: statusData.Level,
+                            Id: statusData.Id,
+                            Timestamp: statusData.Timestamp
                         });
                     }
                 }

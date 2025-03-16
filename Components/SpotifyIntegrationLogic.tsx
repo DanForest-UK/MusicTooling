@@ -11,9 +11,9 @@ import {
 const { SpotifyModule } = NativeModules;
 
 // New event constants to match C# side
-const SPOTIFY_OPERATION_PROGRESS = "spotifyOperationProgress";
-const SPOTIFY_OPERATION_COMPLETE = "spotifyOperationComplete";
-const SPOTIFY_OPERATION_ERROR = "spotifyOperationError";
+const SPOTIFY_OPERATION_PROGRESS = 'spotifyOperationProgress';
+const SPOTIFY_OPERATION_COMPLETE = 'spotifyOperationComplete';
+const SPOTIFY_OPERATION_ERROR = 'spotifyOperationError';
 
 // Simplified Progress state interface
 interface ProgressState {
@@ -33,7 +33,7 @@ const defaultProgressState: ProgressState = {
     message: '',
     isComplete: false,
     isError: false,
-    isCancelled: false
+    isCancelled: false,
 };
 
 export interface SpotifyIntegrationProps {
@@ -60,14 +60,15 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
     useEffect(() => {
         // More precise checking for valid appState structure
         if (appState &&
-            typeof appState.songs === 'object' &&
-            Array.isArray(appState.chosenSongs)) {
+            appState.Songs &&
+            typeof appState.Songs === 'object' &&
+            Array.isArray(appState.ChosenSongs)) {
             console.log('Storing valid app state as fallback');
             lastValidAppState.current = appState;
         }
     }, [appState]);
 
-    // Function to handle the auth code exchange - with improved error handling
+    // Function to handle the auth code exchange 
     const completeAuthentication = useCallback(async (code: string) => {
         try {
             // Prevent duplicate code usage
@@ -115,7 +116,6 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
             if (response.success) {
                 console.log('Authentication successful!');
                 setIsAuthenticated(true);
-                Alert.alert('Success', 'Spotify authentication successful!');
             } else {
 
                 if (response.error) {
@@ -291,7 +291,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
                     } else if (data.success) {
                         if (data.partialSuccess) {
                             Alert.alert('Partial Success',
-                                `Operation completed with some errors.`);
+                                'Operation completed with some errors.');
                         } else {
                             Alert.alert('Success', data.message || 'Operation completed successfully');
                         }
@@ -483,10 +483,12 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         }
 
         // Use the last valid state if current state is invalid
-        const stateToUse = appState && typeof appState.songs === 'object' && Array.isArray(appState.chosenSongs) ?
+        const stateToUse = appState &&
+            typeof appState.Songs === 'object' &&
+            Array.isArray(appState.ChosenSongs) ?
             appState : lastValidAppState.current;
 
-        if (!stateToUse || !stateToUse.chosenSongs || stateToUse.chosenSongs.length === 0) {
+        if (!stateToUse || !stateToUse.ChosenSongs || stateToUse.ChosenSongs.length === 0) {
             Alert.alert('No Songs Selected', 'Please select songs to like on Spotify');
             return;
         }
@@ -550,7 +552,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
             setIsProcessing(true);
             setOperationRunning(true);
 
-            console.log(`Starting like songs operation for ${stateToUse.chosenSongs.length} songs`);
+            console.log(`Starting like songs operation for ${stateToUse.ChosenSongs.length} songs`);
 
             // Call the method but don't await - will get updates via events
             SpotifyModule.LikeSongs();
@@ -584,10 +586,12 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         }
 
         // Use the last valid state if current state is invalid
-        const stateToUse = appState && typeof appState.songs === 'object' && Array.isArray(appState.chosenSongs) ?
+        const stateToUse = appState &&
+            typeof appState.Songs === 'object' &&
+            Array.isArray(appState.ChosenSongs) ?
             appState : lastValidAppState.current;
 
-        if (!stateToUse || !stateToUse.chosenSongs || stateToUse.chosenSongs.length === 0) {
+        if (!stateToUse || !stateToUse.ChosenSongs || stateToUse.ChosenSongs.length === 0) {
             Alert.alert('No Songs Selected', 'Please select songs whose artists you want to follow');
             return;
         }
@@ -596,7 +600,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         setErrors([]);
 
         try {
-            console.log(`Following artists from ${stateToUse.chosenSongs.length} songs`);
+            console.log(`Following artists from ${stateToUse.ChosenSongs.length} songs`);
 
             const result = await SpotifyModule.FollowArtists();
             console.log('Follow artists request completed, parsing response');
@@ -640,6 +644,6 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         handleAuthenticate,
         handleLikeSongs,
         handleFollowArtists,
-        cancelOperation
+        cancelOperation,
     };
 };

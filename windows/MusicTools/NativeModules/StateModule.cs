@@ -5,26 +5,23 @@ using System;
 using Newtonsoft.Json;
 using System.Threading.Tasks;
 using Microsoft.ReactNative;
-using Newtonsoft.Json.Serialization;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Linq;
+using System.Diagnostics;
 using MusicTools.Logic;
+using MusicTools.NativeModules;
 
 namespace MusicTools.NativeModules
 {
     [ReactModule("StateModule")]
     public sealed class StateModule : IDisposable
     {
+        // Constants for event names
+        public const string STATE_UPDATED_EVENT = "appStateUpdated";
+
         // Field to hold the React context
         ReactContext reactContext;
 
-        // Static JsonSerializerSettings with a custom contract resolver
-        static readonly JsonSerializerSettings jsonSettings = new JsonSerializerSettings
-        {
-            ContractResolver = new ForceCamelCasePropertyNamesContractResolver(),
-            NullValueHandling = NullValueHandling.Include
-        };
+        // Flag to track if we're subscribed to state changes
+        private bool isSubscribed = false;
 
         /// <summary>
         /// Default constructor for React Native code generation
@@ -36,23 +33,103 @@ namespace MusicTools.NativeModules
         /// Initialize method called by React Native runtime
         /// </summary>
         [ReactInitializer]
-        public void Initialize(ReactContext reactContext) =>
+        public void Initialize(ReactContext reactContext)
+        {
             this.reactContext = reactContext;
+
+            // Subscribe to state changes if not already subscribed
+            SubscribeToStateChanges();
+        }
+
+        /// <summary>
+        /// Subscribes to state change events from ObservableState
+        /// </summary>
+        private void SubscribeToStateChanges()
+        {
+            if (!isSubscribed)
+            {
+                ObservableState.StateChanged += OnStateChanged;
+                isSubscribed = true;
+                System.Diagnostics.Debug.WriteLine("Subscribed to ObservableState changes");
+            }
+        }
+
+        /// <summary>
+        /// Handler for state change events
+        /// </summary>
+        private void OnStateChanged(object sender, AppModel newState)
+        {
+            try
+            {
+                EmitStateUpdated(newState);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error handling state change: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Emits the updated state to JavaScript
+        /// </summary>
+        private void EmitStateUpdated(AppModel state)
+        {
+            if ((object)reactContext != null)
+            {
+                try
+                {
+                    // Debug log state contents
+                    Debug.WriteLine($"Emitting state with {state.Songs?.Count} songs, {state.ChosenSongs?.Length} chosen songs");
+
+                    // Pass the state object directly to EmitEvent - don't serialize here
+                    JsEmitterHelper.EmitEvent(reactContext, STATE_UPDATED_EVENT, state);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error emitting state update: {ex.Message}");
+                }
+            }
+        }
 
         /// <summary>
         /// Returns the current application state as JSON
+        /// This method is kept for backward compatibility
         /// </summary>
         [ReactMethod("GetCurrentState")]
         public Task<string> GetCurrentState()
         {
             try
             {
-                return Task.FromResult(JsonConvert.SerializeObject(ObservableState.Current, jsonSettings));
+                return Task.FromResult(JsonConvert.SerializeObject(ObservableState.Current));
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting state: {ex.Message}");
                 return Task.FromResult("{}"); // todo this breaks the UI need something better
+            }
+        }
+
+        /// <summary>
+        /// Registers a listener for state updates - implementing IReactPromise
+        /// </summary>
+        [ReactMethod("RegisterStateListener")]
+        public void RegisterStateListener(IReactPromise<string> promise)
+        {
+            try
+            {
+                // Ensure we're subscribed to state changes
+                SubscribeToStateChanges();
+
+                // Send the current state immediately
+                EmitStateUpdated(ObservableState.Current);
+
+                // Resolve the promise
+                promise.Resolve("State listener registered successfully");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error registering state listener: {ex.Message}");
+                promise.Reject(new ReactError { Message = ex.Message });
             }
         }
 
@@ -93,27 +170,12 @@ namespace MusicTools.NativeModules
         /// </summary>
         public void Dispose()
         {
-            // Nothing to dispose
-        }
-    }
-
-    /// <summary>
-    /// Enhanced contract resolver that forces camelCase property names, 
-    /// even for record types where the standard resolver often fails
-    /// </summary>
-    public class ForceCamelCasePropertyNamesContractResolver : DefaultContractResolver
-    {
-        readonly CamelCaseNamingStrategy namingStrategy = new CamelCaseNamingStrategy();
-
-        protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
-        {
-            var properties = base.CreateProperties(type, memberSerialization);
-
-            // Force camelCase for all property names
-            foreach (var prop in properties)
-                prop.PropertyName = namingStrategy.GetPropertyName(prop.PropertyName, false);
-
-            return properties;
+            // Unsubscribe from state change events
+            if (isSubscribed)
+            {
+                ObservableState.StateChanged -= OnStateChanged;
+                isSubscribed = false;
+            }
         }
     }
 }

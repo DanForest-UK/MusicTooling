@@ -119,23 +119,13 @@ namespace MusicTools.NativeModules
         }
 
         /// <summary>
-        /// Processes the queue and emits events for new status messages
+        /// Processes the queue and emits events for new status messages using the shared helper
         /// </summary>
         void EmitStatusUpdate(StatusMessage message)
         {
             if ((object)reactContext != null)
             {
-                try
-                {
-                    reactContext.EmitJSEvent(
-                        "RCTDeviceEventEmitter",
-                        STATUS_UPDATE_EVENT,
-                        JsonConvert.SerializeObject(message));
-                }
-                catch (Exception ex)
-                {
-                    Runtime.Error($"Error emitting status update", ex);
-                }
+                JsEmitterHelper.EmitEvent(reactContext, STATUS_UPDATE_EVENT, JsonConvert.SerializeObject(message));
             }
         }
 

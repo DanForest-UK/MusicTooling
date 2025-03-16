@@ -9,6 +9,7 @@ using MusicTools.Logic;
 using System.Linq;
 using MusicTools.NativeModules;
 using static LanguageExt.Prelude;
+using System.Diagnostics;
 
 namespace MusicTools.NativeModules
 {

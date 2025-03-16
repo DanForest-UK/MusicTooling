@@ -21,13 +21,19 @@ namespace MusicTools.Logic
         /// </summary>
         public async static Task<Either<Error, Seq<SongInfo>>> ScanFilesAsync()
         {
-            var path = @"C:\Dan\Dropbox\[Music]\[Folk]";
+            //     var path = @"C:\Dan\Dropbox\[Music]\[Folk]";
+
+            var path = @"C:\Dan\Dropbox\[Music]\[Folk]\[Acapella]\Coope, Boyes & Simpson\Falling Slowley";
 
             try
             {
                 var list = new G.List<SongInfo>();
                 var mp3Files = await Runtime.GetFilesWithExtensionAsync(path, ".mp3");
-                mp3Files.Iter(async file => await AddFileInfo(file, list));
+                Debug.WriteLine($"GetFilesWthExtension: {mp3Files.Length} found");
+                foreach (var mp3File in mp3Files)
+                {
+                    await AddFileInfo(mp3File, list);
+                }
                 return list.ToSeq();
             }
             catch (UnauthorizedAccessException ex)

@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, Button, FlatList, ActivityIndicator, Alert, TouchableOpacity, SafeAreaView } from 'react-native';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, Button, FlatList, ActivityIndicator, Alert, TouchableOpacity, SafeAreaView, DeviceEventEmitter } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { NativeModules } from 'react-native';
 import { styles } from './styles';
@@ -17,8 +17,8 @@ import StatusBar from './Components/StatusBar';
 // Native modules are imported at the top
 const { FileScannerModule, StateModule } = NativeModules;
 
-// The polling interval in milliseconds
-const POLLING_INTERVAL = 500; // Poll every 500ms
+// Event name for state updates
+const APP_STATE_UPDATED_EVENT = 'appStateUpdated';
 
 const App = () => {
     // Local UI state
@@ -33,23 +33,20 @@ const App = () => {
 
     // App state from C# backend
     const [appState, setAppState] = useState<AppModel>({
-        songs: {},
-        chosenSongs: [],
-        minimumRating: 0,
+        Songs: {},
+        ChosenSongs: [],
+        MinimumRating: 0,
     });
-
-    // Reference to track the interval for cleanup
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Store the last valid filtered songs in a separate effect
     // Only update when we have a valid object, even if it results in 0 filtered songs
     useEffect(() => {
-        if (appState.songs && typeof appState.songs === 'object') {
-            const filtered = Object.values(appState.songs).filter(song =>
-                song.rating >= appState.minimumRating
+        if (appState?.Songs && typeof appState.Songs === 'object') {
+            const filtered = Object.values(appState.Songs).filter(song =>
+                song.Rating >= (appState.MinimumRating || 0)
             );
             // We update lastValidFilteredSongs even if filtered.length is 0,
-            // as long as appState.songs is a valid object
+            // as long as appState.Songs is a valid object
             setLastValidFilteredSongs(filtered);
 
             // If we ever have songs, mark that we've had them
@@ -57,54 +54,69 @@ const App = () => {
                 hasHadSongsRef.current = true;
             }
         }
-    }, [appState.songs, appState.minimumRating]);
+    }, [appState.Songs, appState.MinimumRating]);
 
     // Calculate filtered songs in the frontend - convert dictionary to array and filter by rating
-    // Now with fallback to lastValidFilteredSongs if appState.songs is undefined
+    // Now with fallback to lastValidFilteredSongs if appState.Songs is undefined
     const filteredSongs = React.useMemo(() => {
-        // Only fall back if appState.songs is undefined or not an object
+        // Only fall back if appState.Songs is undefined or not an object
         // This ensures we show empty results when the filter genuinely produces no results
-        if (!appState.songs || typeof appState.songs !== 'object') {
+        if (!appState?.Songs || typeof appState.Songs !== 'object') {
             return lastValidFilteredSongs;
         }
 
         // Normal case - this could legitimately return an empty array if no songs match the filter
-        return Object.values(appState.songs).filter(song =>
-            song.rating >= appState.minimumRating
+        return Object.values(appState.Songs).filter(song =>
+            song.Rating >= (appState.MinimumRating || 0)
         );
-    }, [appState.songs, appState.minimumRating, lastValidFilteredSongs]);
+    }, [appState?.Songs, appState?.MinimumRating, lastValidFilteredSongs]);
 
-    // Fetch current state from native module
-    const fetchCurrentState = useCallback(async () => {
-        try {
-            const stateJson = await StateModule.GetCurrentState();
-            const newState = JSON.parse(stateJson) as AppModel;
-
-            // Update state without referencing the current appState in the callback
-            setAppState(prevState => {
-                // Only update if something changed
-                return JSON.stringify(newState) !== JSON.stringify(prevState)
-                    ? newState
-                    : prevState;
-            });
-        } catch (error) {
-            console.error('Error fetching state:', error);
-        }
-    }, []); // Remove appState dependency
-
-    // Set up polling for state changes
+    // Set up listener for state changes from C#
     useEffect(() => {
-        // Get initial state
-        fetchCurrentState();
+        // Initialize the state listener
+        const initStateListener = async () => {
+            try {
+                // Register for state updates - this will also get the initial state
+                await StateModule.RegisterStateListener();
+                console.log('Registered for state updates');
+            } catch (error) {
+                console.error('Error registering for state updates:', error);
+            }
+        };
 
-        // Set up polling interval
-        intervalRef.current = setInterval(fetchCurrentState, POLLING_INTERVAL);
+        // Add event listener for state updates
+        const subscription = DeviceEventEmitter.addListener(
+            APP_STATE_UPDATED_EVENT,
+            (stateJson) => {
+                try {
+                    console.log('Received state update:', typeof stateJson, stateJson);
+                    const newState = typeof stateJson === 'string' ? JSON.parse(stateJson) : stateJson;
+                    console.log('Parsed new state:', newState);
+
+                    // Check if Songs exist in the new state
+                    console.log('Songs in new state:', newState.Songs ? Object.keys(newState.Songs).length : 'none');
+
+                    setAppState(prevState => {
+                        console.log('Previous state Songs:', prevState.Songs ? Object.keys(prevState.Songs).length : 'none');
+                        // Only update if something changed
+                        const shouldUpdate = JSON.stringify(newState) !== JSON.stringify(prevState);
+                        console.log('Should update state?', shouldUpdate);
+                        return shouldUpdate ? newState : prevState;
+                    });
+                } catch (error) {
+                    console.error('Error processing state update:', error);
+                }
+            }
+        );
+
+        // Initialize the state listener
+        initStateListener();
 
         // Cleanup on unmount
         return () => {
-            if (intervalRef.current) { clearInterval(intervalRef.current); }
+            subscription.remove();
         };
-    }, [fetchCurrentState]);
+    }, []);
 
     const scanFiles = async () => {
         if (loading) { return; }
@@ -120,7 +132,6 @@ const App = () => {
         } finally {
             setLoading(false);
             setHasScanned(true);
-            fetchCurrentState();
         }
     };
 
@@ -129,8 +140,6 @@ const App = () => {
 
     const toggleSongSelection = async (songId: string) => {
         await StateModule.ToggleSongSelection(songId);
-        // Immediately fetch the updated state to reflect the change
-        fetchCurrentState();
     };
 
     const toggleSpotifyPanel = () => {
@@ -144,14 +153,14 @@ const App = () => {
 
     // Determine if we should show Spotify statuses by checking if any songs or artists have been processed
     const hasProcessedSpotifyItems = React.useMemo(() => {
-        if (!appState.songs || typeof appState.songs !== 'object') {
+        if (!appState?.Songs || typeof appState.Songs !== 'object') {
             return false;
         }
-        return Object.values(appState.songs).some(song =>
-            song.songStatus !== SpotifyStatus.NotSearched ||
-            song.artistStatus !== SpotifyStatus.NotSearched
+        return Object.values(appState.Songs).some(song =>
+            song.SongStatus !== SpotifyStatus.NotSearched ||
+            song.ArtistStatus !== SpotifyStatus.NotSearched
         );
-    }, [appState.songs]);
+    }, [appState?.Songs]);
 
     // Automatically show status if items have been processed
     useEffect(() => {
@@ -179,7 +188,7 @@ const App = () => {
                         </View>
                         <Text style={styles.pickerLabel}>Minimum rating:</Text>
                         <Picker
-                            selectedValue={String(appState.minimumRating)}
+                            selectedValue={String(appState?.MinimumRating || 0)}
                             style={styles.picker}
                             onValueChange={handleRatingChange}
                         >
@@ -194,10 +203,10 @@ const App = () => {
 
                     <View style={styles.statsContainer}>
                         <Text style={styles.statsText}>
-                            Showing {filteredSongs.length} of {appState.songs ? Object.keys(appState.songs).length : 0} songs
+                            Showing {filteredSongs.length} of {appState?.Songs ? Object.keys(appState.Songs).length : 0} songs
                         </Text>
                         <Text style={styles.statsText}>
-                            {appState.chosenSongs.length} songs selected
+                            {appState?.ChosenSongs?.length || 0} songs selected
                         </Text>
                     </View>
 
@@ -215,11 +224,11 @@ const App = () => {
                     <FlatList
                         data={filteredSongs}
                         contentContainerStyle={styles.listContainer}
-                        keyExtractor={item => item.id}
+                        keyExtractor={item => item.Id}
                         renderItem={({ item }) => (
                             <SongItem
                                 item={item}
-                                isSelected={appState.chosenSongs.includes(item.id)}
+                                isSelected={Array.isArray(appState?.ChosenSongs) && appState.ChosenSongs.includes(item.Id)}
                                 onToggle={toggleSongSelection}
                                 showSpotifyStatus={showSpotifyStatus}
                             />
@@ -234,7 +243,7 @@ const App = () => {
                                 onPress={toggleSpotifyPanel}
                             >
                                 <Text style={styles.spotifyOptionsButtonText}>
-                                    {showSpotify ? "Hide Spotify" : "Spotify Options"}
+                                    {showSpotify ? 'Hide Spotify' : 'Spotify Options'}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -259,8 +268,6 @@ const App = () => {
                             />
                         </View>
                     )}
-
-                    {/* Status Bar - will appear at the bottom */}
                     <StatusBar />
                 </View>
             </SafeAreaView>
@@ -269,3 +276,4 @@ const App = () => {
 };
 
 export default App;
+
