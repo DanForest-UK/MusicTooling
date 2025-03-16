@@ -173,6 +173,37 @@ const App = () => {
     // Shows if we have songs now OR we've had songs at some point (prevent toggle disappearing)
     const shouldShowSpotifyToggle = hasScanned && (filteredSongs.length > 0 || hasHadSongsRef.current);
 
+    // Table header component
+    const TableHeader = () => (
+        <View style={styles.tableHeader}>
+            <View style={styles.tableCheckboxCell}>
+                <Text style={styles.tableHeaderText}></Text>
+            </View>
+            <View style={styles.tableArtistCell}>
+                <Text style={styles.tableHeaderText}>Artist</Text>
+            </View>
+            <View style={styles.tableAlbumCell}>
+                <Text style={styles.tableHeaderText}>Album</Text>
+            </View>
+            <View style={styles.tableTitleCell}>
+                <Text style={styles.tableHeaderText}>Title</Text>
+            </View>
+            <View style={styles.tableRatingCell}>
+                <Text style={styles.tableHeaderText}>Rating</Text>
+            </View>
+            {showSpotifyStatus && (
+                <>
+                    <View style={styles.tableStatusCell}>
+                        <Text style={styles.tableHeaderText}>Song</Text>
+                    </View>
+                    <View style={styles.tableStatusCell}>
+                        <Text style={styles.tableHeaderText}>Artist</Text>
+                    </View>
+                </>
+            )}
+        </View>
+    );
+
     return (
         <StatusProvider>
             <SafeAreaView style={{ flex: 1 }}>
@@ -219,6 +250,10 @@ const App = () => {
 
                     {hasScanned && filteredSongs.length === 0 && !loading && (
                         <Text style={styles.emptyText}>No files found matching your criteria.</Text>
+                    )}
+
+                    {hasScanned && filteredSongs.length > 0 && (
+                        <TableHeader />
                     )}
 
                     <FlatList
@@ -276,4 +311,3 @@ const App = () => {
 };
 
 export default App;
-

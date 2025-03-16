@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, Platform, ViewProps } from 'react-native'
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import { styles } from '../styles';
 import { SongInfo, SpotifyStatus } from '../types';
-import SpotifyStatusComponent from './SpotifyStatus';
 
 // Define the props type for TooltipView
 interface TooltipViewProps extends ViewProps {
@@ -66,53 +65,118 @@ const SongItem = memo(({ item, isSelected, onToggle, showSpotifyStatus = false }
         }
     };
 
+    const getSongStatusText = (status: number) => {
+        switch (status) {
+            case SpotifyStatus.NotSearched:
+                return 'Not searched';
+            case SpotifyStatus.Found:
+                return 'Found';
+            case SpotifyStatus.NotFound:
+                return 'Not found';
+            case SpotifyStatus.Liked:
+                return 'Liked';
+            default:
+                return 'Unknown';
+        }
+    };
+
+    const getArtistStatusText = (status: number) => {
+        switch (status) {
+            case SpotifyStatus.NotSearched:
+                return 'Not searched';
+            case SpotifyStatus.Found:
+                return 'Found';
+            case SpotifyStatus.NotFound:
+                return 'Not found';
+            case SpotifyStatus.Liked:
+                return 'Followed';
+            default:
+                return 'Unknown';
+        }
+    };
+
+    const isSuccessStatus = (status: number) => {
+        return status === SpotifyStatus.Found || status === SpotifyStatus.Liked;
+    };
+
+    const isErrorStatus = (status: number) => {
+        return status === SpotifyStatus.NotFound;
+    };
+
     return (
         <TooltipView
-            style={styles.fileItem}
+            style={styles.tableRow}
             tooltip={safeItem.Path}
         >
-            <View style={styles.songItemContainer}>
-                <TouchableOpacity
-                    style={styles.leftCheckboxContainer}
-                    onPress={handleToggle}>
-                    <FontAwesomeIcon
-                        name={isSelected ? 'check-square-o' : 'square-o'}
-                        style={[styles.checkboxIcon, isSelected ? styles.checkboxIconChecked : null]} />
-                </TouchableOpacity>
+            {/* Checkbox Column */}
+            <TouchableOpacity
+                style={styles.tableCheckboxCell}
+                onPress={handleToggle}>
+                <FontAwesomeIcon
+                    name={isSelected ? 'check-square-o' : 'square-o'}
+                    style={[styles.checkboxIcon, isSelected ? styles.checkboxIconChecked : null]} />
+            </TouchableOpacity>
 
-                <View style={[
-                    styles.songContentContainer,
-                    showSpotifyStatus && styles.withSpotifyStatus, // Make space for the status when it's shown
-                ]}>
-                    <TouchableOpacity onPress={handleToggle} style={styles.songContent}>
-                        <View style={styles.fileTextContainer}>
-                            <Text style={styles.fileText}>
-                                <Text style={styles.labelText}>Artist: </Text>
-                                {formatArtists(safeItem.Artist)}
-                            </Text>
-                        </View>
-                        <View style={styles.fileTextContainer}>
-                            <Text style={styles.fileText}>
-                                <Text style={styles.labelText}>Title: </Text>
-                                {safeItem.Name}
-                            </Text>
-                        </View>
-                        <View style={styles.fileTextContainer}>
-                            <Text style={styles.fileText}>
-                                <Text style={styles.labelText}>Album: </Text>
-                                {safeItem.Album}
-                            </Text>
-                        </View>
-                        <View style={styles.fileTextContainer}>
-                            <View style={styles.ratingRow}>
-                                <Text style={styles.labelText}>Rating:</Text>
-                                {renderStars(safeItem.Rating)}
-                            </View>
-                        </View>
-                    </TouchableOpacity>
-                </View>
-                <SpotifyStatusComponent item={safeItem} showStatus={showSpotifyStatus} />
-            </View>
+            {/* Artist Column */}
+            <TouchableOpacity
+                style={styles.tableArtistCell}
+                onPress={handleToggle}>
+                <Text style={styles.tableCellText} numberOfLines={1} ellipsizeMode="tail">
+                    {formatArtists(safeItem.Artist)}
+                </Text>
+            </TouchableOpacity>
+
+            {/* Album Column */}
+            <TouchableOpacity
+                style={styles.tableAlbumCell}
+                onPress={handleToggle}>
+                <Text style={styles.tableCellText} numberOfLines={1} ellipsizeMode="tail">
+                    {safeItem.Album}
+                </Text>
+            </TouchableOpacity>
+
+            {/* Title Column */}
+            <TouchableOpacity
+                style={styles.tableTitleCell}
+                onPress={handleToggle}>
+                <Text style={styles.tableCellText} numberOfLines={1} ellipsizeMode="tail">
+                    {safeItem.Name}
+                </Text>
+            </TouchableOpacity>
+
+            {/* Rating Column */}
+            <TouchableOpacity
+                style={styles.tableRatingCell}
+                onPress={handleToggle}>
+                {renderStars(safeItem.Rating)}
+            </TouchableOpacity>
+
+            {/* Spotify Status Columns - Only visible when showSpotifyStatus is true */}
+            {showSpotifyStatus && (
+                <>
+                    {/* Song Status Column */}
+                    <View style={styles.tableStatusCell}>
+                        <Text style={[
+                            styles.tableCellText,
+                            isSuccessStatus(safeItem.SongStatus) ? styles.spotifyStatusSuccess :
+                                isErrorStatus(safeItem.SongStatus) ? styles.spotifyStatusError : null
+                        ]}>
+                            {getSongStatusText(safeItem.SongStatus)}
+                        </Text>
+                    </View>
+
+                    {/* Artist Status Column */}
+                    <View style={styles.tableStatusCell}>
+                        <Text style={[
+                            styles.tableCellText,
+                            isSuccessStatus(safeItem.ArtistStatus) ? styles.spotifyStatusSuccess :
+                                isErrorStatus(safeItem.ArtistStatus) ? styles.spotifyStatusError : null
+                        ]}>
+                            {getArtistStatusText(safeItem.ArtistStatus)}
+                        </Text>
+                    </View>
+                </>
+            )}
         </TooltipView>
     );
 });

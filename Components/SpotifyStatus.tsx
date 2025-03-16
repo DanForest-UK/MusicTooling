@@ -8,6 +8,8 @@ interface SpotifyStatusProps {
     showStatus: boolean;
 }
 
+// This component is no longer needed since the status is now displayed in the table
+// But kept for backwards compatibility or future use
 const SpotifyStatusComponent: React.FC<SpotifyStatusProps> = ({ item, showStatus }) => {
     if (!showStatus) {
         return null;

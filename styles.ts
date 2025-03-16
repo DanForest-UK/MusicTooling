@@ -11,6 +11,71 @@ export const styles = StyleSheet.create({
         paddingRight: 10,
         paddingBottom: 80, // Add padding at bottom for Spotify toggle
     },
+    // Table header styles
+    tableHeader: {
+        flexDirection: 'row',
+        backgroundColor: '#2D3748',
+        borderBottomWidth: 2,
+        borderBottomColor: '#4A5568',
+        marginBottom: 5,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+    },
+    tableHeaderText: {
+        fontWeight: 'bold',
+        color: 'white',
+        fontSize: 14,
+    },
+    tableHeaderCheckbox: {
+        width: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    // Table row styles
+    tableRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#374151',
+        marginVertical: 2,
+        borderRadius: 3,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+    },
+    // Table cell styles
+    tableCheckboxCell: {
+        width: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    tableArtistCell: {
+        flex: 3,
+        paddingHorizontal: 5,
+    },
+    tableAlbumCell: {
+        flex: 2,
+        paddingHorizontal: 5,
+    },
+    tableTitleCell: {
+        flex: 3,
+        paddingHorizontal: 5,
+    },
+    tableRatingCell: {
+        width: 90,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 5,
+    },
+    tableStatusCell: {
+        flex: 1,
+        paddingHorizontal: 5,
+        minWidth: 80,
+        justifyContent: 'center',
+    },
+    tableCellText: {
+        color: 'white',
+        fontSize: 13,
+    },
+    // Keeping existing styles
     fileItem: {
         marginVertical: 10,
         padding: 10,
@@ -81,7 +146,6 @@ export const styles = StyleSheet.create({
     },
     starsContainer: {
         flexDirection: 'row',
-        marginLeft: 5,
     },
     starIcon: {
         fontSize: 16,
@@ -120,7 +184,7 @@ export const styles = StyleSheet.create({
         color: 'white',
         fontSize: 12,
     },
-    // New styles for the redesigned SongItem
+    // Legacy styles for the SongItem
     songItemContainer: {
         flexDirection: 'row',
         alignItems: 'stretch',
