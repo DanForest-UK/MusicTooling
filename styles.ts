@@ -60,10 +60,11 @@ export const styles = StyleSheet.create({
         paddingHorizontal: 5,
     },
     tableRatingCell: {
-        width: 90,
+        width: 100,
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 5,
+        paddingRight: 15,
     },
     tableStatusCell: {
         flex: 1,

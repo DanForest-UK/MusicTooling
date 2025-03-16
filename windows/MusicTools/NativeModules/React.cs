@@ -32,6 +32,8 @@ namespace MusicTools.NativeModules
         /// </summary>
         static async Task GetFilesRecursively(StorageFolder folder, string extension, List<string> files)
         {
+            Runtime.Info($"Scanning folder {folder.Path}");
+
             var foundFiles = await folder.GetFilesAsync();
 
             var matchingFiles = from file in foundFiles
