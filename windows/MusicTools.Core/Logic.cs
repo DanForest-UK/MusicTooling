@@ -22,7 +22,6 @@ namespace MusicTools.Core
         {
             // Ensure sequential ordering
             songs = songs.Select((s, i) => s with { Id = i + 1 }).ToSeq();
-            if (songs.Select(s => s.Id).Distinct().Count() != songs.Count())
 
             // Initialize ChosenSongs with all song IDs if it's empty
             var chosenSongs = current.ChosenSongs.Length == 0
