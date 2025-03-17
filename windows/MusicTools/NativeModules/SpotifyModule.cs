@@ -33,7 +33,7 @@ namespace MusicTools.NativeModules
         bool isAuthenticated = false;
         public const string spotifyAuthUriKey = "spotifyAuthUri";
         public const string redirectUrl = "musictools://auth/callback";
-        int delayTime = 500; // Delay in API requests to prevent too many requests error
+        int delayTime = 50; // Delay in API requests to prevent too many requests error
 
         // React context for emitting events
         ReactContext reactContext;
@@ -42,7 +42,7 @@ namespace MusicTools.NativeModules
         private const string SPOTIFY_OPERATION_PROGRESS = "spotifyOperationProgress";
         private const string SPOTIFY_OPERATION_COMPLETE = "spotifyOperationComplete";
         private const string SPOTIFY_OPERATION_ERROR = "spotifyOperationError";
-        
+
         // Constants for batch processing
         private const int BATCH_SIZE = 50;
 
@@ -229,6 +229,21 @@ namespace MusicTools.NativeModules
         }
 
         /// <summary>
+        /// Emits a cancellation event and logs a warning message
+        /// </summary>
+        /// <param name="warningMessage">The message to log as a warning</param>
+        private void EmitCancellationEvent(string warningMessage = "Spotify operation cancelled by user")
+        {
+            Runtime.Warning(warningMessage);
+            EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
+            {
+                success = false,
+                cancelled = true,
+                message = "Operation cancelled by user"
+            });
+        }
+
+        /// <summary>
         /// Cancels any ongoing Spotify operations
         /// </summary>
         [ReactMethod("CancelSpotifyOperation")]
@@ -236,9 +251,11 @@ namespace MusicTools.NativeModules
         {
             try
             {
-                cancelSource?.Cancel();
-                EmitEvent(SPOTIFY_OPERATION_COMPLETE, new { success = false, cancelled = true });
-                Runtime.Warning("Spotify operation cancelled by user");
+                if (cancelSource != null && !cancelSource.IsCancellationRequested)
+                {
+                    cancelSource.Cancel();
+                    EmitCancellationEvent();
+                }
             }
             catch (Exception ex)
             {
@@ -256,7 +273,7 @@ namespace MusicTools.NativeModules
             {
                 EnsureInitialized();
 
-                var distinctArtists = ObservableState.Current.DistinctArtists(includeAlreadyFollowed: false);
+                var distinctArtists = ObservableState.Current.DistinctArtists(includeAlreadyProcessed: false);
                 if (!distinctArtists.Any())
                 {
                     Runtime.Warning("No artists to follow");
@@ -286,7 +303,7 @@ namespace MusicTools.NativeModules
                             // Check for cancellation between batches
                             if (cts.Token.IsCancellationRequested)
                             {
-                                Runtime.Warning("Artist search operation was cancelled");
+                                EmitCancellationEvent("Artist search operation was cancelled");
                                 break;
                             }
 
@@ -301,9 +318,9 @@ namespace MusicTools.NativeModules
                                 // Check for cancellation within batch
                                 if (cts.Token.IsCancellationRequested)
                                 {
-                                    Runtime.Warning("Artist search was cancelled during batch");
+                                    EmitCancellationEvent("Artist search was cancelled during batch");
                                     break;
-                                }                          
+                                }
 
                                 // Update progress for UI
                                 EmitEvent(SPOTIFY_OPERATION_PROGRESS, new
@@ -345,7 +362,7 @@ namespace MusicTools.NativeModules
                                 }
                                 catch (TaskCanceledException)
                                 {
-                                    Runtime.Warning("Artist search was cancelled during delay");
+                                    EmitCancellationEvent("Artist search was cancelled during delay");
                                     break;
                                 }
                             }
@@ -354,7 +371,7 @@ namespace MusicTools.NativeModules
                             if (batchFoundArtists.Any() && !cts.Token.IsCancellationRequested)
                             {
                                 Runtime.Info($"Following {batchFoundArtists.Count} artists on Spotify...");
-                                
+
                                 EmitEvent(SPOTIFY_OPERATION_PROGRESS, new
                                 {
                                     phase = "following",
@@ -411,7 +428,7 @@ namespace MusicTools.NativeModules
                     }
                     catch (TaskCanceledException)
                     {
-                        Runtime.Warning("Artist follow operation was cancelled");
+                        EmitCancellationEvent("Artist follow operation was cancelled");
                         return JsonConvert.SerializeObject(new
                         {
                             success = false,
@@ -450,7 +467,14 @@ namespace MusicTools.NativeModules
                 EnsureInitialized();
 
                 // Dispose of any existing cancellation token source
-                cancelSource?.Dispose();
+                if (cancelSource != null)
+                {
+                    if (!cancelSource.IsCancellationRequested)
+                    {
+                        cancelSource.Dispose();
+                    }
+                    cancelSource = null;
+                }
 
                 // Create a new cancellation token for this operation
                 cancelSource = new CancellationTokenSource();
@@ -476,23 +500,13 @@ namespace MusicTools.NativeModules
         {
             try
             {
-                var filteredSongs = ObservableState.Current.FilteredSongs(includeAlreadyLiked: false);
+                var filteredSongs = ObservableState.Current.FilteredSongs(includeAlreadyProcessed: false);
 
                 if (!filteredSongs.Any())
                 {
-                    Runtime.Warning("No songs provided to like");
                     EmitEvent(SPOTIFY_OPERATION_ERROR, new { error = "No songs provided" });
                     return;
                 }
-
-                Runtime.Info($"Preparing to like {filteredSongs.Count()} songs on Spotify...");
-                EmitEvent(SPOTIFY_OPERATION_PROGRESS, new
-                {
-                    phase = "initializing",
-                    totalSongs = filteredSongs.Count(),
-                    processed = 0,
-                    message = $"Preparing to process {filteredSongs.Count()} songs"
-                });
 
                 // Overall tracking of errors and processed songs
                 var errors = new List<SpotifyError>();
@@ -508,33 +522,16 @@ namespace MusicTools.NativeModules
                     // Check for cancellation between batches
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        Runtime.Warning("Song liking operation was cancelled between batches");
-                        EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
-                        {
-                            success = false,
-                            cancelled = true,
-                            message = "Operation cancelled by user"
-                        });
+                        EmitCancellationEvent("Song liking operation was cancelled between batches");
                         return;
                     }
 
                     var songsBatch = filteredSongs.Skip(index).Take(BATCH_SIZE);
-                    
+
                     // Current batch tracking
                     var foundSongs = new Dictionary<SpotifySongId, int>(); // Spotify ID to song ID lookup
                     var batchNumber = index / BATCH_SIZE + 1;
                     var totalBatches = (totalCount + BATCH_SIZE - 1) / BATCH_SIZE;
-
-                    Runtime.Info($"Processing songs batch {batchNumber}/{totalBatches}...");
-                    EmitEvent(SPOTIFY_OPERATION_PROGRESS, new
-                    {
-                        phase = "searching",
-                        totalSongs = totalCount,
-                        processed = totalProcessed,
-                        batchNumber,
-                        totalBatches,
-                        message = $"Processing songs batch {batchNumber}/{totalBatches}..."
-                    });
 
                     // Search for all songs in this batch
                     foreach (var song in songsBatch)
@@ -542,13 +539,7 @@ namespace MusicTools.NativeModules
                         // Check for cancellation within batch
                         if (cancellationToken.IsCancellationRequested)
                         {
-                            Runtime.Warning("Song search was cancelled during batch");
-                            EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
-                            {
-                                success = false,
-                                cancelled = true,
-                                message = "Operation cancelled by user"
-                            });
+                            EmitCancellationEvent("Song search was cancelled during batch");
                             return;
                         }
 
@@ -589,20 +580,13 @@ namespace MusicTools.NativeModules
                             songStatusUpdates.Clear();
                         }
 
-                        // Use try-catch specifically for Task.Delay with cancellation token
                         try
                         {
                             await Task.Delay(delayTime, cancellationToken); // Prevent too many requests from Spotify
                         }
                         catch (TaskCanceledException)
                         {
-                            Runtime.Warning("Operation was cancelled during delay");
-                            EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
-                            {
-                                success = false,
-                                cancelled = true,
-                                message = "Operation cancelled by user"
-                            });
+                            EmitCancellationEvent("Operation was cancelled during delay");
                             return;
                         }
                     }
@@ -610,8 +594,6 @@ namespace MusicTools.NativeModules
                     // Like the found songs in this batch
                     if (foundSongs.Any() && !cancellationToken.IsCancellationRequested)
                     {
-                        Runtime.Info($"Liking {foundSongs.Count} songs from batch {batchNumber}/{totalBatches}...");
-                        
                         EmitEvent(SPOTIFY_OPERATION_PROGRESS, new
                         {
                             phase = "liking",
@@ -630,22 +612,10 @@ namespace MusicTools.NativeModules
                         totalLiked += likedSongIds.Count();
 
                         if (likedSongIds.Count() != result.LikedSongs.Count())
-                            Runtime.Warning("Some song mappings were lost during processing");
+                            Runtime.Error("Some song mappings were lost during processing", None);
 
                         ObservableState.UpdateSongStatus(likedSongIds.Select(id => (id, SpotifyStatus.Liked)).ToArray());
-
-                        if (likedSongIds.Count() > 0)
-                        {
-                            if (likedSongIds.Count() < foundSongs.Count)
-                                Runtime.Warning($"Partial success: Liked {likedSongIds.Count()} of {foundSongs.Count} songs in batch {batchNumber}");
-                            else
-                                Runtime.Success($"Successfully liked {likedSongIds.Count()} songs in batch {batchNumber}");
-                        }
-                        else if (result.Errors.Any())
-                            Runtime.Error($"Failed to like any songs in batch {batchNumber}", None);
                     }
-                    else if (foundSongs.Count == 0)
-                        Runtime.Warning($"No songs found in batch {batchNumber}/{totalBatches}");
                 }
 
                 // Final operation status
@@ -682,13 +652,7 @@ namespace MusicTools.NativeModules
             }
             catch (TaskCanceledException)
             {
-                Runtime.Warning("Song liking operation was cancelled");
-                EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
-                {
-                    success = false,
-                    cancelled = true,
-                    message = "Operation cancelled by user"
-                });
+                EmitCancellationEvent("Song liking operation was cancelled");
             }
             catch (Exception ex)
             {
@@ -698,8 +662,11 @@ namespace MusicTools.NativeModules
             finally
             {
                 // Clean up the cancellation token source
-                cancelSource?.Dispose();
-                cancelSource = null;
+                if (cancelSource != null)
+                {
+                    cancelSource.Dispose();
+                    cancelSource = null;
+                }
             }
         }
 
@@ -707,18 +674,13 @@ namespace MusicTools.NativeModules
         /// Emits an event to the React Native JavaScript side using the shared helper
         /// </summary>
         private void EmitEvent(string eventName, object data) =>
-            JsEmitterHelper.EmitEvent(reactContext, eventName, data);        
+            JsEmitterHelper.EmitEvent(reactContext, eventName, data);
 
         /// <summary>
         /// Search for single song with improved status reporting
         /// </summary>
         async Task<Either<SpotifyError, SpotifySongId>> SearchForSong(SongInfo song, CancellationToken cancellationToken)
         {
-            Runtime.Info($"Searching for song: '{song.Name}' by {string.Join(", ", song.Artist)}");
-
-            // Log cancellation token status at start of search
-            Debug.WriteLine($"SearchForSong: CancellationToken.IsCancellationRequested = {cancellationToken.IsCancellationRequested}");
-
             try
             {
                 // Pass the cancellation token to the SpotifyAPI
@@ -734,8 +696,7 @@ namespace MusicTools.NativeModules
                     },
                     Left: error =>
                     {
-                        if (error is SongNotFound)
-                            Runtime.Warning($"Song not found: '{song.Name}' by {string.Join(", ", song.Artist)}");
+                        if (error is SongNotFound) { }
                         else
                             Runtime.Error($"Error searching for song: '{song.Name}'", None);
                     }
@@ -746,12 +707,12 @@ namespace MusicTools.NativeModules
             catch (TaskCanceledException)
             {
                 Runtime.Warning($"Song search was cancelled: '{song.Name}'");
-                return new SpotifyErrors.ApiError("search", 0, "Operation was canceled");
+                return new ApiError("search", 0, "Operation was canceled");
             }
             catch (Exception ex)
             {
                 Runtime.Error($"Exception in SearchForSong: {ex.Message}", ex);
-                return new SpotifyErrors.ApiError("search", 500, ex.Message);
+                return new ApiError("search", 500, ex.Message);
             }
         }
 
@@ -760,8 +721,6 @@ namespace MusicTools.NativeModules
         /// </summary>
         async Task<Either<SpotifyError, SpotifyArtistId>> SearchForArtist(string artistName, CancellationToken cancellationToken)
         {
-            Runtime.Info($"Searching for artist: '{artistName}'");
-
             try
             {
                 // Pass the cancellation token to the SpotifyAPI
@@ -774,8 +733,7 @@ namespace MusicTools.NativeModules
                     },
                     Left: error =>
                     {
-                        if (error is ArtistNotFound)
-                            Runtime.Warning($"Artist not found: '{artistName}'");
+                        if (error is ArtistNotFound) { }
                         else if (error is AuthenticationError authentication)
                             throw new Exception("Authentication expired");
                         else
@@ -788,11 +746,11 @@ namespace MusicTools.NativeModules
             catch (TaskCanceledException)
             {
                 Runtime.Warning($"Artist search was cancelled: '{artistName}'");
-                return new SpotifyErrors.ApiError("search", 0, "Operation was canceled");
+                return new ApiError("search", 0, "Operation was canceled");
             }
             catch (Exception ex)
             {
-                Runtime.Error($"Exception in SearchForArtist: {ex.Message}", ex);
+                Runtime.Error($"There was a problem searching for artists", ex);
                 return new ApiError("search", 500, ex.Message);
             }
         }
