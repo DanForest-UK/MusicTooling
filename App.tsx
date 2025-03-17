@@ -31,6 +31,7 @@ const App = () => {
     const [showSpotifyStatus, setShowSpotifyStatus] = useState(false);
     const [lastValidFilteredSongs, setLastValidFilteredSongs] = useState<SongInfo[]>([]);
     const [showSessionDialog, setShowSessionDialog] = useState(false);
+    const [isLoadingSession, setIsLoadingSession] = useState(false);
 
     // Track if we've had songs at least once - this prevents the panel from disappearing during operations
     const hasHadSongsRef = useRef(false);
@@ -160,6 +161,7 @@ const App = () => {
     const handleLoadSavedState = async () => {
         try {
             setLoading(true);
+            setIsLoadingSession(true); // Set the flag to indicate we're loading a session
             setShowSessionDialog(false);
 
             console.log('Loading saved state...');
@@ -176,6 +178,7 @@ const App = () => {
             console.error('Error loading saved state:', error);
             Alert.alert('Error', 'An error occurred while loading the previous session');
         } finally {
+            setIsLoadingSession(false); // Reset the flag
             setLoading(false);
         }
     };
@@ -321,7 +324,7 @@ const App = () => {
                         <View style={styles.loadingOverlay}>
                             <ActivityIndicator style={styles.activityIndicator} size={100} color="#0000ff" />
                             <Text style={styles.loadingText}>
-                                {hasScanned ? 'Loading session...' : 'Scanning files...'}
+                                {isLoadingSession ? 'Loading previous session...' : 'Scanning files...'}
                             </Text>
                         </View>
                     )}
