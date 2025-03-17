@@ -39,9 +39,8 @@ namespace MusicTools.Logic
         {
             var oldState = stateAtom.Value;
             stateAtom.Swap(_ => newState);
-            StateChanged?.Invoke(null, newState);  
+            StateChanged?.Invoke(null, newState);
         }
-
 
         /// <summary>
         /// Sets the minimum rating filter
@@ -78,5 +77,22 @@ namespace MusicTools.Logic
         /// </summary>
         public static void ToggleSongSelection(int songId) =>
             Update(stateAtom.Value.ToggleSongSelection(songId));
+
+        /// <summary>
+        /// Sets the application state from persisted data without triggering the state change event
+        /// This is used when loading state from disk to avoid a circular save
+        /// </summary>
+        public static void SetPersistedState(Dictionary<int, SongInfo> songs, int[] chosenSongs, int minimumRating)
+        {
+            var newModel = new AppModel(
+                Songs: new ConcurrentDictionary<int, SongInfo>(songs),
+                ChosenSongs: chosenSongs,
+                MinimumRating: minimumRating
+            );
+
+            stateAtom.Swap(_ => newModel);
+            // Then manually trigger the state changed event
+            StateChanged?.Invoke(null, newModel);
+        }
     }
 }

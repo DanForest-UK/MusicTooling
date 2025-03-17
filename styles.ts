@@ -6,6 +6,57 @@ export const styles = StyleSheet.create({
         padding: 20,
         paddingVertical: 10,
     },
+    // Modal styles for session dialog
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        backgroundColor: '#2D3748',
+        borderRadius: 8,
+        padding: 20,
+        width: '80%',
+        maxWidth: 500,
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: 'white',
+        marginBottom: 15,
+    },
+    modalText: {
+        fontSize: 16,
+        color: 'white',
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    modalButtonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        width: '100%',
+        marginTop: 10,
+    },
+    modalButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 5,
+        minWidth: 120,
+        alignItems: 'center',
+    },
+    modalButtonPrimary: {
+        backgroundColor: '#1DB954', // Spotify green for continuation
+    },
+    modalButtonSecondary: {
+        backgroundColor: '#B71C1C', // Red for delete/start fresh
+    },
+    modalButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
     listContainer: {
         padding: 3,
         paddingRight: 10,
@@ -129,6 +180,7 @@ export const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 200,
     },
     loadingText: {
         marginTop: 10,

@@ -23,8 +23,8 @@ namespace MusicTools.Logic
         {
             //     var path = @"C:\Dan\Dropbox\[Music]\[Folk]";
 
-            //     var path = @"C:\Dan\Dropbox\[Music]\[Folk]\[Acapella]\Coope, Boyes & Simpson\Falling Slowley";
-            var path = @"C:\Dan\Dropbox\[Music]";
+                 var path = @"C:\Dan\Dropbox\[Music]\[Folk]\[Acapella]\Coope, Boyes & Simpson\Falling Slowley";
+          //  var path = @"C:\Dan\Dropbox\[Music]";
 
             try
             {

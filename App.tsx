@@ -13,12 +13,15 @@ import SpotifyIntegration from './Components/SpotifyIntegration';
 // Import the StatusProvider and StatusBar
 import { StatusProvider } from './StatusContext';
 import StatusBar from './Components/StatusBar';
+// Import the SessionDialog component
+import SessionDialog from './Components/Dialog';
 
 // Native modules are imported at the top
 const { FileScannerModule, StateModule } = NativeModules;
 
 // Event name for state updates
 const APP_STATE_UPDATED_EVENT = 'appStateUpdated';
+const SAVED_STATE_EVENT = 'savedStateAvailable';
 
 const App = () => {
     // Local UI state
@@ -27,6 +30,7 @@ const App = () => {
     const [showSpotify, setShowSpotify] = useState(false);
     const [showSpotifyStatus, setShowSpotifyStatus] = useState(false);
     const [lastValidFilteredSongs, setLastValidFilteredSongs] = useState<SongInfo[]>([]);
+    const [showSessionDialog, setShowSessionDialog] = useState(false);
 
     // Track if we've had songs at least once - this prevents the panel from disappearing during operations
     const hasHadSongsRef = useRef(false);
@@ -70,6 +74,41 @@ const App = () => {
             song.Rating >= (appState.MinimumRating || 0)
         );
     }, [appState?.Songs, appState?.MinimumRating, lastValidFilteredSongs]);
+
+    // Listen for saved state event
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener(
+            SAVED_STATE_EVENT,
+            (eventData) => {
+                // Check if saved state is available
+                if (eventData?.available) {
+                    console.log('Saved state detected, showing session dialog');
+                    setShowSessionDialog(true);
+                }
+            }
+        );
+
+        return () => {
+            subscription.remove();
+        };
+    }, []);
+
+    // Check for saved state explicitly
+    useEffect(() => {
+        const checkSavedState = async () => {
+            try {
+                const hasSavedState = await StateModule.CheckForSavedState();
+                if (hasSavedState) {
+                    console.log('Saved state available, showing dialog');
+                    setShowSessionDialog(true);
+                }
+            } catch (error) {
+                console.error('Error checking for saved state:', error);
+            }
+        };
+
+        checkSavedState();
+    }, []);
 
     // Set up listener for state changes from C#
     useEffect(() => {
@@ -117,6 +156,43 @@ const App = () => {
             subscription.remove();
         };
     }, []);
+
+    const handleLoadSavedState = async () => {
+        try {
+            setLoading(true);
+            setShowSessionDialog(false);
+
+            console.log('Loading saved state...');
+            const success = await StateModule.LoadSavedState();
+
+            if (success) {
+                console.log('Saved state loaded successfully');
+                setHasScanned(true);
+            } else {
+                console.error('Failed to load saved state');
+                Alert.alert('Error', 'Failed to load previous session');
+            }
+        } catch (error) {
+            console.error('Error loading saved state:', error);
+            Alert.alert('Error', 'An error occurred while loading the previous session');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteSavedState = async () => {
+        try {
+            setShowSessionDialog(false);
+
+            console.log('Deleting saved state...');
+            await StateModule.DeleteSavedState();
+
+            console.log('Saved state deleted');
+        } catch (error) {
+            console.error('Error deleting saved state:', error);
+            Alert.alert('Error', 'An error occurred while deleting the previous session');
+        }
+    };
 
     const scanFiles = async () => {
         if (loading) { return; }
@@ -244,7 +320,9 @@ const App = () => {
                     {loading && (
                         <View style={styles.loadingOverlay}>
                             <ActivityIndicator style={styles.activityIndicator} size={100} color="#0000ff" />
-                            <Text style={styles.loadingText}>Scanning files...</Text>
+                            <Text style={styles.loadingText}>
+                                {hasScanned ? 'Loading session...' : 'Scanning files...'}
+                            </Text>
                         </View>
                     )}
 
@@ -303,6 +381,14 @@ const App = () => {
                             />
                         </View>
                     )}
+
+                    {/* Session Dialog using custom modal implementation */}
+                    <SessionDialog
+                        visible={showSessionDialog}
+                        onLoadSession={handleLoadSavedState}
+                        onDeleteSession={handleDeleteSavedState}
+                    />
+
                     <StatusBar />
                 </View>
             </SafeAreaView>

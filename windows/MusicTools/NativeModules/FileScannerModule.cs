@@ -30,6 +30,7 @@ namespace MusicTools.NativeModules
             var results = await ScanFiles.ScanFilesAsync();
 
             // Error handling is done in the ScanFiles      
+            
             results.Match(
                 Right: list =>
                 {

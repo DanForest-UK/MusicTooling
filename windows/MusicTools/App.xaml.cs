@@ -33,6 +33,8 @@ namespace MusicTools
             Runtime.GetSpotifyAPI = (clientId, clientSecret, redirectUri) =>
                 new SpotifyApi(clientId, clientSecret, redirectUri);
 
+            PersistedStateService.Initialize();
+
 #if BUNDLE
             JavaScriptBundleFile = "index.windows";
             InstanceSettings.UseFastRefresh = false;

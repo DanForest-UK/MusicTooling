@@ -16,6 +16,7 @@ namespace MusicTools.NativeModules
     {
         // Constants for event names
         public const string STATE_UPDATED_EVENT = "appStateUpdated";
+        public const string SAVED_STATE_EVENT = "savedStateAvailable";
 
         // Field to hold the React context
         ReactContext reactContext;
@@ -39,6 +40,12 @@ namespace MusicTools.NativeModules
 
             // Subscribe to state changes if not already subscribed
             SubscribeToStateChanges();
+
+            // Initialize the state persistence service
+            PersistedStateService.Initialize();
+
+            // Check for saved state on startup
+            CheckForSavedState();
         }
 
         /// <summary>
@@ -66,6 +73,26 @@ namespace MusicTools.NativeModules
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error handling state change: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Checks for saved state and notifies React if found
+        /// </summary>
+        private async void CheckForSavedState()
+        {
+            try
+            {
+                var hasSavedState = await PersistedStateService.HasSavedStateAsync();
+                if (hasSavedState)
+                {
+                    JsEmitterHelper.EmitEvent(reactContext, SAVED_STATE_EVENT, new { available = true });
+                    System.Diagnostics.Debug.WriteLine("Notified React of saved state");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error checking for saved state: {ex.Message}");
             }
         }
 
@@ -134,6 +161,70 @@ namespace MusicTools.NativeModules
         }
 
         /// <summary>
+        /// Loads state from disk - implementing IReactPromise
+        /// </summary>
+        [ReactMethod("LoadSavedState")]
+        public async void LoadSavedState(IReactPromise<bool> promise)
+        {
+            try
+            {
+                var success = await PersistedStateService.LoadStateFromDiskAsync();
+                if (success)
+                {
+                    Runtime.Success("Previous session loaded successfully");
+                    promise.Resolve(true);
+                }
+                else
+                {
+                    Runtime.Warning("Failed to load previous session");
+                    promise.Resolve(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                Runtime.Error("Error loading saved state", ex);
+                promise.Reject(new ReactError { Message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Deletes saved state from disk - implementing IReactPromise
+        /// </summary>
+        [ReactMethod("DeleteSavedState")]
+        public async void DeleteSavedState(IReactPromise<bool> promise)
+        {
+            try
+            {
+                await PersistedStateService.DeleteSavedStateAsync();
+                Runtime.Info("Previous session data deleted");
+                promise.Resolve(true);
+            }
+            catch (Exception ex)
+            {
+                Runtime.Error("Error deleting saved state", ex);
+                promise.Reject(new ReactError { Message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Check if saved state exists - implementing IReactPromise
+        /// </summary>
+        [ReactMethod("CheckForSavedState")]
+        public async void CheckForSavedState(IReactPromise<bool> promise)
+        {
+            try
+            {
+                var hasState = await PersistedStateService.HasSavedStateAsync();
+                promise.Resolve(hasState);
+            }
+            catch (Exception ex)
+            {
+                Runtime.Error("Error checking for saved state", ex);
+                promise.Reject(new ReactError { Message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Updates the minimum rating filter
         /// </summary>
         [ReactMethod("SetMinimumRating")]
@@ -176,6 +267,9 @@ namespace MusicTools.NativeModules
                 ObservableState.StateChanged -= OnStateChanged;
                 isSubscribed = false;
             }
+
+            // Clean up the persistence service
+            PersistedStateService.Cleanup();
         }
     }
 }

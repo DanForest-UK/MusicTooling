@@ -111,6 +111,7 @@
     <Compile Include="NativeModules\SpotifyModule.cs" />
     <Compile Include="NativeModules\StateModule.cs" />
     <Compile Include="NativeModules\StatusModule.cs" />
+    <Compile Include="PersistedStateService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AutolinkedNativeModules.g.cs" />
     <Compile Include="ReactPackageProvider.cs" />
