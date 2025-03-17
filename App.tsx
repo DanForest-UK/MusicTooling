@@ -273,10 +273,10 @@ const App = () => {
             {showSpotifyStatus && (
                 <>
                     <View style={styles.tableStatusCell}>
-                        <Text style={styles.tableHeaderText}>Song</Text>
+                        <Text style={styles.tableHeaderText}>Song Status</Text>
                     </View>
                     <View style={styles.tableStatusCell}>
-                        <Text style={styles.tableHeaderText}>Artist</Text>
+                        <Text style={styles.tableHeaderText}>Artist Status</Text>
                     </View>
                 </>
             )}

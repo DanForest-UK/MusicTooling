@@ -159,7 +159,7 @@ const SongItem = memo(({ item, isSelected, onToggle, showSpotifyStatus = false }
                         <Text style={[
                             styles.tableCellText,
                             isSuccessStatus(safeItem.SongStatus) ? styles.spotifyStatusSuccess :
-                                isErrorStatus(safeItem.SongStatus) ? styles.spotifyStatusError : null
+                                isErrorStatus(safeItem.SongStatus) ? styles.spotifyStatusError : null,
                         ]}>
                             {getSongStatusText(safeItem.SongStatus)}
                         </Text>
@@ -170,7 +170,7 @@ const SongItem = memo(({ item, isSelected, onToggle, showSpotifyStatus = false }
                         <Text style={[
                             styles.tableCellText,
                             isSuccessStatus(safeItem.ArtistStatus) ? styles.spotifyStatusSuccess :
-                                isErrorStatus(safeItem.ArtistStatus) ? styles.spotifyStatusError : null
+                                isErrorStatus(safeItem.ArtistStatus) ? styles.spotifyStatusError : null,
                         ]}>
                             {getArtistStatusText(safeItem.ArtistStatus)}
                         </Text>
