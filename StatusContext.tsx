@@ -24,7 +24,7 @@ const defaultStatus: StatusMessage = {
     Text: '',
     Level: StatusLevel.Info,
     Id: '',
-    Timestamp: new Date().toISOString()
+    Timestamp: new Date().toISOString(),
 };
 
 // Context interface
@@ -36,7 +36,7 @@ interface StatusContextType {
 // Create the context
 const StatusContext = createContext<StatusContextType>({
     status: defaultStatus,
-    clearStatus: () => { }
+    clearStatus: () => { },
 });
 
 // Status event name used by native module
@@ -56,9 +56,9 @@ export const StatusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 const listenerId = `listener_${Date.now()}`;
                 await StatusModule.AddListener(listenerId);
 
-                console.log("Status listener initialized");
+                console.log('Status listener initialized');
             } catch (error) {
-                console.error("Error initializing status listener:", error);
+                console.error('Error initializing status listener:', error);
             }
         };
 
@@ -67,7 +67,7 @@ export const StatusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             STATUS_UPDATE_EVENT,
             (statusJson: string) => {
                 try {
-                    console.log("Received status update:", statusJson);
+                    console.log('Received status update:', statusJson);
                     // Parse the JSON
                     const statusData = JSON.parse(statusJson);
 
@@ -76,7 +76,7 @@ export const StatusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                         Text: statusData.Text,
                         Level: statusData.Level,
                         Id: statusData.Id,
-                        Timestamp: statusData.Timestamp
+                        Timestamp: statusData.Timestamp,
                     });
                 } catch (error) {
                     console.error('Error parsing status update:', error);
@@ -89,14 +89,14 @@ export const StatusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             try {
                 const statusJson = await StatusModule.GetCurrentStatus();
                 if (statusJson) {
-                    console.log("Initial status:", statusJson);
+                    console.log('Initial status:', statusJson);
                     const statusData = JSON.parse(statusJson);
                     if (statusData.Text) {
                         setStatus({
                             Text: statusData.Text,
                             Level: statusData.Level,
                             Id: statusData.Id,
-                            Timestamp: statusData.Timestamp
+                            Timestamp: statusData.Timestamp,
                         });
                     }
                 }

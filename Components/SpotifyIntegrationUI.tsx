@@ -21,7 +21,7 @@ const defaultProgressState: ProgressState = {
     message: '',
     isComplete: false,
     isError: false,
-    isCancelled: false
+    isCancelled: false,
 };
 
 interface SpotifyIntegrationUIProps {
@@ -59,7 +59,7 @@ const SpotifyIntegrationUI: React.FC<SpotifyIntegrationUIProps> = ({
     }, []);
 
     const renderErrors = () => {
-        if (errors.length === 0) return null;
+        if (errors.length === 0) { return null; }
 
         return (
             <View style={styles.spotifyErrorContainer}>

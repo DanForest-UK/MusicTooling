@@ -68,7 +68,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         }
     }, [appState]);
 
-    // Function to handle the auth code exchange 
+    // Function to handle the auth code exchange
     const completeAuthentication = useCallback(async (code: string) => {
         try {
             // Prevent duplicate code usage
@@ -120,7 +120,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
 
                 if (response.error) {
                     if (isAlreadyAuthenticatedError(response.error)) {
-                        // User is already authenticated, shouldn't happen but not a real issue 
+                        // User is already authenticated, shouldn't happen but not a real issue
                         // so no need to alert the user
                         setIsAuthenticated(true);
                     } else {
@@ -237,7 +237,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
                         message: data.message || prev.message,
                         isComplete: false,
                         isError: false,
-                        isCancelled: false
+                        isCancelled: false,
                     }));
                 }
             }
@@ -264,7 +264,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
                         message: data.message || 'Operation complete',
                         isComplete: true,
                         isError: false,
-                        isCancelled: data.cancelled || false
+                        isCancelled: data.cancelled || false,
                     }));
 
                     // If there are errors, update the errors state
@@ -323,7 +323,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
                         message: data.error || 'Operation failed',
                         isComplete: true,
                         isError: true,
-                        isCancelled: false
+                        isCancelled: false,
                     }));
 
                     // Add a small delay before changing component state
@@ -343,7 +343,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         eventSubscriptions.current = [
             progressSubscription,
             completeSubscription,
-            errorSubscription
+            errorSubscription,
         ];
 
         // Cleanup function
@@ -513,7 +513,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
                                 message: data.message || prev.message,
                                 isComplete: false,
                                 isError: false,
-                                isCancelled: false
+                                isCancelled: false,
                             }));
                         }
                     }
@@ -542,7 +542,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
                 eventSubscriptions.current = [
                     progressSubscription,
                     completeSubscription,
-                    errorSubscription
+                    errorSubscription,
                 ];
             }
 

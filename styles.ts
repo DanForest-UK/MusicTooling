@@ -524,4 +524,79 @@ export const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 12,
     },
+
+    // Dialog component styles (moved from Dialog.tsx)
+    dialogTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: 'white',
+        marginBottom: 15,
+    },
+    dialogMessage: {
+        fontSize: 16,
+        color: 'white',
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    dialogButtonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        width: '100%',
+        marginTop: 10,
+    },
+    dialogButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 5,
+        minWidth: 120,
+        alignItems: 'center',
+        marginHorizontal: 10,
+    },
+    dialogPrimaryButton: {
+        backgroundColor: '#1DB954', // Spotify green for continuation
+    },
+    dialogSecondaryButton: {
+        backgroundColor: '#B71C1C', // Red for delete/start fresh
+    },
+    dialogButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+
+    // CustomModal component styles (moved from CustomModal.tsx)
+    modalContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    modalBackdrop: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    },
+    modalBackdropTouchable: {
+        flex: 1,
+    },
+    modalContentContainer: {
+        backgroundColor: '#2D3748',
+        borderRadius: 8,
+        padding: 20,
+        width: '80%',
+        maxWidth: 500,
+        alignItems: 'center',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    },
 });

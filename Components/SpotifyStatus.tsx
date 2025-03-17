@@ -62,7 +62,7 @@ const SpotifyStatusComponent: React.FC<SpotifyStatusProps> = ({ item, showStatus
             <Text style={[
                 styles.spotifyStatusText,
                 isSuccessStatus(songStatus) ? styles.spotifyStatusSuccess :
-                    isErrorStatus(songStatus) ? styles.spotifyStatusError : null
+                    isErrorStatus(songStatus) ? styles.spotifyStatusError : null,
             ]}>
                 {getSongStatusText(songStatus)}
             </Text>
@@ -71,7 +71,7 @@ const SpotifyStatusComponent: React.FC<SpotifyStatusProps> = ({ item, showStatus
                 styles.spotifyStatusText,
                 styles.spotifyStatusArtistText,
                 isSuccessStatus(artistStatus) ? styles.spotifyStatusSuccess :
-                    isErrorStatus(artistStatus) ? styles.spotifyStatusError : null
+                    isErrorStatus(artistStatus) ? styles.spotifyStatusError : null,
             ]}>
                 {getArtistStatusText(artistStatus)}
             </Text>

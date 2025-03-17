@@ -8,7 +8,7 @@ import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import { AppModel, SpotifyStatus, SongInfo } from './types';
 // Import the SongItem component
 import SongItem from './Components/SongItem';
-// Import the SpotifyIntegration component 
+// Import the SpotifyIntegration component
 import SpotifyIntegration from './Components/SpotifyIntegration';
 // Import the StatusProvider and StatusBar
 import { StatusProvider } from './StatusContext';
@@ -22,6 +22,37 @@ const { FileScannerModule, StateModule } = NativeModules;
 // Event name for state updates
 const APP_STATE_UPDATED_EVENT = 'appStateUpdated';
 const SAVED_STATE_EVENT = 'savedStateAvailable';
+
+// Table header component defined outside of App component
+const TableHeader: React.FC<{ showSpotifyStatus: boolean }> = ({ showSpotifyStatus }) => (
+    <View style={styles.tableHeader}>
+        <View style={styles.tableCheckboxCell}>
+            <Text style={styles.tableHeaderText}></Text>
+        </View>
+        <View style={styles.tableArtistCell}>
+            <Text style={styles.tableHeaderText}>Artist</Text>
+        </View>
+        <View style={styles.tableAlbumCell}>
+            <Text style={styles.tableHeaderText}>Album</Text>
+        </View>
+        <View style={styles.tableTitleCell}>
+            <Text style={styles.tableHeaderText}>Title</Text>
+        </View>
+        <View style={styles.tableRatingCell}>
+            <Text style={styles.tableHeaderText}>Rating</Text>
+        </View>
+        {showSpotifyStatus && (
+            <>
+                <View style={styles.tableStatusCell}>
+                    <Text style={styles.tableHeaderText}>Song</Text>
+                </View>
+                <View style={styles.tableStatusCell}>
+                    <Text style={styles.tableHeaderText}>Artist</Text>
+                </View>
+            </>
+        )}
+    </View>
+);
 
 const App = () => {
     // Local UI state
@@ -252,37 +283,6 @@ const App = () => {
     // Shows if we have songs now OR we've had songs at some point (prevent toggle disappearing)
     const shouldShowSpotifyToggle = hasScanned && (filteredSongs.length > 0 || hasHadSongsRef.current);
 
-    // Table header component
-    const TableHeader = () => (
-        <View style={styles.tableHeader}>
-            <View style={styles.tableCheckboxCell}>
-                <Text style={styles.tableHeaderText}></Text>
-            </View>
-            <View style={styles.tableArtistCell}>
-                <Text style={styles.tableHeaderText}>Artist</Text>
-            </View>
-            <View style={styles.tableAlbumCell}>
-                <Text style={styles.tableHeaderText}>Album</Text>
-            </View>
-            <View style={styles.tableTitleCell}>
-                <Text style={styles.tableHeaderText}>Title</Text>
-            </View>
-            <View style={styles.tableRatingCell}>
-                <Text style={styles.tableHeaderText}>Rating</Text>
-            </View>
-            {showSpotifyStatus && (
-                <>
-                    <View style={styles.tableStatusCell}>
-                        <Text style={styles.tableHeaderText}>Song Status</Text>
-                    </View>
-                    <View style={styles.tableStatusCell}>
-                        <Text style={styles.tableHeaderText}>Artist Status</Text>
-                    </View>
-                </>
-            )}
-        </View>
-    );
-
     return (
         <StatusProvider>
             <SafeAreaView style={{ flex: 1 }}>
@@ -334,7 +334,7 @@ const App = () => {
                     )}
 
                     {hasScanned && filteredSongs.length > 0 && (
-                        <TableHeader />
+                        <TableHeader showSpotifyStatus={showSpotifyStatus} />
                     )}
 
                     <FlatList

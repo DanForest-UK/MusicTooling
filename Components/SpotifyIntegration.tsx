@@ -20,7 +20,7 @@ const SpotifyIntegration: React.FC<SpotifyIntegrationProps> = ({ appState, onClo
         handleAuthenticate,
         handleLikeSongs,
         handleFollowArtists,
-        cancelOperation
+        cancelOperation,
     } = useSpotifyIntegration(safeAppState, onSpotifyAction);
 
     return (
