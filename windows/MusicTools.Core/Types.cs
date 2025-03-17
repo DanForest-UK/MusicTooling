@@ -13,20 +13,22 @@ namespace MusicTools.Core
         // Records for application state
         public record AppModel(ConcurrentDictionary<int, SongInfo> Songs, int[] ChosenSongs, int MinimumRating)
         {
-            public Seq<SongInfo> FilteredSongs()
+            public Seq<SongInfo> FilteredSongs(bool includeAlreadyLiked = false)
             {
                 var chosenSongsHash = toHashSet(ChosenSongs);
 
                 return (from s in Songs.Values
                         where s.Rating >= MinimumRating &&
-                              chosenSongsHash.Contains(s.Id)
+                              chosenSongsHash.Contains(s.Id) &&
+                              (includeAlreadyLiked ||s.SongStatus != SpotifyStatus.Liked)
                         select s).ToSeq();
             }
 
-            public Seq<string> DistinctArtists() =>
-                (from s in FilteredSongs()
+            public Seq<string> DistinctArtists(bool includeAlreadyFollowed = false) =>
+                (from s in FilteredSongs(includeAlreadyLiked: true)
                  from a in s.Artist
-                 where a.HasValue()
+                 where a.HasValue() &&
+                      (includeAlreadyFollowed || s.ArtistStatus != SpotifyStatus.Liked)
                  select a).Distinct().ToSeq();
         }
 

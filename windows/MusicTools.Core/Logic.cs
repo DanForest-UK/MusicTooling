@@ -42,25 +42,31 @@ namespace MusicTools.Core
             updates.Iter(update =>
             {
                 if (songs.ContainsKey(update.SongId))
-                    songs[update.SongId] = songs[update.SongId] with { SongStatus = update.Status };
+                    songs[update.SongId] = songs[update.SongId] with 
+                    { SongStatus =songs[update.SongId].SongStatus == SpotifyStatus.Liked // Never downgrade to 'found'
+                        ? SpotifyStatus.Liked
+                        : update.Status };
             });
             return current with { Songs = songs };
         }
 
-        public static AppModel UpdateArtistsStatus(this AppModel current, string[] artists, SpotifyStatus status)
+        public static AppModel UpdateArtistsStatus(this AppModel current, (string Artist, SpotifyStatus Status)[] updates)
         {
             var songs = current.Songs;
 
             var songsWithArtist = (from s in songs.Values
-                                   from songInfoArtists in s.Artist
-                                   from artist in artists
-                                   where artist.ToLower() == songInfoArtists.ToLower() // todo check if we can make search case insensitive
-                                   select s.Id).Distinct();
+                                   from songInfoArtist in s.Artist
+                                   from update in updates
+                                   where update.Artist.ToLower() == songInfoArtist.ToLower() // todo check if we can make search case insensitive
+                                   select (Id: s.Id, Status: update.Status)).Distinct();
 
-            songsWithArtist.Iter(songId =>
+            songsWithArtist.Iter(song =>
             {
-                if (songs.ContainsKey(songId))
-                    songs[songId] = songs[songId] with { ArtistStatus = status };
+                if (songs.ContainsKey(song.Id))
+                    songs[song.Id] = songs[song.Id] 
+                        with { ArtistStatus = songs[song.Id].ArtistStatus == SpotifyStatus.Liked // never downgrade to 'found'
+                            ? SpotifyStatus.Liked
+                            : song.Status };
             });
             return current with { Songs = songs };
         }

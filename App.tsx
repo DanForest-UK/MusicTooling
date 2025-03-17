@@ -339,7 +339,11 @@ const App = () => {
 
                     <FlatList
                         data={filteredSongs}
-                        contentContainerStyle={styles.listContainer}
+                        contentContainerStyle={[
+                            styles.listContainer,
+                            // Add dynamic bottom padding based on whether Spotify panel is visible
+                            showSpotify ? { paddingBottom: 270 } : { paddingBottom: 80 }
+                        ]}
                         keyExtractor={item => item.Id}
                         renderItem={({ item }) => (
                             <SongItem

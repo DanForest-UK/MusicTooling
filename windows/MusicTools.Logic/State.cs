@@ -57,8 +57,8 @@ namespace MusicTools.Logic
         /// <summary>
         /// Updates artist statuses
         /// </summary>
-        public static void UpdateArtistStatus(string[] artists, SpotifyStatus status) =>
-            Update(stateAtom.Value.UpdateArtistsStatus(artists, status));
+        public static void UpdateArtistStatus((string Artist, SpotifyStatus status)[] updates) =>
+            Update(stateAtom.Value.UpdateArtistsStatus(updates));
 
         /// <summary>
         /// Sets the song collection and initializes chosen songs if not set
