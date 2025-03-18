@@ -20,7 +20,6 @@ namespace MusicTools
 
             // Wire up the other status event handlers to use the same mechanism
             Runtime.Info = message => StatusHelper.Info(message);
-            Runtime.Success = message => StatusHelper.Success(message);
             Runtime.Warning = message => StatusHelper.Warning(message);
             Runtime.Error = (message, ex) => StatusHelper.Error(message, ex);
 

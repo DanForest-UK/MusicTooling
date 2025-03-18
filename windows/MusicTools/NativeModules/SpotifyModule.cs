@@ -138,8 +138,6 @@ namespace MusicTools.NativeModules
             {
                 EnsureInitialized();
 
-                Runtime.Info("Connecting to Spotify...");
-
                 if (!code.HasValue())
                 {
                     Runtime.Error("No authorization code provided", None);
@@ -160,7 +158,6 @@ namespace MusicTools.NativeModules
                         var response = result.Match(
                             Right: success => {
                                 isAuthenticated = true;
-                                Runtime.Success("Connected to Spotify successfully");
                                 return new { success = true, error = SpotifyErrors.Empty };
                             },
                             Left: error => {
@@ -410,9 +407,7 @@ namespace MusicTools.NativeModules
                         // Final status update
                         Runtime.Info($"Found and processed {foundArtists.Count} of {totalArtists} artists on Spotify");
 
-                        if (foundArtists.Any())
-                            Runtime.Success($"Successfully followed {foundArtists.Count} artists on Spotify");
-                        else if (errors.Any())
+                        if (errors.Any())
                             Runtime.Error("Failed to follow any artists on Spotify", None);
                         else
                             Runtime.Warning("No artists found on Spotify");
@@ -621,7 +616,6 @@ namespace MusicTools.NativeModules
                 // Final operation status
                 if (totalLiked > 0)
                 {
-                    Runtime.Success($"Successfully liked {totalLiked} songs on Spotify");
                     EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
                     {
                         success = true,
@@ -690,10 +684,7 @@ namespace MusicTools.NativeModules
                 Debug.WriteLine($"SearchForSong (after API call): CancellationToken.IsCancellationRequested = {cancellationToken.IsCancellationRequested}");
 
                 searchResult.Match(
-                    Right: track =>
-                    {
-                        Runtime.Success($"Found song: '{song.Name}' by {string.Join(", ", song.Artist)}");
-                    },
+                    Right: _ => { },
                     Left: error =>
                     {
                         if (error is SongNotFound) { }
@@ -727,10 +718,7 @@ namespace MusicTools.NativeModules
                 var searchResult = await spotifyApi.SearchArtistAsync(artistName, cancellationToken);
 
                 searchResult.Match(
-                    Right: artist =>
-                    {
-                        Runtime.Success($"Found artist: '{artistName}'");
-                    },
+                    Right: artist => { },
                     Left: error =>
                     {
                         if (error is ArtistNotFound) { }

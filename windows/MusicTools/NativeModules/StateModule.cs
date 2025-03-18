@@ -171,7 +171,6 @@ namespace MusicTools.NativeModules
                 var success = await PersistedStateService.LoadStateFromDiskAsync();
                 if (success)
                 {
-                    Runtime.Success("Previous session loaded successfully");
                     promise.Resolve(true);
                 }
                 else

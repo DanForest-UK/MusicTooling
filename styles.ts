@@ -432,7 +432,7 @@ export const styles = StyleSheet.create({
         justifyContent: 'space-between',
         borderTopWidth: 1,
         borderTopColor: '#3D4852',
-        zIndex: 40,
+        zIndex: 150, // Increased z-index to appear above other elements
     },
     statusBarInfo: {
         backgroundColor: '#2D3748',

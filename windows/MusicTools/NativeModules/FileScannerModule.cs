@@ -38,10 +38,7 @@ namespace MusicTools.NativeModules
                                        where song.Rating >= ObservableState.Current.MinimumRating
                                        select song;
 
-                    Runtime.Info($"Found {list.Count()} music files, filtering...");
                     ObservableState.SetSongs(filteredList);
-
-                    Runtime.Success($"Scan complete: {filteredList.Count()} files match your criteria");
                     return unit;
                 },
                 Left: error => unit);

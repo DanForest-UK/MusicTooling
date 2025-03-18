@@ -39,24 +39,29 @@ const StatusContext = createContext<StatusContextType>({
     clearStatus: () => { },
 });
 
-// Status event name used by native module
-const STATUS_UPDATE_EVENT = 'statusUpdate';
-
 // Provider component that manages status state
 export const StatusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [status, setStatus] = useState<StatusMessage>(defaultStatus);
 
+    // Function to update status with protection against empty status
+    const updateStatus = (newStatus: StatusMessage) => {
+        // Skip setting empty status unless we're explicitly clearing
+        if (!newStatus.Text && status.Text) {
+            return;
+        }
+
+        setStatus(newStatus);
+    };
+
     useEffect(() => {
         const initializeStatus = async () => {
             try {
-                // Start the status update service - now handles as promise
+                // Start the status update service
                 await StatusModule.StartStatusUpdates();
 
-                // Register a listener id - now handles as promise
+                // Register a listener id
                 const listenerId = `listener_${Date.now()}`;
                 await StatusModule.AddListener(listenerId);
-
-                console.log('Status listener initialized');
             } catch (error) {
                 console.error('Error initializing status listener:', error);
             }
@@ -64,20 +69,24 @@ export const StatusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         // Subscribe to status updates using DeviceEventEmitter
         const subscription = DeviceEventEmitter.addListener(
-            STATUS_UPDATE_EVENT,
+            'statusUpdate',
             (statusJson: string) => {
                 try {
-                    console.log('Received status update:', statusJson);
                     // Parse the JSON
-                    const statusData = JSON.parse(statusJson);
+                    const statusData = typeof statusJson === 'string'
+                        ? JSON.parse(statusJson)
+                        : statusJson;
 
-                    // Set status using PascalCase properties
-                    setStatus({
-                        Text: statusData.Text,
-                        Level: statusData.Level,
-                        Id: statusData.Id,
-                        Timestamp: statusData.Timestamp,
-                    });
+                    // Only update if we have text or we're explicitly clearing
+                    if (statusData.Text || !status.Text) {
+                        // Set status using PascalCase properties
+                        updateStatus({
+                            Text: statusData.Text || '',
+                            Level: statusData.Level,
+                            Id: statusData.Id || '',
+                            Timestamp: statusData.Timestamp || new Date().toISOString(),
+                        });
+                    }
                 } catch (error) {
                     console.error('Error parsing status update:', error);
                 }
@@ -89,10 +98,9 @@ export const StatusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             try {
                 const statusJson = await StatusModule.GetCurrentStatus();
                 if (statusJson) {
-                    console.log('Initial status:', statusJson);
                     const statusData = JSON.parse(statusJson);
                     if (statusData.Text) {
-                        setStatus({
+                        updateStatus({
                             Text: statusData.Text,
                             Level: statusData.Level,
                             Id: statusData.Id,

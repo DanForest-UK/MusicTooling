@@ -125,7 +125,7 @@ namespace MusicTools.NativeModules
         {
             if ((object)reactContext != null)
             {
-                JsEmitterHelper.EmitEvent(reactContext, STATUS_UPDATE_EVENT, JsonConvert.SerializeObject(message));
+                JsEmitterHelper.EmitEvent(reactContext, STATUS_UPDATE_EVENT, message);
             }
         }
 

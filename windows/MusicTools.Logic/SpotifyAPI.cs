@@ -219,9 +219,7 @@ namespace MusicTools.Logic
             if (tokenCheck.IsLeft)
                 return tokenCheck.LeftToList().First();
 
-            StatusHelper.Info($"Searching for song: {title} by {string.Join(", ", artists)}...");
-
-            string itemName = $"{title} by {string.Join(", ", artists)}";
+            var itemName = $"{title} by {string.Join(", ", artists)}";
 
             return await WithBackoff(async () =>
             {
@@ -259,8 +257,6 @@ namespace MusicTools.Logic
             var tokenCheck = await EnsureValidTokenAsync();
             if (tokenCheck.IsLeft)
                 return tokenCheck.LeftToList().First();
-
-            StatusHelper.Info($"Searching for artist: {artistName}...");
 
             // Use the backoff system with the captured operation
             return await WithBackoff(async () =>
@@ -320,8 +316,6 @@ namespace MusicTools.Logic
                         errors.Add(new SpotifyErrors.ApiError("like_songs", 0, "Operation was canceled"));
                         break;
                     }
-
-                    StatusHelper.Info($"Liking songs batch {batchCount}/{totalBatches} ({batch.Length} songs)...");
 
                     var result = await WithBackoff(async () =>
                     {
