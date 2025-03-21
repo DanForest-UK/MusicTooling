@@ -31,14 +31,12 @@ const StatusBar: React.FC = () => {
                 useNativeDriver: true,
             }).start();
 
-            // Auto-hide success messages after 5 seconds
-            if (status.Level === StatusLevel.Success) {
-                const timer = setTimeout(() => {
-                    handleHide();
-                }, 5000);
+            // Auto-hide all messages after 2 seconds
+            const timer = setTimeout(() => {
+                handleHide();
+            }, 2000);
 
-                return () => clearTimeout(timer);
-            }
+            return () => clearTimeout(timer);
         }
     }, [status, handleHide, opacity]);
 
