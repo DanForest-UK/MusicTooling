@@ -154,6 +154,9 @@ namespace MusicTools.Core
 
         public static Error AccessToPathDenied(string path) =>
             DispayError($"Access to: {path} is denied");
+
+        public static Error OperationCancelled(string operation) =>
+            DispayError($"{operation} was cancelled by user");
     }
 }
 

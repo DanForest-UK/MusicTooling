@@ -110,7 +110,6 @@ namespace MusicTools.NativeModules
             try
             {
                 EnsureInitialized();
-                Runtime.Info("Preparing Spotify authorization...");
                 var url = spotifyApi.GetAuthorizationUrl();
                 return Task.FromResult(url);
             }
@@ -248,15 +247,28 @@ namespace MusicTools.NativeModules
         {
             try
             {
-                if (cancelSource != null && !cancelSource.IsCancellationRequested)
-                {
-                    cancelSource.Cancel();
+                if (CancellationHelper.CancelOperation(cancelSource, "Spotify"))
                     EmitCancellationEvent();
-                }
             }
             catch (Exception ex)
             {
                 Runtime.Error("Error cancelling Spotify operation", ex);
+            }
+        }
+
+        /// <summary>
+        /// Checks if the operation should be cancelled and emits event if needed
+        /// </summary>
+        void CheckForCancel(CancellationToken token)
+        {
+            try
+            {
+                CancellationHelper.CheckForCancel(token, "Spotify");
+            }
+            catch (TaskCanceledException)
+            {
+                EmitCancellationEvent();
+                throw;
             }
         }
 
@@ -280,7 +292,8 @@ namespace MusicTools.NativeModules
                 Runtime.Info($"Searching for {distinctArtists.Count()} artists on Spotify...");
 
                 // Create a new cancellation token source for this operation
-                var cts = new CancellationTokenSource();
+                cancelSource = CancellationHelper.ResetCancellationToken(ref cancelSource);
+                var token = cancelSource.Token;
 
                 return Task.Run(async () => {
                     try
@@ -298,11 +311,7 @@ namespace MusicTools.NativeModules
                         for (int index = 0; index < totalArtists; index += BATCH_SIZE)
                         {
                             // Check for cancellation between batches
-                            if (cts.Token.IsCancellationRequested)
-                            {
-                                EmitCancellationEvent("Artist search operation was cancelled");
-                                break;
-                            }
+                            CheckForCancel(token);
 
                             // Calculate the actual batch size for this iteration
                             var artistsBatch = distinctArtists.Skip(index).Take(BATCH_SIZE);
@@ -313,11 +322,7 @@ namespace MusicTools.NativeModules
                             foreach (var artist in artistsBatch)
                             {
                                 // Check for cancellation within batch
-                                if (cts.Token.IsCancellationRequested)
-                                {
-                                    EmitCancellationEvent("Artist search was cancelled during batch");
-                                    break;
-                                }
+                                CheckForCancel(token);
 
                                 // Update progress for UI
                                 EmitEvent(SPOTIFY_OPERATION_PROGRESS, new
@@ -328,7 +333,7 @@ namespace MusicTools.NativeModules
                                     message = $"Searching for artist {processedCount} of {totalArtists}: {artist}"
                                 });
 
-                                var result = await SearchForArtist(artist, cts.Token);
+                                var result = await SearchForArtist(artist, token);
                                 processedCount++;
 
                                 result.Match(
@@ -355,7 +360,7 @@ namespace MusicTools.NativeModules
                                 // Add delay with cancellation token
                                 try
                                 {
-                                    await Task.Delay(delayTime, cts.Token);
+                                    await Task.Delay(delayTime, token);
                                 }
                                 catch (TaskCanceledException)
                                 {
@@ -365,7 +370,7 @@ namespace MusicTools.NativeModules
                             }
 
                             // Like the batch of found artists
-                            if (batchFoundArtists.Any() && !cts.Token.IsCancellationRequested)
+                            if (batchFoundArtists.Any() && !token.IsCancellationRequested)
                             {
                                 Runtime.Info($"Following {batchFoundArtists.Count} artists on Spotify...");
 
@@ -377,7 +382,7 @@ namespace MusicTools.NativeModules
                                     message = $"Following {batchFoundArtists.Count} artists on Spotify..."
                                 });
 
-                                var result = await spotifyApi.FollowArtistsAsync(batchFoundArtists.Keys.ToArray(), cts.Token);
+                                var result = await spotifyApi.FollowArtistsAsync(batchFoundArtists.Keys.ToArray(), token);
                                 result.Errors.Iter(errors.Add);
 
                                 // Convert spotify artist id to artist name
@@ -436,11 +441,6 @@ namespace MusicTools.NativeModules
                         Runtime.Error($"Error following artists", ex);
                         return JsonConvert.SerializeObject(new { success = false, error = ex.Message });
                     }
-                    finally
-                    {
-                        // Dispose of the cancellation token source
-                        cts.Dispose();
-                    }
                 });
             }
             catch (Exception ex)
@@ -461,18 +461,8 @@ namespace MusicTools.NativeModules
             {
                 EnsureInitialized();
 
-                // Dispose of any existing cancellation token source
-                if (cancelSource != null)
-                {
-                    if (!cancelSource.IsCancellationRequested)
-                    {
-                        cancelSource.Dispose();
-                    }
-                    cancelSource = null;
-                }
-
                 // Create a new cancellation token for this operation
-                cancelSource = new CancellationTokenSource();
+                cancelSource = CancellationHelper.ResetCancellationToken(ref cancelSource);
                 var token = cancelSource.Token;
 
                 // Start the operation in a background task
@@ -515,11 +505,7 @@ namespace MusicTools.NativeModules
                 for (int index = 0; index < totalCount; index += BATCH_SIZE)
                 {
                     // Check for cancellation between batches
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        EmitCancellationEvent("Song liking operation was cancelled between batches");
-                        return;
-                    }
+                    CheckForCancel(cancellationToken);
 
                     var songsBatch = filteredSongs.Skip(index).Take(BATCH_SIZE);
 
@@ -532,11 +518,7 @@ namespace MusicTools.NativeModules
                     foreach (var song in songsBatch)
                     {
                         // Check for cancellation within batch
-                        if (cancellationToken.IsCancellationRequested)
-                        {
-                            EmitCancellationEvent("Song search was cancelled during batch");
-                            return;
-                        }
+                        CheckForCancel(cancellationToken);
 
                         EmitEvent(SPOTIFY_OPERATION_PROGRESS, new
                         {
@@ -652,15 +634,6 @@ namespace MusicTools.NativeModules
             {
                 Runtime.Error($"Error liking songs", ex);
                 EmitEvent(SPOTIFY_OPERATION_ERROR, new { error = ex.Message });
-            }
-            finally
-            {
-                // Clean up the cancellation token source
-                if (cancelSource != null)
-                {
-                    cancelSource.Dispose();
-                    cancelSource = null;
-                }
             }
         }
 

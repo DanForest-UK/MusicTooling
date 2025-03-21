@@ -22,15 +22,11 @@ namespace MusicTools.NativeModules
         [ReactMethod("ScanFiles")]
         public async Task ScanFilesAsync()
         {
-            var path = @"C:\Dan\Dropbox\Dropbox\[Music]\[Folk]\[Acapella]";
             React.AssertFileAccess();
-
-            Runtime.Info("Starting music file scan...");
 
             var results = await ScanFiles.ScanFilesAsync();
 
             // Error handling is done in the ScanFiles      
-            
             results.Match(
                 Right: list =>
                 {
@@ -42,6 +38,23 @@ namespace MusicTools.NativeModules
                     return unit;
                 },
                 Left: error => unit);
+        }
+
+        /// <summary>
+        /// React method that cancels any ongoing file scan operation
+        /// </summary>
+        [ReactMethod("CancelScan")]
+        public void CancelScan()
+        {
+            try
+            {
+                ScanFiles.CancelScan();
+                Runtime.Info("Scan cancelled by user");
+            }
+            catch (Exception ex)
+            {
+                Runtime.Error("Error cancelling scan", ex);
+            }
         }
     }
 }

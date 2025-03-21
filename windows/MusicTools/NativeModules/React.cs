@@ -11,6 +11,7 @@ using Microsoft.ReactNative.Managed;
 using Windows.Security.Authorization.AppCapabilityAccess;
 using static LanguageExt.Prelude;
 using MusicTools.Logic;
+using System.Threading;
 
 namespace MusicTools.NativeModules
 {
@@ -19,22 +20,28 @@ namespace MusicTools.NativeModules
         /// <summary>
         /// Gets files with specific extension from a folder
         /// </summary>
-        public static async Task<Seq<string>> GetFilesWithExtensionAsync(string folderPath, string extension)
+        public static async Task<Seq<string>> GetFilesWithExtensionAsync(string folderPath, string extension, CancellationToken cancellationToken = default)
         {
             var files = new List<string>();
             var rootFolder = await StorageFolder.GetFolderFromPathAsync(folderPath);
-            await GetFilesRecursively(rootFolder, extension, files);
+            await GetFilesRecursively(rootFolder, extension, files, cancellationToken);
             return files.ToSeq();
         }
 
         /// <summary>
         /// Recursively gets files with the specified extension from folders and subfolders
         /// </summary>
-        static async Task GetFilesRecursively(StorageFolder folder, string extension, List<string> files)
+        static async Task GetFilesRecursively(StorageFolder folder, string extension, List<string> files, CancellationToken cancellationToken)
         {
+            // Check for cancellation before processing folder
+            CancellationHelper.CheckForCancel(cancellationToken, "File scanning");
+
             Runtime.Info($"Scanning folder {folder.Path}");
 
             var foundFiles = await folder.GetFilesAsync();
+
+            // Check for cancellation after getting files
+            CancellationHelper.CheckForCancel(cancellationToken, "File scanning");
 
             var matchingFiles = from file in foundFiles
                                 where file.FileType.Equals(extension, StringComparison.OrdinalIgnoreCase)
@@ -44,8 +51,16 @@ namespace MusicTools.NativeModules
 
             var subfolders = await folder.GetFoldersAsync();
 
+            // Check for cancellation after getting subfolders
+            CancellationHelper.CheckForCancel(cancellationToken, "File scanning");
+
             foreach (var subfolder in subfolders)
-                await GetFilesRecursively(subfolder, extension, files);
+            {
+                // Check for cancellation before processing each subfolder
+                CancellationHelper.CheckForCancel(cancellationToken, "File scanning");
+
+                await GetFilesRecursively(subfolder, extension, files, cancellationToken);
+            }
         }
 
         /// <summary>
@@ -56,7 +71,7 @@ namespace MusicTools.NativeModules
             var status = AppCapability.Create("broadFileSystemAccess").CheckAccess();
 
             if (status != AppCapabilityAccessStatus.Allowed)
-                Runtime.Error("File access needs to be granted for this app in Privacy & Security -> File system", None);            
+                Runtime.Error("File access needs to be granted for this app in Privacy & Security -> File system", None);
         }
 
         /// <summary>

@@ -419,6 +419,18 @@ export const styles = StyleSheet.create({
     spotifyStatusError: {
         color: '#FF6B6B', // Red for errors
     },
+    // Scan cancellation button styles
+    cancelScanButton: {
+        backgroundColor: '#B71C1C',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 5,
+        marginTop: 20,
+    },
+    cancelScanButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
 
     // Status bar styles
     statusBar: {

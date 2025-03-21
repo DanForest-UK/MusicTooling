@@ -63,6 +63,7 @@ const App = () => {
     const [lastValidFilteredSongs, setLastValidFilteredSongs] = useState<SongInfo[]>([]);
     const [showSessionDialog, setShowSessionDialog] = useState(false);
     const [isLoadingSession, setIsLoadingSession] = useState(false);
+    const [isScanningFiles, setIsScanningFiles] = useState(false);
 
     // Track if we've had songs at least once - this prevents the panel from disappearing during operations
     const hasHadSongsRef = useRef(false);
@@ -229,8 +230,10 @@ const App = () => {
     };
 
     const scanFiles = async () => {
-        if (loading) { return; }
+        if (loading) return;
+
         setLoading(true);
+        setIsScanningFiles(true);
 
         try {
             await FileScannerModule.ScanFiles();
@@ -240,8 +243,17 @@ const App = () => {
                 error?.message || 'An unknown error occurred while scanning files.'
             );
         } finally {
+            setIsScanningFiles(false);
             setLoading(false);
             setHasScanned(true);
+        }
+    };
+
+    const cancelScan = async () => {
+        try {
+            await FileScannerModule.CancelScan();
+        } catch (error) {
+            console.error('Error cancelling scan:', error);
         }
     };
 
@@ -326,6 +338,14 @@ const App = () => {
                             <Text style={styles.loadingText}>
                                 {isLoadingSession ? 'Loading previous session...' : 'Scanning files...'}
                             </Text>
+                            {isScanningFiles && (
+                                <TouchableOpacity
+                                    style={styles.cancelScanButton}
+                                    onPress={cancelScan}
+                                >
+                                    <Text style={styles.cancelScanButtonText}>Cancel Scan</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     )}
 
