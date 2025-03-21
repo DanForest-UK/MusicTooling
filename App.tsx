@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Button, FlatList, ActivityIndicator, Alert, TouchableOpacity, SafeAreaView, DeviceEventEmitter } from 'react-native';
+import { View, Text, Button, FlatList, ActivityIndicator, Alert, TouchableOpacity, SafeAreaView, DeviceEventEmitter, TextInput } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { NativeModules } from 'react-native';
 import { styles } from './styles';
@@ -64,6 +64,7 @@ const App = () => {
     const [showSessionDialog, setShowSessionDialog] = useState(false);
     const [isLoadingSession, setIsLoadingSession] = useState(false);
     const [isScanningFiles, setIsScanningFiles] = useState(false);
+    const [folderPath, setFolderPath] = useState<string>('');
 
     // Track if we've had songs at least once - this prevents the panel from disappearing during operations
     const hasHadSongsRef = useRef(false);
@@ -74,6 +75,19 @@ const App = () => {
         ChosenSongs: [],
         MinimumRating: 0,
     });
+
+    // Get the initial folder path when the component mounts
+    useEffect(() => {
+        const getInitialPath = async () => {
+            try {
+                const path = await FileScannerModule.GetMusicFolderPath();
+                setFolderPath(path);
+            } catch (error) {
+                console.error('Error getting initial folder path:', error);
+            }
+        };
+        getInitialPath();
+    }, []);
 
     // Store the last valid filtered songs in a separate effect
     // Only update when we have a valid object, even if it results in 0 filtered songs
@@ -236,7 +250,8 @@ const App = () => {
         setIsScanningFiles(true);
 
         try {
-            await FileScannerModule.ScanFiles();
+            // Pass the folder path to the scan function
+            await FileScannerModule.ScanFiles(folderPath);
         } catch (error: any) {
             Alert.alert(
                 'Scan Error',
@@ -273,6 +288,25 @@ const App = () => {
         setShowSpotifyStatus(true);
     };
 
+    // Handler for browse button click
+    const handleBrowse = () => {
+        try {
+            FileScannerModule.BrowseFolders()
+                .then((selectedPath) => {
+                    if (selectedPath) {
+                        setFolderPath(selectedPath);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error browsing folders:', error);
+                    Alert.alert('Error', 'Could not open folder browser');
+                });
+        } catch (error) {
+            console.error('Error initiating folder browser:', error);
+            Alert.alert('Error', 'Could not open folder browser');
+        }
+    };
+
     // Determine if we should show Spotify statuses by checking if any songs or artists have been processed
     const hasProcessedSpotifyItems = React.useMemo(() => {
         if (!appState?.Songs || typeof appState.Songs !== 'object') {
@@ -299,6 +333,23 @@ const App = () => {
         <StatusProvider>
             <SafeAreaView style={{ flex: 1 }}>
                 <View style={styles.container}>
+                    {/* Folder Path Input */}
+                    <View style={styles.folderPathContainer}>
+                        <TextInput
+                            style={styles.folderPathInput}
+                            value={folderPath}
+                            onChangeText={setFolderPath}
+                            placeholder="Music folder path"
+                            placeholderTextColor="#A9A9A9"
+                        />
+                        <TouchableOpacity
+                            style={styles.browseButton}
+                            onPress={handleBrowse}
+                        >
+                            <Text style={styles.browseButtonText}>Browse</Text>
+                        </TouchableOpacity>
+                    </View>
+
                     <View style={styles.controlsContainer}>
                         <View style={styles.buttonWrapper}>
                             <Button

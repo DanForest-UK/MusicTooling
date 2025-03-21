@@ -40,14 +40,12 @@ namespace MusicTools.Logic
         /// <summary>
         /// Scans for music files and returns song information
         /// </summary>
-        public async static Task<Either<Error, Seq<SongInfo>>> ScanFilesAsync()
+        /// <param name="path">The folder path to scan for music files</param>
+        public async static Task<Either<Error, Seq<SongInfo>>> ScanFilesAsync(string path)
         {
             // Create a new CancellationTokenSource for this operation
             scanCts = CancellationHelper.ResetCancellationToken(ref scanCts);
             var token = scanCts.Token;
-
-            // Path is hardcoded for now
-            var path = @"C:\Dan\Dropbox\[Music]\[Folk]";
 
             try
             {
@@ -56,7 +54,14 @@ namespace MusicTools.Logic
                 // Check for cancellation
                 CheckForCancel(token);
 
-                Runtime.Info("Scanning for MP3 files...");
+                // Validate the path
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    Runtime.Error("No folder path specified", None);
+                    return AppErrors.DispayError("No folder path specified");
+                }
+
+                Runtime.Info($"Scanning folder: {path} for MP3 files...");
                 var mp3Files = await Runtime.GetFilesWithExtensionAsync(path, ".mp3", token);
                 var totalFiles = mp3Files.Count();
 

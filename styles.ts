@@ -611,4 +611,31 @@ export const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
     },
+    // Add these new styles to the styles.ts file
+
+    // Folder path input container
+    folderPathContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    folderPathInput: {
+        flex: 1,
+        height: 40,
+        backgroundColor: '#4B5563',
+        color: 'white',
+        borderRadius: 5,
+        paddingHorizontal: 10,
+        marginRight: 10,
+    },
+    browseButton: {
+        backgroundColor: '#4B5563',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 5,
+    },
+    browseButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
 });
