@@ -28,7 +28,7 @@ namespace MusicTools.Core
                 (from s in FilteredSongs(includeAlreadyProcessed: true)
                  from a in s.Artist
                  where a.HasValue() &&
-                      (includeAlreadyProcessed || s.ArtistStatus != SpotifyStatus.NotSearched)
+                      (includeAlreadyProcessed || s.ArtistStatus == SpotifyStatus.NotSearched)
                  select a).Distinct().ToSeq();
         }
 

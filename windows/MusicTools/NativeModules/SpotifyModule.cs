@@ -286,7 +286,12 @@ namespace MusicTools.NativeModules
                 if (!distinctArtists.Any())
                 {
                     Runtime.Warning("No artists to follow");
-                    return Task.FromResult(JsonConvert.SerializeObject(new { success = false, error = "No songs provided" }));
+                    return Task.FromResult(JsonConvert.SerializeObject(new
+                    {
+                        success = false,
+                        error = "No artists available to follow. All artists have been processed already.",
+                        noArtistsToProcess = true
+                    }));
                 }
 
                 Runtime.Info($"Searching for {distinctArtists.Count()} artists on Spotify...");
@@ -461,6 +466,20 @@ namespace MusicTools.NativeModules
             {
                 EnsureInitialized();
 
+                // Check if there are any songs to process before starting
+                var filteredSongs = ObservableState.Current.FilteredSongs(includeAlreadyProcessed: false);
+
+                if (!filteredSongs.Any())
+                {
+                    EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
+                    {
+                        success = false,
+                        message = "No songs available to like. All songs have been processed already.",
+                        noSongsToProcess = true
+                    });
+                    return;
+                }
+
                 // Create a new cancellation token for this operation
                 cancelSource = CancellationHelper.ResetCancellationToken(ref cancelSource);
                 var token = cancelSource.Token;
@@ -489,7 +508,12 @@ namespace MusicTools.NativeModules
 
                 if (!filteredSongs.Any())
                 {
-                    EmitEvent(SPOTIFY_OPERATION_ERROR, new { error = "No songs provided" });
+                    EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
+                    {
+                        success = false,
+                        message = "No songs available to like. All songs have been processed already.",
+                        noSongsToProcess = true
+                    });
                     return;
                 }
 

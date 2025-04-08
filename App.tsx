@@ -292,12 +292,12 @@ const App = () => {
     const handleBrowse = () => {
         try {
             FileScannerModule.BrowseFolders()
-                .then((selectedPath) => {
+                .then((selectedPath: any) => {
                     if (selectedPath) {
                         setFolderPath(selectedPath);
                     }
                 })
-                .catch((error) => {
+                .catch((error : any) => {
                     console.error('Error browsing folders:', error);
                     Alert.alert('Error', 'Could not open folder browser');
                 });

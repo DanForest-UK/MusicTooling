@@ -103,10 +103,15 @@ export const isApiError = (error: SpotifyError): error is ApiError =>
     error.ErrorCode === 'API_ERROR';
 
 // Response type for Spotify operations
+// Update to SpotifyResponse interface to include our new properties
 export interface SpotifyResponse<T = boolean> {
     success?: boolean;
     partialSuccess?: boolean;
     error?: SpotifyError;
     errors?: SpotifyError[];
     data?: T;
+    message?: string;
+    cancelled?: boolean;
+    noSongsToProcess?: boolean;
+    noArtistsToProcess?: boolean;
 }

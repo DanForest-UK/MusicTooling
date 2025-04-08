@@ -249,6 +249,27 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
                 console.log('Operation complete:', completeData);
                 const data = typeof completeData === 'string' ? JSON.parse(completeData) : completeData;
 
+                // Special handling for "no items to process" scenarios
+                if (data.noSongsToProcess || data.noArtistsToProcess) {
+                    console.log('No items to process detected from backend');
+
+                    // Clean up any event subscriptions
+                    if (eventSubscriptions.current.length > 0) {
+                        console.log('Cleaning up event subscriptions for no-items case');
+                        eventSubscriptions.current.forEach(sub => sub.remove());
+                        eventSubscriptions.current = [];
+                    }
+
+                    // Reset UI state immediately
+                    if (isMountedRef.current) {
+                        setIsProcessing(false);
+                        setOperationRunning(false);
+                        Alert.alert('Nothing to Process', data.message || 'All items have already been processed.');
+                    }
+
+                    return;
+                }
+
                 // Clean up event subscriptions immediately to prevent further events
                 if (eventSubscriptions.current.length > 0) {
                     console.log('Cleaning up event subscriptions on completion');
@@ -469,7 +490,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         }
     };
 
-    // Updated version of handleLikeSongs for the simplified UI
+    // Updated version of handleLikeSongs - now relies on backend checks
     const handleLikeSongs = () => {
         if (!isAuthenticated) {
             Alert.alert('Error', 'Please authenticate with Spotify first');
@@ -479,17 +500,6 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         // Don't start a new operation if one is already running
         if (operationRunning) {
             Alert.alert('Operation in Progress', 'A Spotify operation is already running.');
-            return;
-        }
-
-        // Use the last valid state if current state is invalid
-        const stateToUse = appState &&
-            typeof appState.Songs === 'object' &&
-            Array.isArray(appState.ChosenSongs) ?
-            appState : lastValidAppState.current;
-
-        if (!stateToUse || !stateToUse.ChosenSongs || stateToUse.ChosenSongs.length === 0) {
-            Alert.alert('No Songs Selected', 'Please select songs to like on Spotify');
             return;
         }
 
@@ -552,7 +562,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
             setIsProcessing(true);
             setOperationRunning(true);
 
-            console.log(`Starting like songs operation for ${stateToUse.ChosenSongs.length} songs`);
+            console.log('Starting like songs operation');
 
             // Call the method but don't await - will get updates via events
             SpotifyModule.LikeSongs();
@@ -579,20 +589,10 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         }
     };
 
+    // Updated handleFollowArtists to rely on backend checks and fix type issues
     const handleFollowArtists = async () => {
         if (!isAuthenticated) {
             Alert.alert('Error', 'Please authenticate with Spotify first');
-            return;
-        }
-
-        // Use the last valid state if current state is invalid
-        const stateToUse = appState &&
-            typeof appState.Songs === 'object' &&
-            Array.isArray(appState.ChosenSongs) ?
-            appState : lastValidAppState.current;
-
-        if (!stateToUse || !stateToUse.ChosenSongs || stateToUse.ChosenSongs.length === 0) {
-            Alert.alert('No Songs Selected', 'Please select songs whose artists you want to follow');
             return;
         }
 
@@ -600,12 +600,23 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         setErrors([]);
 
         try {
-            console.log(`Following artists from ${stateToUse.ChosenSongs.length} songs`);
+            console.log('Following artists from selected songs');
 
             const result = await SpotifyModule.FollowArtists();
             console.log('Follow artists request completed, parsing response');
             const response = JSON.parse(result) as SpotifyResponse;
             console.log('Parsed follow artists response:', response);
+
+            // Check for the special "no artists to process" flag
+            if (response.noArtistsToProcess) {
+                // Access the message correctly
+                Alert.alert(
+                    'Nothing to Process',
+                    response.message || 'All artists have already been processed.'
+                );
+                setIsProcessing(false);
+                return;
+            }
 
             // Notify parent component to show Spotify status
             if (onSpotifyAction) {
