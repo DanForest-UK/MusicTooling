@@ -70,19 +70,26 @@ namespace MusicTools.Logic
 
                 Runtime.Info($"Found {totalFiles} MP3 files. Reading ID3 tags...");
 
-                var options = new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = Environment.ProcessorCount,
-                    CancellationToken = token
-                };
+                using var semaphore = new SemaphoreSlim(Environment.ProcessorCount);
+                var tasks = new List<Task>();
 
-                await Task.Run(() =>
+                foreach (var mp3File in mp3Files)
                 {
-                    Parallel.ForEach(mp3Files, options, async mp3File =>
+                    await semaphore.WaitAsync(token);
+
+                    tasks.Add(Task.Run(async () =>
                     {
-                        await AddFileInfo(mp3File, list, token);
-                    });
-                }, token);
+                        try
+                        {
+                            await AddFileInfo(mp3File, list, token);
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    }, token));
+                }
+                await Task.WhenAll(tasks);
 
                 return list.ToSeq();
             }
