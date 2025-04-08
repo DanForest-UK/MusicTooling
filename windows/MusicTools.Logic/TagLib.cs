@@ -20,6 +20,8 @@ namespace MusicTools.Logic
         {
             try
             {
+                Runtime.Info($"Reading ID3 tag {path}");
+
                 // Use TagLib to read metadata
                 var tagFile = TagLib.File.Create(new StreamFileAbstraction(Path.GetFileName(path), stream));
                 var id3v2Tag = tagFile.GetTag(TagLib.TagTypes.Id3v2) as TagLib.Id3v2.Tag;
