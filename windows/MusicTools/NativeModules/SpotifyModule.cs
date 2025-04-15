@@ -285,7 +285,6 @@ namespace MusicTools.NativeModules
                 var distinctArtists = ObservableState.Current.DistinctArtists(includeAlreadyProcessed: false);
                 if (!distinctArtists.Any())
                 {
-                    Runtime.Warning("No artists to follow");
                     return Task.FromResult(JsonConvert.SerializeObject(new
                     {
                         success = false,

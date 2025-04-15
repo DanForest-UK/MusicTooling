@@ -56,6 +56,9 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
     // Keep a local copy of the last valid state
     const lastValidAppState = useRef<AppModel | null>(null);
 
+    // Store event subscriptions
+    const eventSubscriptions = useRef<EmitterSubscription[]>([]);
+
     // Update the ref whenever we get a valid appState
     useEffect(() => {
         // More precise checking for valid appState structure
@@ -67,6 +70,201 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
             lastValidAppState.current = appState;
         }
     }, [appState]);
+
+    // Helper to clean up subscriptions
+    const cleanupSubscriptions = useCallback(() => {
+        console.log('Cleaning up event subscriptions');
+        if (eventSubscriptions.current.length > 0) {
+            eventSubscriptions.current.forEach(sub => sub.remove());
+            eventSubscriptions.current = [];
+        }
+    }, []);
+
+    // Function to process complete event data
+    const processCompleteEvent = useCallback((completeData: any) => {
+        console.log('Test banana'); // Debug log to see if this function runs at all
+        console.log('Processing complete event data:', completeData);
+
+        try {
+            const data = typeof completeData === 'string' ? JSON.parse(completeData) : completeData;
+
+            // Add these debug logs to check the data structure and properties
+            console.log('Operation complete data:', JSON.stringify(data, null, 2));
+            console.log('Property exists check:',
+                'noSongsToProcess' in data,
+                'NoSongsToProcess' in data,
+                'noArtistsToProcess' in data,
+                'NoArtistsToProcess' in data);
+            console.log('Property value check:',
+                data.noSongsToProcess,
+                data.NoSongsToProcess,
+                data.noArtistsToProcess,
+                data.NoArtistsToProcess);
+
+            // More permissive check for no items to process
+            if (data.noSongsToProcess ||
+                (data.hasOwnProperty('NoSongsToProcess') && data.NoSongsToProcess) ||
+                data.noArtistsToProcess ||
+                (data.hasOwnProperty('NoArtistsToProcess') && data.NoArtistsToProcess) ||
+                (data.message && typeof data.message === 'string' &&
+                    data.message.includes("No songs available to like"))) {
+
+                console.log('No items to process detected from backend');
+
+                // Clean up any event subscriptions
+                cleanupSubscriptions();
+
+                // Reset UI state immediately
+                if (isMountedRef.current) {
+                    setIsProcessing(false);
+                    setOperationRunning(false);
+                    Alert.alert('Nothing to Process', data.message || 'All items have already been processed.');
+                }
+
+                return;
+            }
+
+            // Clean up event subscriptions to prevent further events
+            cleanupSubscriptions();
+
+            // Only update state if component is still mounted
+            if (isMountedRef.current) {
+                setProgress(prev => ({
+                    ...prev,
+                    phase: 'complete',
+                    message: data.message || 'Operation complete',
+                    isComplete: true,
+                    isError: false,
+                    isCancelled: data.cancelled || false,
+                }));
+
+                // If there are errors, update the errors state
+                if (data.errors && Array.isArray(data.errors)) {
+                    setErrors(data.errors);
+                }
+
+                // Add a small delay before changing component state
+                setTimeout(() => {
+                    if (isMountedRef.current) {
+                        setIsProcessing(false);
+                        setOperationRunning(false);
+                    }
+                }, 100);
+
+                // Call onSpotifyAction to update parent component
+                if (onSpotifyAction) {
+                    onSpotifyAction();
+                }
+
+                // Show appropriate message based on result
+                if (data.cancelled) {
+                    Alert.alert('Cancelled', 'Operation was cancelled');
+                } else if (data.success) {
+                    if (data.partialSuccess) {
+                        Alert.alert('Partial Success',
+                            'Operation completed with some errors.');
+                    } else {
+                        Alert.alert('Success', data.message || 'Operation completed successfully');
+                    }
+                } else {
+                    Alert.alert('Operation Failed', data.message || 'Operation failed to complete');
+                }
+            }
+        } catch (error) {
+            console.error('Error processing complete event:', error);
+
+            // Ensure UI is reset even if there's an error
+            if (isMountedRef.current) {
+                setIsProcessing(false);
+                setOperationRunning(false);
+                Alert.alert('Error', 'An error occurred while processing the operation result');
+            }
+        }
+    }, [cleanupSubscriptions, onSpotifyAction]);
+
+    // Function to register event handlers
+    const registerEventHandlers = useCallback(() => {
+        // Remove any existing event listeners first
+        cleanupSubscriptions();
+
+        console.log('Registering fresh event handlers');
+
+        // Register fresh event listeners
+        const progressSubscription = DeviceEventEmitter.addListener(
+            SPOTIFY_OPERATION_PROGRESS,
+            (progressData) => {
+                console.log('PROGRESS EVENT RECEIVED:', progressData);
+                const data = typeof progressData === 'string' ? JSON.parse(progressData) : progressData;
+
+                // Only update state if component is still mounted
+                if (isMountedRef.current) {
+                    setProgress(prev => ({
+                        ...prev,
+                        phase: data.phase || prev.phase,
+                        totalSongs: data.totalSongs || prev.totalSongs,
+                        processed: data.processed || prev.processed,
+                        message: data.message || prev.message,
+                        isComplete: false,
+                        isError: false,
+                        isCancelled: false,
+                    }));
+                }
+            }
+        );
+
+        // Try both with constant and direct string
+        const completeSubscription = DeviceEventEmitter.addListener(
+            SPOTIFY_OPERATION_COMPLETE,
+            (completeData) => {
+                console.log('COMPLETE EVENT TRIGGERED via constant:', completeData);
+
+                // Handle the complete event
+                processCompleteEvent(completeData);
+            }
+        );
+
+        const errorSubscription = DeviceEventEmitter.addListener(
+            SPOTIFY_OPERATION_ERROR,
+            (errorData) => {
+                console.log('ERROR EVENT RECEIVED:', errorData);
+                const data = typeof errorData === 'string' ? JSON.parse(errorData) : errorData;
+
+                // Clean up event subscriptions immediately
+                cleanupSubscriptions();
+
+                // Only update state if component is still mounted
+                if (isMountedRef.current) {
+                    setProgress(prev => ({
+                        ...prev,
+                        phase: 'complete',
+                        message: data.error || 'Operation failed',
+                        isComplete: true,
+                        isError: true,
+                        isCancelled: false,
+                    }));
+
+                    // Add a small delay before changing component state
+                    setTimeout(() => {
+                        if (isMountedRef.current) {
+                            setIsProcessing(false);
+                            setOperationRunning(false);
+                        }
+                    }, 100);
+
+                    Alert.alert('Error', data.error || 'An unknown error occurred');
+                }
+            }
+        );
+
+        // Store the subscriptions for cleanup
+        eventSubscriptions.current = [
+            progressSubscription,
+            completeSubscription,
+            errorSubscription,
+        ];
+
+        console.log('Event handlers registered successfully');
+    }, [cleanupSubscriptions, processCompleteEvent]);
 
     // Function to handle the auth code exchange
     const completeAuthentication = useCallback(async (code: string) => {
@@ -144,8 +342,6 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
     const codeExchangeInProgress = useRef(false);
     // Add a ref to store the last used code to prevent duplicate usage
     const lastUsedCode = useRef<string | null>(null);
-    // Store event subscriptions
-    const eventSubscriptions = useRef<EmitterSubscription[]>([]);
 
     // Handle authentication error
     const handleAuthError = useCallback((error: string) => {
@@ -215,157 +411,13 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         }
     }, [handleAuthCallbackUrl]);
 
-    // Set up event listeners for Spotify operations and track component mounting
+    // Clean up when component unmounts
     useEffect(() => {
         // Set mounted ref to true on initialization
         isMountedRef.current = true;
 
-        // Create listeners for Spotify operation events
-        const progressSubscription = DeviceEventEmitter.addListener(
-            SPOTIFY_OPERATION_PROGRESS,
-            (progressData) => {
-                console.log('Operation progress:', progressData);
-                const data = typeof progressData === 'string' ? JSON.parse(progressData) : progressData;
-
-                // Only update state if component is still mounted
-                if (isMountedRef.current) {
-                    setProgress(prev => ({
-                        ...prev,
-                        phase: data.phase || prev.phase,
-                        totalSongs: data.totalSongs || prev.totalSongs,
-                        processed: data.processed || prev.processed,
-                        message: data.message || prev.message,
-                        isComplete: false,
-                        isError: false,
-                        isCancelled: false,
-                    }));
-                }
-            }
-        );
-
-        const completeSubscription = DeviceEventEmitter.addListener(
-            SPOTIFY_OPERATION_COMPLETE,
-            (completeData) => {
-                console.log('Operation complete:', completeData);
-                const data = typeof completeData === 'string' ? JSON.parse(completeData) : completeData;
-
-                // Special handling for "no items to process" scenarios
-                if (data.noSongsToProcess || data.noArtistsToProcess) {
-                    console.log('No items to process detected from backend');
-
-                    // Clean up any event subscriptions
-                    if (eventSubscriptions.current.length > 0) {
-                        console.log('Cleaning up event subscriptions for no-items case');
-                        eventSubscriptions.current.forEach(sub => sub.remove());
-                        eventSubscriptions.current = [];
-                    }
-
-                    // Reset UI state immediately
-                    if (isMountedRef.current) {
-                        setIsProcessing(false);
-                        setOperationRunning(false);
-                        Alert.alert('Nothing to Process', data.message || 'All items have already been processed.');
-                    }
-
-                    return;
-                }
-
-                // Clean up event subscriptions immediately to prevent further events
-                if (eventSubscriptions.current.length > 0) {
-                    console.log('Cleaning up event subscriptions on completion');
-                    eventSubscriptions.current.forEach(sub => sub.remove());
-                    eventSubscriptions.current = [];
-                }
-
-                // Only update state if component is still mounted
-                if (isMountedRef.current) {
-                    setProgress(prev => ({
-                        ...prev,
-                        phase: 'complete',
-                        message: data.message || 'Operation complete',
-                        isComplete: true,
-                        isError: false,
-                        isCancelled: data.cancelled || false,
-                    }));
-
-                    // If there are errors, update the errors state
-                    if (data.errors && Array.isArray(data.errors)) {
-                        setErrors(data.errors);
-                    }
-
-                    // Add a small delay before changing component state
-                    setTimeout(() => {
-                        if (isMountedRef.current) {
-                            setIsProcessing(false);
-                            setOperationRunning(false);
-                        }
-                    }, 100);
-
-                    // Call onSpotifyAction to update parent component
-                    if (onSpotifyAction) {
-                        onSpotifyAction();
-                    }
-
-                    // Show appropriate message based on result
-                    if (data.cancelled) {
-                        Alert.alert('Cancelled', 'Operation was cancelled');
-                    } else if (data.success) {
-                        if (data.partialSuccess) {
-                            Alert.alert('Partial Success',
-                                'Operation completed with some errors.');
-                        } else {
-                            Alert.alert('Success', data.message || 'Operation completed successfully');
-                        }
-                    } else {
-                        Alert.alert('Operation Failed', data.message || 'Operation failed to complete');
-                    }
-                }
-            }
-        );
-
-        const errorSubscription = DeviceEventEmitter.addListener(
-            SPOTIFY_OPERATION_ERROR,
-            (errorData) => {
-                console.log('Operation error:', errorData);
-                const data = typeof errorData === 'string' ? JSON.parse(errorData) : errorData;
-
-                // Clean up event subscriptions immediately
-                if (eventSubscriptions.current.length > 0) {
-                    console.log('Cleaning up event subscriptions on error');
-                    eventSubscriptions.current.forEach(sub => sub.remove());
-                    eventSubscriptions.current = [];
-                }
-
-                // Only update state if component is still mounted
-                if (isMountedRef.current) {
-                    setProgress(prev => ({
-                        ...prev,
-                        phase: 'complete',
-                        message: data.error || 'Operation failed',
-                        isComplete: true,
-                        isError: true,
-                        isCancelled: false,
-                    }));
-
-                    // Add a small delay before changing component state
-                    setTimeout(() => {
-                        if (isMountedRef.current) {
-                            setIsProcessing(false);
-                            setOperationRunning(false);
-                        }
-                    }, 100);
-
-                    Alert.alert('Error', data.error || 'An unknown error occurred');
-                }
-            }
-        );
-
-        // Store the subscriptions for cleanup
-        eventSubscriptions.current = [
-            progressSubscription,
-            completeSubscription,
-            errorSubscription,
-        ];
+        // Register initial event handlers
+        registerEventHandlers();
 
         // Cleanup function
         return () => {
@@ -374,10 +426,9 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
             isMountedRef.current = false;
 
             // Clean up event subscriptions
-            eventSubscriptions.current.forEach(subscription => subscription.remove());
-            eventSubscriptions.current = [];
+            cleanupSubscriptions();
         };
-    }, [onSpotifyAction]);
+    }, [registerEventHandlers, cleanupSubscriptions]);
 
     // Handle URL events (from deep linking)
     useEffect(() => {
@@ -490,7 +541,7 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         }
     };
 
-    // Updated version of handleLikeSongs - now relies on backend checks
+    // Updated version of handleLikeSongs - now explicitly registers handlers
     const handleLikeSongs = () => {
         if (!isAuthenticated) {
             Alert.alert('Error', 'Please authenticate with Spotify first');
@@ -504,57 +555,8 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
         }
 
         try {
-            // Clean up any existing event subscriptions first
-            if (eventSubscriptions.current.length > 0) {
-                console.log('Cleaning up existing subscriptions before starting new operation');
-                eventSubscriptions.current.forEach(sub => sub.remove());
-
-                // Re-create the event subscriptions
-                const progressSubscription = DeviceEventEmitter.addListener(
-                    SPOTIFY_OPERATION_PROGRESS,
-                    (progressData) => {
-                        if (isMountedRef.current) {
-                            const data = typeof progressData === 'string' ? JSON.parse(progressData) : progressData;
-                            setProgress(prev => ({
-                                ...prev,
-                                phase: data.phase || prev.phase,
-                                totalSongs: data.totalSongs || prev.totalSongs,
-                                processed: data.processed || prev.processed,
-                                message: data.message || prev.message,
-                                isComplete: false,
-                                isError: false,
-                                isCancelled: false,
-                            }));
-                        }
-                    }
-                );
-
-                const completeSubscription = DeviceEventEmitter.addListener(
-                    SPOTIFY_OPERATION_COMPLETE,
-                    (_) => {
-                        if (isMountedRef.current) {
-                            // Implementation handled in the main useEffect
-                            console.log('Operation complete event received');
-                        }
-                    }
-                );
-
-                const errorSubscription = DeviceEventEmitter.addListener(
-                    SPOTIFY_OPERATION_ERROR,
-                    (_) => {
-                        if (isMountedRef.current) {
-                            // Implementation handled in the main useEffect
-                            console.log('Operation error event received');
-                        }
-                    }
-                );
-
-                eventSubscriptions.current = [
-                    progressSubscription,
-                    completeSubscription,
-                    errorSubscription,
-                ];
-            }
+            // Register event handlers first to ensure they're ready
+            registerEventHandlers();
 
             // Reset progress state
             setProgress(defaultProgressState);
@@ -596,6 +598,9 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
             return;
         }
 
+        // Register event handlers first
+        registerEventHandlers();
+
         setIsProcessing(true);
         setErrors([]);
 
@@ -607,8 +612,9 @@ export const useSpotifyIntegration = (appState: AppModel, onSpotifyAction?: () =
             const response = JSON.parse(result) as SpotifyResponse;
             console.log('Parsed follow artists response:', response);
 
-            // Check for the special "no artists to process" flag
-            if (response.noArtistsToProcess) {
+            // Check for the special "no artists to process" flag with safe property access
+            if (response.noArtistsToProcess ||
+                (response.hasOwnProperty('NoArtistsToProcess') && (response as any).NoArtistsToProcess)) {
                 // Access the message correctly
                 Alert.alert(
                     'Nothing to Process',
