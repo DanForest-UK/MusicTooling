@@ -61,7 +61,7 @@ namespace MusicTools.Logic
             Update(stateAtom.Value.UpdateArtistsStatus(updates));
 
         /// <summary>
-        /// Sets the song collection and initializes chosen songs if not set
+        /// Sets the song collection and initializes chosen songs 
         /// </summary>
         public static void SetSongs(Seq<SongInfo> songs) =>
             Update(stateAtom.Value.SetSongs(songs));

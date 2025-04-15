@@ -40,6 +40,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicTools.Logic", "MusicTo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReactNativePicker", "..\node_modules\@react-native-picker\picker\windows\ReactNativePicker\ReactNativePicker.vcxproj", "{BEDCC600-4541-41F2-AA46-9E058202B6AD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicTools.Tests", "MusicTools.Tests\MusicTools.Tests.csproj", "{B97256F3-DFDD-4656-AF21-B6211D8405F3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -190,6 +192,18 @@ Global
 		{BEDCC600-4541-41F2-AA46-9E058202B6AD}.Release|x64.Build.0 = Release|x64
 		{BEDCC600-4541-41F2-AA46-9E058202B6AD}.Release|x86.ActiveCfg = Release|Win32
 		{BEDCC600-4541-41F2-AA46-9E058202B6AD}.Release|x86.Build.0 = Release|Win32
+		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Debug|x64.Build.0 = Debug|Any CPU
+		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Debug|x86.Build.0 = Debug|Any CPU
+		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Release|ARM64.Build.0 = Release|Any CPU
+		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Release|x64.ActiveCfg = Release|Any CPU
+		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Release|x64.Build.0 = Release|Any CPU
+		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Release|x86.ActiveCfg = Release|Any CPU
+		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

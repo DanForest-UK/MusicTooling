@@ -23,10 +23,8 @@ namespace MusicTools.Core
             // Ensure sequential ordering
             songs = songs.Select((s, i) => s with { Id = i + 1 }).ToSeq();
 
-            // Initialize ChosenSongs with all song IDs if it's empty
-            var chosenSongs = current.ChosenSongs.Length == 0
-                ? songs.Select(s => s.Id).ToArray()
-                : current.ChosenSongs;
+            // Initialize ChosenSongs with all song IDs
+            var chosenSongs = songs.Select(s => s.Id).ToArray();              
 
             return current with
             {

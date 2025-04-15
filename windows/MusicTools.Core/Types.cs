@@ -11,6 +11,7 @@ namespace MusicTools.Core
     public static class Types
     {
         // Records for application state
+        // todo, do we need a concurrent dictionary still?
         public record AppModel(ConcurrentDictionary<int, SongInfo> Songs, int[] ChosenSongs, int MinimumRating)
         {
             public Seq<SongInfo> FilteredSongs(bool includeAlreadyProcessed = false)

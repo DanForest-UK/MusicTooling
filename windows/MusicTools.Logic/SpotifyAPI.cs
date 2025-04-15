@@ -24,7 +24,10 @@ namespace MusicTools.Logic
         readonly string clientSecret;
         readonly string redirectUri;
 
-        Option<SpotifyClient> spotifyClient;
+        // Factory for creating OAuth clients - enables mocking in tests
+        private readonly Func<IOAuthClient> oauthClientFactory;
+
+        Option<ISpotifyClient> spotifyClient;
         DateTime tokenExpiry = DateTime.MinValue;
         const int TooManyRequests = 429;
 
@@ -38,14 +41,15 @@ namespace MusicTools.Logic
         /// <summary>
         /// Initializes a new instance of the SpotifyApi class
         /// </summary>
-        public SpotifyApi(string clientId, string clientSecret, string redirectUri)
+        public SpotifyApi(string clientId, string clientSecret, string redirectUri, Func<IOAuthClient> oauthClientFactory = null)
         {
             this.clientId = clientId;
             this.clientSecret = clientSecret;
             this.redirectUri = redirectUri;
+            this.oauthClientFactory = oauthClientFactory ?? (() => new OAuthClient());
         }
 
-        SpotifyClient SpotifyClient => spotifyClient.IfNoneThrow("Spotify client not initialized");
+        ISpotifyClient SpotifyClient => spotifyClient.IfNoneThrow("Spotify client not initialized");
 
         /// <summary>
         /// Gets the login URL for the Spotify authorization flow
@@ -80,7 +84,8 @@ namespace MusicTools.Logic
 
             try
             {
-                var oauth = new OAuthClient();
+                // Use the injected factory to create the OAuth client
+                var oauth = oauthClientFactory();
 
                 var decodedCode = WebUtility.UrlDecode(code);
 
