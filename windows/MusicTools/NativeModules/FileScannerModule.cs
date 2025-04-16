@@ -13,14 +13,57 @@ using System.Diagnostics;
 using Windows.Storage.Pickers;
 using Windows.ApplicationModel.Core;
 using Windows.UI.Core;
+using Windows.Storage;
 
 namespace MusicTools.NativeModules
 {
     [ReactModule("FileScannerModule")]
     public sealed class FileScannerModule
     {
-        // Default music folder path - used if no path is specified
-        private static string musicFolderPath = @"C:\Dan\Dropbox\[Music]\[Folk]";
+        // Key for storing music folder path in application settings
+        private const string FOLDER_PATH_KEY = "MusicFolderPath";
+
+        // Default music folder path - used if no path is specified or saved
+        private static string musicFolderPath = "";
+
+        // Static constructor to initialize the path from settings
+        static FileScannerModule()
+        {
+            // Try to load from settings
+            try
+            {
+                if (ApplicationData.Current.LocalSettings.Values.TryGetValue(FOLDER_PATH_KEY, out object storedPath) && storedPath is string path)
+                {
+                    musicFolderPath = path;
+                }                
+            }
+            catch (Exception ex)
+            {
+                Runtime.Error("Error loading folder path from settings", ex);
+                musicFolderPath = "";
+            }
+        }
+
+        /// <summary>
+        /// Saves the music folder path to application settings
+        /// </summary>
+        private static void SaveMusicFolderPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return;
+
+            musicFolderPath = path;
+
+            try
+            {
+                ApplicationData.Current.LocalSettings.Values[FOLDER_PATH_KEY] = path;
+                Runtime.Info($"Saved music folder path: {path}");
+            }
+            catch (Exception ex)
+            {
+                Runtime.Error("Error saving folder path to settings", ex);
+            }
+        }
 
         /// <summary>
         /// React method that returns the current music folder path
@@ -63,7 +106,7 @@ namespace MusicTools.NativeModules
 
                         if (folder != null)
                         {
-                            musicFolderPath = folder.Path;
+                            SaveMusicFolderPath(folder.Path);
                             Runtime.Info($"Selected folder: {musicFolderPath}");
                             promise.Resolve(musicFolderPath);
                         }
@@ -98,8 +141,11 @@ namespace MusicTools.NativeModules
             // Use the provided path if available, otherwise use the stored path
             var folderPath = string.IsNullOrWhiteSpace(path) ? musicFolderPath : path;
 
-            // Update the stored path for future use
-            musicFolderPath = folderPath;
+            // Update the stored path for future use if valid
+            if (!string.IsNullOrWhiteSpace(folderPath))
+            {
+                SaveMusicFolderPath(folderPath);
+            }
 
             var results = await ScanFiles.ScanFilesAsync(folderPath);
 

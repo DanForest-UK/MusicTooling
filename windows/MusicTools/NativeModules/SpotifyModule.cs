@@ -415,12 +415,7 @@ namespace MusicTools.NativeModules
 
                         // Final status update
                         Runtime.Info($"Found and processed {foundArtists.Count} of {totalArtists} artists on Spotify");
-
-                        if (errors.Any())
-                            Runtime.Error("Failed to follow any artists on Spotify", None);
-                        else
-                            Runtime.Warning("No artists found on Spotify");
-
+                                               
                         return JsonConvert.SerializeObject(errors.Any()
                             ? new
                             {
