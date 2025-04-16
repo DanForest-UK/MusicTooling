@@ -24,8 +24,13 @@ export interface SongsDictionary {
     [id: string]: SongInfo;
 }
 
+export interface SongTuple {
+    Index: number;
+    Song: SongInfo;
+}
+
 export interface AppModel {
-    Songs: SongsDictionary;
+    Songs: SongTuple[] | SongsDictionary;
     ChosenSongs: string[];
     MinimumRating: number;
 }

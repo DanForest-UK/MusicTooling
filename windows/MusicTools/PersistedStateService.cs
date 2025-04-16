@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.Storage;
 using static MusicTools.Core.Types;
+using static LanguageExt.Prelude; 
 
 namespace MusicTools.NativeModules
 {
@@ -111,7 +112,7 @@ namespace MusicTools.NativeModules
                 // Create a copy of the state with clean references to prevent serialization issues
                 var stateCopy = new StateDto
                 {
-                    Songs = state.Songs.ToDictionary(kvp => kvp.Key, kvp => kvp.Value),
+                    Songs = state.Songs.Values.ToDictionary(s => s.Id),
                     ChosenSongs = state.ChosenSongs,
                     MinimumRating = state.MinimumRating
                 };

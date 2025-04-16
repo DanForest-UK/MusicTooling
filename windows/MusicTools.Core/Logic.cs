@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using static MusicTools.Core.Types;
 using G = System.Collections.Generic;
+using static LanguageExt.Prelude;
 
 namespace MusicTools.Core
 {
@@ -24,11 +25,11 @@ namespace MusicTools.Core
             songs = songs.Select((s, i) => s with { Id = i + 1 }).ToSeq();
 
             // Initialize ChosenSongs with all song IDs
-            var chosenSongs = songs.Select(s => s.Id).ToArray();              
+            var chosenSongs = songs.Select(s => s.Id).ToArray();
 
             return current with
             {
-                Songs = songs.ToConcurrentDictionary(s => s.Id),
+                Songs = toMap(songs.Select(s => (s.Id, s))),
                 ChosenSongs = chosenSongs
             };
         }
@@ -39,11 +40,10 @@ namespace MusicTools.Core
             var songs = current.Songs;
             updates.Iter(update =>
             {
-                if (songs.ContainsKey(update.SongId))
-                    songs[update.SongId] = songs[update.SongId] with 
-                    { SongStatus =songs[update.SongId].SongStatus == SpotifyStatus.Liked // Never downgrade to 'found'
-                        ? SpotifyStatus.Liked
-                        : update.Status };
+                songs.Find(update.SongId).IfSome(song =>                
+                    songs = songs.AddOrUpdate(update.SongId, song with { SongStatus = song.SongStatus == SpotifyStatus.Liked
+                        ? SpotifyStatus.Liked // Never downgrade to found
+                        : update.Status })); 
             });
             return current with { Songs = songs };
         }
@@ -56,16 +56,16 @@ namespace MusicTools.Core
                                    from songInfoArtist in s.Artist
                                    from update in updates
                                    where update.Artist.ToLower() == songInfoArtist.ToLower() // todo check if we can make search case insensitive
-                                   select (Id: s.Id, Status: update.Status)).Distinct();
+                                   select (Status: update.Status, Song: s)).Distinct();
 
-            songsWithArtist.Iter(song =>
-            {
-                if (songs.ContainsKey(song.Id))
-                    songs[song.Id] = songs[song.Id] 
-                        with { ArtistStatus = songs[song.Id].ArtistStatus == SpotifyStatus.Liked // never downgrade to 'found'
-                            ? SpotifyStatus.Liked
-                            : song.Status };
-            });
+            songsWithArtist.Iter(update =>
+                songs = songs.AddOrUpdate(update.Song.Id, update.Song with
+                {
+                    ArtistStatus = update.Song.ArtistStatus == SpotifyStatus.Liked
+                    ? SpotifyStatus.Liked // Never downgrade to found
+                    : update.Status
+                }));
+            
             return current with { Songs = songs };
         }
 

@@ -19,7 +19,7 @@ namespace MusicTools.Logic
     {
         // Thread safe and atomic management of state
         static readonly Atom<AppModel> stateAtom = Atom(new AppModel(
-            Songs: new ConcurrentDictionary<int, SongInfo>(), // chosen mutable type for efficiency on updates
+            Songs: new Map<int, SongInfo>(), // chosen mutable type for efficiency on updates
             ChosenSongs: new int[0],
             MinimumRating: 0
         ));
@@ -85,7 +85,7 @@ namespace MusicTools.Logic
         public static void SetPersistedState(Dictionary<int, SongInfo> songs, int[] chosenSongs, int minimumRating)
         {
             var newModel = new AppModel(
-                Songs: new ConcurrentDictionary<int, SongInfo>(songs),
+                Songs: toMap(songs.AsEnumerable()),
                 ChosenSongs: chosenSongs,
                 MinimumRating: minimumRating
             );

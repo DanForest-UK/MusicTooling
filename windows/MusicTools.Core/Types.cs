@@ -12,7 +12,7 @@ namespace MusicTools.Core
     {
         // Records for application state
         // todo, do we need a concurrent dictionary still?
-        public record AppModel(ConcurrentDictionary<int, SongInfo> Songs, int[] ChosenSongs, int MinimumRating)
+        public record AppModel(Map<int, SongInfo> Songs, int[] ChosenSongs, int MinimumRating)
         {
             public Seq<SongInfo> FilteredSongs(bool includeAlreadyProcessed = false)
             {
@@ -116,7 +116,6 @@ namespace MusicTools.Core
         public static SpotifyError Empty => new SpotifyError("", "", "");
 
         // Specific error types 
-
         public record AlreadyAuthenticated()
             : SpotifyError("ALREADY_AUTHENTICATED", "Already authenticated", "authentication");
 

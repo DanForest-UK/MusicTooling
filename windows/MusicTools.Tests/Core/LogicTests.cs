@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Concurrent;
 using static MusicTools.Core.Types;
 using static LanguageExt.Prelude;
+using LanguageExt;
 
 namespace MusicTools.Tests
 {
@@ -43,7 +44,7 @@ namespace MusicTools.Tests
         public void SetSongsSequentialIds()
         {
             var initialState = new AppModel(
-                Songs: new ConcurrentDictionary<int, SongInfo>(),
+                Songs: new Map<int, SongInfo>(),
                 ChosenSongs: new int[0],
                 MinimumRating: 0);
 
@@ -69,9 +70,9 @@ namespace MusicTools.Tests
         [TestMethod]
         public void UpdateSongStatus()
         {
-            var songs = new ConcurrentDictionary<int, SongInfo>();
-            songs.TryAdd(1, CreateTestSong(id: 1));
-            songs.TryAdd(2, CreateTestSong(id: 2));
+            var songs = new Map<int, SongInfo>();
+            songs = songs.Add(1, CreateTestSong(id: 1));
+            songs = songs.Add(2, CreateTestSong(id: 2));
 
             var initialState = new AppModel(
                 Songs: songs,
@@ -92,8 +93,8 @@ namespace MusicTools.Tests
         [TestMethod]
         public void UpdateSongStatusNotDowngrade()
         {
-            var songs = new ConcurrentDictionary<int, SongInfo>();
-            songs.TryAdd(1, CreateTestSong(id: 1, songStatus: SpotifyStatus.Liked));
+            var songs = new Map<int, SongInfo>();
+            songs = songs.Add(1, CreateTestSong(id: 1, songStatus: SpotifyStatus.Liked));
 
             var initialState = new AppModel(
                 Songs: songs,
@@ -113,9 +114,9 @@ namespace MusicTools.Tests
         [TestMethod]
         public void UpdateArtistsStatus()
         {
-            var songs = new ConcurrentDictionary<int, SongInfo>();
-            songs.TryAdd(1, CreateTestSong(id: 1, artists: new[] { "Artist 1", "Artist 2" }));
-            songs.TryAdd(2, CreateTestSong(id: 2, artists: new[] { "Artist 3" }));
+            var songs = new Map<int, SongInfo>();
+            songs =songs = songs.Add(1, CreateTestSong(id: 1, artists: new[] { "Artist 1", "Artist 2" }));
+            songs = songs.Add(2, CreateTestSong(id: 2, artists: new[] { "Artist 3" }));
 
             var initialState = new AppModel(
                 Songs: songs,
@@ -136,8 +137,8 @@ namespace MusicTools.Tests
         [TestMethod]
         public void UpdateArtistNotDowngrade()
         {
-            var songs = new ConcurrentDictionary<int, SongInfo>();
-            songs.TryAdd(1, CreateTestSong(id: 1, artistStatus: SpotifyStatus.Liked));
+            var songs = new Map<int, SongInfo>();
+            songs = songs.Add(1, CreateTestSong(id: 1, artistStatus: SpotifyStatus.Liked));
 
             var initialState = new AppModel(
                 Songs: songs,
@@ -157,8 +158,8 @@ namespace MusicTools.Tests
         [TestMethod]
         public void UpdateArtistsCaseInsensitive()
         {
-            var songs = new ConcurrentDictionary<int, SongInfo>();
-            songs.TryAdd(1, CreateTestSong(id: 1, artists: new[] { "Artist One" }));
+            var songs = new Map<int, SongInfo>();
+            songs = songs.Add(1, CreateTestSong(id: 1, artists: new[] { "Artist One" }));
 
             var initialState = new AppModel(
                 Songs: songs,
@@ -178,8 +179,8 @@ namespace MusicTools.Tests
         [TestMethod]
         public void ToggleSongSelection()
         {
-            var songs = new ConcurrentDictionary<int, SongInfo>();
-            songs.TryAdd(1, CreateTestSong(id: 1));
+            var songs = new Map<int, SongInfo>();
+            songs = songs.Add(1, CreateTestSong(id: 1));
 
             var initialState = new AppModel(
                 Songs: songs,

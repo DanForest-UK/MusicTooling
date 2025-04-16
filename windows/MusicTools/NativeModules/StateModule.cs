@@ -8,6 +8,7 @@ using Microsoft.ReactNative;
 using System.Diagnostics;
 using MusicTools.Logic;
 using MusicTools.NativeModules;
+using System.Linq;
 
 namespace MusicTools.NativeModules
 {
@@ -99,23 +100,37 @@ namespace MusicTools.NativeModules
         /// <summary>
         /// Emits the updated state to JavaScript
         /// </summary>
-        private void EmitStateUpdated(AppModel state)
+        void EmitStateUpdated(AppModel state)
         {
             if ((object)reactContext != null)
             {
                 try
                 {
-                    // Debug log state contents
-                    Debug.WriteLine($"Emitting state with {state.Songs?.Count} songs, {state.ChosenSongs?.Length} chosen songs");
-
-                    // Pass the state object directly to EmitEvent - don't serialize here
-                    JsEmitterHelper.EmitEvent(reactContext, STATE_UPDATED_EVENT, state);
+                    var frontendState = ConvertStateForFrontend(state);
+                    JsEmitterHelper.EmitEvent(reactContext, STATE_UPDATED_EVENT, frontendState);
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Error emitting state update: {ex.Message}");
                 }
             }
+        }
+
+        object ConvertStateForFrontend(AppModel state)
+        {
+            // Convert Map to array of objects with Index and Song properties
+            var songs = state.Songs.ToArray().Select(kvp => new
+            {
+                Index = kvp.Key,
+                Song = kvp.Value
+            }).ToArray();
+
+            return new
+            {
+                Songs = songs,
+                state.ChosenSongs,
+                state.MinimumRating
+            };
         }
 
         /// <summary>

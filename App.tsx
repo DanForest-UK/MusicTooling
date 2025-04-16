@@ -93,9 +93,10 @@ const App = () => {
     // Only update when we have a valid object, even if it results in 0 filtered songs
     useEffect(() => {
         if (appState?.Songs && typeof appState.Songs === 'object') {
-            const filtered = Object.values(appState.Songs).filter(song =>
-                song.Rating >= (appState.MinimumRating || 0)
-            );
+            const filtered = Object.values(appState.Songs).filter(item =>
+                item.Song.Rating >= (appState.MinimumRating || 0)
+
+            ).map(item => item.Song);
             // We update lastValidFilteredSongs even if filtered.length is 0,
             // as long as appState.Songs is a valid object
             setLastValidFilteredSongs(filtered);
@@ -110,16 +111,13 @@ const App = () => {
     // Calculate filtered songs in the frontend - convert dictionary to array and filter by rating
     // Now with fallback to lastValidFilteredSongs if appState.Songs is undefined
     const filteredSongs = React.useMemo(() => {
-        // Only fall back if appState.Songs is undefined or not an object
-        // This ensures we show empty results when the filter genuinely produces no results
-        if (!appState?.Songs || typeof appState.Songs !== 'object') {
+        if (!appState?.Songs || !Array.isArray(appState.Songs)) {
             return lastValidFilteredSongs;
         }
 
-        // Normal case - this could legitimately return an empty array if no songs match the filter
-        return Object.values(appState.Songs).filter(song =>
-            song.Rating >= (appState.MinimumRating || 0)
-        );
+        return appState.Songs
+            .map(item => item.Song)
+            .filter(song => song.Rating >= (appState.MinimumRating || 0));
     }, [appState?.Songs, appState?.MinimumRating, lastValidFilteredSongs]);
 
     // Listen for saved state event
@@ -312,9 +310,9 @@ const App = () => {
         if (!appState?.Songs || typeof appState.Songs !== 'object') {
             return false;
         }
-        return Object.values(appState.Songs).some(song =>
-            song.SongStatus !== SpotifyStatus.NotSearched ||
-            song.ArtistStatus !== SpotifyStatus.NotSearched
+        return Object.values(appState.Songs).some(item =>
+            item.Song.SongStatus !== SpotifyStatus.NotSearched ||
+            item.Song.ArtistStatus !== SpotifyStatus.NotSearched
         );
     }, [appState?.Songs]);
 

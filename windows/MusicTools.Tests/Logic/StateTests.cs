@@ -42,7 +42,7 @@ namespace MusicTools.Tests
         [TestInitialize]
         public void TestInitialize() =>  
             ObservableState.Update(new AppModel(
-                Songs: new ConcurrentDictionary<int, SongInfo>(),
+                Songs: new Map<int, SongInfo>(),
                 ChosenSongs: new int[0],
                 MinimumRating: 0));        
               
@@ -52,9 +52,9 @@ namespace MusicTools.Tests
         [TestMethod]
         public void FilterMinimumRating()
         {
-            var songs = new ConcurrentDictionary<int, SongInfo>();
-            songs.TryAdd(1, CreateTestSong(id: 1, name: "Low Rating Song", rating: 2));
-            songs.TryAdd(2, CreateTestSong(id: 2, name: "High Rating Song", rating: 4));
+            var songs = new Map<int, SongInfo>();
+            songs = songs.Add(1, CreateTestSong(id: 1, name: "Low Rating Song", rating: 2));
+            songs = songs.Add(2, CreateTestSong(id: 2, name: "High Rating Song", rating: 4));
 
             var model = new AppModel(
                 Songs: songs,
@@ -75,9 +75,9 @@ namespace MusicTools.Tests
         [TestMethod]
         public void DistinctArtists()
         {
-            var songs = new ConcurrentDictionary<int, SongInfo>();
-            songs.TryAdd(1, CreateTestSong(id: 1, artists: new[] { "Artist 1", "Artist 2" }));
-            songs.TryAdd(2, CreateTestSong(id: 2, artists: new[] { "Artist 2", "Artist 3" }));
+            var songs = new Map<int, SongInfo>();
+            songs = songs.Add(1, CreateTestSong(id: 1, artists: new[] { "Artist 1", "Artist 2" }));
+            songs = songs.Add(2, CreateTestSong(id: 2, artists: new[] { "Artist 2", "Artist 3" }));
 
             var model = new AppModel(
                 Songs: songs,
@@ -101,12 +101,12 @@ namespace MusicTools.Tests
         [TestMethod]
         public void DistinctArtistsNotProcessed()
         {
-            var songs = new ConcurrentDictionary<int, SongInfo>();
-            songs.TryAdd(1, CreateTestSong(id: 1,
+            var songs = new Map<int, SongInfo>();
+            songs = songs.Add(1, CreateTestSong(id: 1,
                 artists: new[] { "Processed Artist" },
                 artistStatus: SpotifyStatus.Found));
 
-            songs.TryAdd(2, CreateTestSong(id: 2,
+            songs = songs.Add(2, CreateTestSong(id: 2,
                 artists: new[] { "Unprocessed Artist" }));
 
             var model = new AppModel(
@@ -129,12 +129,12 @@ namespace MusicTools.Tests
         [TestMethod]
         public void FilteredSongsNotProcessed()
         {
-            var songs = new ConcurrentDictionary<int, SongInfo>();
-            songs.TryAdd(1, CreateTestSong(id: 1,
+            var songs = new Map<int, SongInfo>();
+            songs = songs.Add(1, CreateTestSong(id: 1,
                 name: "Processed Song",
                 songStatus: SpotifyStatus.Found));
 
-            songs.TryAdd(2, CreateTestSong(id: 2,
+            songs = songs.Add(2, CreateTestSong(id: 2,
                 name: "Unprocessed Song"));
 
             var model = new AppModel(
