@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using static LanguageExt.Prelude;
 
-namespace MusicTools.Core
+namespace MusicTools.Domain
 {
     public static class Extensions
     {
@@ -16,18 +16,7 @@ namespace MusicTools.Core
             ? Some(value!)
             : None;
 
-        public static ConcurrentDictionary<TKey, TSource> ToConcurrentDictionary<TSource, TKey>(
-            this IEnumerable<TSource> source,
-            Func<TSource, TKey> keySelector)
-            {
-                var dictionary = new ConcurrentDictionary<TKey, TSource>();
-                foreach (var item in source)
-                {
-                    dictionary.TryAdd(keySelector(item), item);
-                }
-                return dictionary;
-            }
-
+     
         public static Option<T> ValueOrNone<S, T>(this IDictionary<S,T> dictionary, S key) =>
             dictionary.ContainsKey(key)
                 ? Some(dictionary[key])
@@ -51,18 +40,6 @@ namespace MusicTools.Core
                 yield return source.Skip(i).Take(batchSize).ToArray();
             }
         }
-
-        /// <summary>
-        /// Convert array to OrderedDictionary with indices as keys
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="array"></param>
-        /// <returns></returns>
-        public static OrderedDictionary ToOrderedDictionary<T, S>(this T[] array, Func<T,S> getId)
-        {
-            var result = new OrderedDictionary();
-            array.Iter(item => result.Add(getId(item), item));
-            return result;
-        }
+       
     }
 }

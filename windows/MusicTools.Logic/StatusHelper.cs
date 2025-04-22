@@ -1,8 +1,8 @@
 ﻿using LanguageExt;
 using System;
 using System.Diagnostics;
-using static MusicTools.Core.Types;
 using static LanguageExt.Prelude;
+using MusicTools.Domain;
 
 namespace MusicTools.Logic
 {

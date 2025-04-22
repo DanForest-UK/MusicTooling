@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Threading;
-using MusicTools.Core;
-using LanguageExt;
-using static LanguageExt.Prelude;
 using System.Threading.Tasks;
-using MusicTools.Logic;
 
 namespace MusicTools.Logic
 {

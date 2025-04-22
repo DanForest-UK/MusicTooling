@@ -1,16 +1,14 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MusicTools.Logic;
-using MusicTools.Core;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using LanguageExt;
-using static MusicTools.Core.Types;
 using static LanguageExt.Prelude;
 using System.IO;
 using System.Linq;
-using Moq;
+using MusicTools.Domain;
 
 namespace MusicTools.Tests
 {
@@ -66,7 +64,7 @@ namespace MusicTools.Tests
         /// Tests that ScanFilesAsync calls Runtime.GetFilesWithExtensionAsync with the correct parameters.
         /// </summary>
         [TestMethod]
-        public async Task ScanFilesAsync()
+        public async Task ScanFilesAsync_WithValidPath_CallsGetFilesWithExtension()
         {
             var testPath = @"C:\Test\Path";
             var testFiles = new[] { @"C:\Test\Path\file1.mp3", @"C:\Test\Path\file2.mp3" }.ToSeq();
@@ -86,18 +84,17 @@ namespace MusicTools.Tests
                 return Task.CompletedTask;
             };
 
-            Runtime.ReadSongInfo = (path, stream) =>            
+            Runtime.ReadSongInfo = (path, stream) =>
                 new SongInfo(
-                    Id: 1,
-                    Name: "Test Song",
-                    Path: path,
-                    Artist: new[] { "Test Artist" },
-                    Album: "Test Album",
-                    Rating: 5,
+                    Id: new SongId(1),
+                    Name: new SongName("Test Song"),
+                    Path: new SongPath(path),
+                    Artist: new[] { new Artist("Test Artist") },
+                    Album: new Album("Test Album"),
+                    Rating: new SongRating(5),
                     ArtistStatus: SpotifyStatus.NotSearched,
                     SongStatus: SpotifyStatus.NotSearched
                 );
-            
 
             var result = await ScanFiles.ScanFilesAsync(testPath);
 
@@ -125,7 +122,7 @@ namespace MusicTools.Tests
         /// Tests that <see cref="ScanFiles.ScanFilesAsync(string)"/> handles cancellation correctly.
         /// </summary>
         [TestMethod]
-        public async Task ScanFilesWithCancellation()
+        public async Task ScanFilesAsync_WithCancellation_ReturnsCancelledError()
         {
             var testPath = @"C:\Test\Path";
             var getFilesCalled = false;
@@ -163,7 +160,7 @@ namespace MusicTools.Tests
 
             Runtime.GetFilesWithExtensionAsync = (path, ext, token) =>
                  throw new UnauthorizedAccessException("Access denied");
-            
+
             var result = await ScanFiles.ScanFilesAsync(testPath);
 
             Assert.IsTrue(result.IsLeft, "Result should be an error");
@@ -189,7 +186,7 @@ namespace MusicTools.Tests
         /// Tests that ScanFiles.ScanFilesAsync processes files in parallel.
         /// </summary>
         [TestMethod]
-        public async Task ScanFilesParallel()
+        public async Task ScanFilesAsync_ProcessesFilesInParallel()
         {
             var testPath = @"C:\Test\Path";
             var testFiles = new[]
@@ -216,12 +213,12 @@ namespace MusicTools.Tests
             Runtime.ReadSongInfo = (path, stream) =>
             {
                 return new SongInfo(
-                    Id: 1,
-                    Name: "Test Song",
-                    Path: path,
-                    Artist: new[] { "Test Artist" },
-                    Album: "Test Album",
-                    Rating: 5,
+                    Id: new SongId(1),
+                    Name: new SongName("Test Song"),
+                    Path: new SongPath(path),
+                    Artist: new[] { new Artist("Test Artist") },
+                    Album: new Album("Test Album"),
+                    Rating: new SongRating(5),
                     ArtistStatus: SpotifyStatus.NotSearched,
                     SongStatus: SpotifyStatus.NotSearched
                 );
@@ -237,7 +234,7 @@ namespace MusicTools.Tests
         /// Tests that ScanFiles.ScanFilesAsync handles errors in individual files gracefully.
         /// </summary>
         [TestMethod]
-        public async Task ReadFileErrorHandling()
+        public async Task ScanFilesAsync_HandlesErrorsInIndividualFiles()
         {
             string testPath = @"C:\Test\Path";
             var testFiles = new[]
@@ -248,7 +245,7 @@ namespace MusicTools.Tests
 
             Runtime.GetFilesWithExtensionAsync = (path, ext, token) =>
                 Task.FromResult(testFiles);
-            
+
             Runtime.WithStream = (path, action) =>
             {
                 if (path.Contains("bad.mp3"))
@@ -261,14 +258,14 @@ namespace MusicTools.Tests
 
             Runtime.ReadSongInfo = (path, stream) =>
              new SongInfo(
-                Id: 1,
-                Name: "Test Song",
-                Path: path,
-                Artist: new[] { "Test Artist" },
-                Album: "Test Album",
-                Rating: 5,
+                Id: new SongId(1),
+                Name: new SongName("Test Song"),
+                Path: new SongPath(path),
+                Artist: new[] { new Artist("Test Artist") },
+                Album: new Album("Test Album"),
+                Rating: new SongRating(5),
                 ArtistStatus: SpotifyStatus.NotSearched,
-                SongStatus: SpotifyStatus.NotSearched);           
+                SongStatus: SpotifyStatus.NotSearched);
 
             var result = await ScanFiles.ScanFilesAsync(testPath);
 

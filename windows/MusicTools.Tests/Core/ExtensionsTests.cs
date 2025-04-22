@@ -1,12 +1,10 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using MusicTools.Core;
 using System;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.Collections.Specialized;
 using System.Linq;
 using LanguageExt;
 using static LanguageExt.Prelude;
+using MusicTools.Domain;
 
 namespace MusicTools.Tests
 {
@@ -43,48 +41,7 @@ namespace MusicTools.Tests
             Assert.IsTrue(resultEmpty.IsNone, "Result should be None for empty string");
             Assert.IsTrue(resultWhitespace.IsNone, "Result should be None for whitespace string");
         }
-
-        /// <summary>
-        /// Tests that ToConcurrentDictionary correctly converts a collection to a ConcurrentDictionary
-        /// </summary>
-        [TestMethod]
-        public void ToConcurrentDictionary()
-        {
-            var items = new[]
-            {
-                new { Id = 1, Name = "Item 1" },
-                new { Id = 2, Name = "Item 2" },
-                new { Id = 3, Name = "Item 3" }
-            };
-
-            var result = items.ToConcurrentDictionary(item => item.Id);
-
-            Assert.AreEqual(3, result.Count, "Dictionary should have 3 items");
-            Assert.AreEqual("Item 1", result[1].Name, "Item 1 should be retrievable by key");
-            Assert.AreEqual("Item 2", result[2].Name, "Item 2 should be retrievable by key");
-            Assert.AreEqual("Item 3", result[3].Name, "Item 3 should be retrievable by key");
-        }
-
-        /// <summary>
-        /// Tests that ToConcurrentDictionary keeps only the first item when duplicate keys are encountered
-        /// </summary>
-        [TestMethod]
-        public void ToConcurrentDictionaryDuplicateKeys()
-        {
-            var items = new[]
-            {
-                new { Id = 1, Name = "Item 1" },
-                new { Id = 1, Name = "Item 1 Duplicate" }, // Duplicate key
-                new { Id = 2, Name = "Item 2" }
-            };
-
-            var result = items.ToConcurrentDictionary(item => item.Id);
-
-            Assert.AreEqual(2, result.Count, "Dictionary should have 2 items due to duplicate keys");
-            Assert.AreEqual("Item 1", result[1].Name, "First item with key 1 should be kept");
-            Assert.AreEqual("Item 2", result[2].Name, "Item 2 should be present");
-        }
-
+              
         /// <summary>
         /// Tests that ValueOrNone for dictionaries returns Some for existing keys and None for non-existing keys
         /// </summary>
@@ -188,32 +145,6 @@ namespace MusicTools.Tests
 
             Assert.AreEqual(1, batches[3].Length, "Fourth batch should have 1 item");
             Assert.AreEqual(10, batches[3][0], "Fourth batch, first item should be 10");
-        }
-
-        /// <summary>
-        /// Tests that ToOrderedDictionary correctly converts an array to an OrderedDictionary with specified keys
-        /// </summary>
-        [TestMethod]
-        public void ToOrderedDictionary()
-        {
-            var array = new[]
-            {
-                new { Id = "item1", Value = "Value 1" },
-                new { Id = "item2", Value = "Value 2" },
-                new { Id = "item3", Value = "Value 3" }
-            };
-
-            var result = array.ToOrderedDictionary(item => item.Id);
-
-            Assert.AreEqual(3, result.Count, "OrderedDictionary should have 3 items");
-            Assert.AreEqual(array[0], result["item1"], "First item should be retrievable by key");
-            Assert.AreEqual(array[1], result["item2"], "Second item should be retrievable by key");
-            Assert.AreEqual(array[2], result["item3"], "Third item should be retrievable by key");
-
-            // Check order is preserved
-            Assert.AreEqual("item1", result.Keys.Cast<string>().First(), "First key should be item1");
-            Assert.AreEqual("item2", result.Keys.Cast<string>().Skip(1).First(), "Second key should be item2");
-            Assert.AreEqual("item3", result.Keys.Cast<string>().Skip(2).First(), "Third key should be item3");
-        }
+        }       
     }
 }

@@ -1,11 +1,8 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MusicTools.Logic;
-using MusicTools.Core;
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 using static LanguageExt.Prelude;
-using LanguageExt;
 
 namespace MusicTools.Tests
 {

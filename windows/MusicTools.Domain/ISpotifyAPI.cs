@@ -1,12 +1,10 @@
 ﻿using LanguageExt;
 using LanguageExt.Common;
-using MusicTools.Core;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using static MusicTools.Core.Types;
 
-namespace MusicTools.Core
+namespace MusicTools.Domain
 {
     /// <summary>
     /// Interface for Spotify API operations
@@ -21,22 +19,22 @@ namespace MusicTools.Core
         /// <summary>
         /// Exchanges the authorization code for an access token
         /// </summary>
-        Task<Either<SpotifyErrors.SpotifyError, bool>> GetAccessTokenAsync(string code);
+        Task<Either<SpotifyError, bool>> GetAccessTokenAsync(string code);
 
         /// <summary>
         /// Searches for a song on Spotify
         /// </summary>
-        Task<Either<SpotifyErrors.SpotifyError, SpotifyTrack>> SearchSongAsync(
-            int id,
-            string title,
-            string[] artists,
+        Task<Either<SpotifyError, SpotifyTrack>> SearchSongAsync(
+            SongId id,
+            SongName title,
+            Artist[] artists,
             CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Searches for an artist on Spotify
         /// </summary>
-        Task<Either<SpotifyErrors.SpotifyError, SpotifyArtist>> SearchArtistAsync(
-            string artistName,
+        Task<Either<SpotifyError, SpotifyArtist>> SearchArtistAsync(
+            Artist artistName,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -45,7 +43,7 @@ namespace MusicTools.Core
         /// <param name="spotifyTrackIds">Array of Spotify track IDs to like</param>
         /// <param name="cancellationToken">Cancellation token to cancel the operation</param>
         /// <returns>Tuple containing any errors and array of successfully liked track IDs</returns>
-        Task<(SpotifyErrors.SpotifyError[] Errors, SpotifySongId[] LikedSongs)> LikeSongsAsync(
+        Task<(SpotifyError[] Errors, SpotifySongId[] LikedSongs)> LikeSongsAsync(
             SpotifySongId[] spotifyTrackIds,
             CancellationToken cancellationToken = default);
 
@@ -55,7 +53,7 @@ namespace MusicTools.Core
         /// <param name="spotifyArtistIds">Array of Spotify artist IDs to follow</param>
         /// <param name="cancellationToken">Cancellation token to cancel the operation</param>
         /// <returns>Tuple containing any errors and array of successfully followed artist IDs</returns>
-        Task<(SpotifyErrors.SpotifyError[] Errors, SpotifyArtistId[] FollowedArtists)> FollowArtistsAsync(
+        Task<(SpotifyError[] Errors, SpotifyArtistId[] FollowedArtists)> FollowArtistsAsync(
             SpotifyArtistId[] spotifyArtistIds,
             CancellationToken cancellationToken = default);
     }

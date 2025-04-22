@@ -8,13 +8,38 @@ export enum SpotifyStatus {
     Liked = 3
 }
 
+// Define record type interfaces
+export interface SongId {
+    Value: number;
+}
+
+export interface SongName {
+    Value: string;
+}
+
+export interface SongPath {
+    Value: string;
+}
+
+export interface Artist {
+    Value: string;
+}
+
+export interface Album {
+    Value: string;
+}
+
+export interface SongRating {
+    Value: number;
+}
+
 export interface SongInfo {
-    Id: string;
-    Name: string;
-    Artist: string[];
-    Album: string;
-    Rating: number;
-    Path: string;
+    Id: SongId;
+    Name: SongName;
+    Artist: Artist[];
+    Album: Album;
+    Rating: SongRating;
+    Path: SongPath;
     ArtistStatus: SpotifyStatus;
     SongStatus: SpotifyStatus;
 }
@@ -31,8 +56,8 @@ export interface SongTuple {
 
 export interface AppModel {
     Songs: SongTuple[] | SongsDictionary;
-    ChosenSongs: string[];
-    MinimumRating: number;
+    ChosenSongs: number[];
+    MinimumRating: SongRating;
 }
 
 // Spotify Error Types
@@ -108,7 +133,6 @@ export const isApiError = (error: SpotifyError): error is ApiError =>
     error.ErrorCode === 'API_ERROR';
 
 // Response type for Spotify operations
-// Update to SpotifyResponse interface to include our new properties
 export interface SpotifyResponse<T = boolean> {
     success?: boolean;
     partialSuccess?: boolean;

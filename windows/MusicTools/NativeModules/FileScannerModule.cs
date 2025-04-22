@@ -1,15 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Microsoft.ReactNative;
 using Microsoft.ReactNative.Managed;
-using LanguageExt;
-using static MusicTools.Core.Types;
-using MusicTools.Core;
 using MusicTools.Logic;
-using System.Linq;
-using MusicTools.NativeModules;
 using static LanguageExt.Prelude;
-using System.Diagnostics;
 using Windows.Storage.Pickers;
 using Windows.ApplicationModel.Core;
 using Windows.UI.Core;

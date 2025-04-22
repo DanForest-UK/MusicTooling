@@ -34,13 +34,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.ReactNative.Manag
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.ReactNative.Managed.CodeGen", "..\node_modules\react-native-windows\Microsoft.ReactNative.Managed.CodeGen\Microsoft.ReactNative.Managed.CodeGen.csproj", "{ADED4FBE-887D-4271-AF24-F0823BCE7961}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicTools.Core", "MusicTools.Core\MusicTools.Core.csproj", "{A689F173-278C-455B-9D14-A9803F2A698B}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicTools.Logic", "MusicTools.Logic\MusicTools.Logic.csproj", "{47FDEF01-6547-4936-8057-22AE5FA9A9CF}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReactNativePicker", "..\node_modules\@react-native-picker\picker\windows\ReactNativePicker\ReactNativePicker.vcxproj", "{BEDCC600-4541-41F2-AA46-9E058202B6AD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicTools.Tests", "MusicTools.Tests\MusicTools.Tests.csproj", "{B97256F3-DFDD-4656-AF21-B6211D8405F3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicTools.Domain", "MusicTools.Domain\MusicTools.Domain.csproj", "{57B447E6-196E-4D38-A036-A6066AEFCC12}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -156,18 +156,6 @@ Global
 		{ADED4FBE-887D-4271-AF24-F0823BCE7961}.Release|x64.Build.0 = Release|x64
 		{ADED4FBE-887D-4271-AF24-F0823BCE7961}.Release|x86.ActiveCfg = Release|x86
 		{ADED4FBE-887D-4271-AF24-F0823BCE7961}.Release|x86.Build.0 = Release|x86
-		{A689F173-278C-455B-9D14-A9803F2A698B}.Debug|ARM64.ActiveCfg = Debug|Any CPU
-		{A689F173-278C-455B-9D14-A9803F2A698B}.Debug|ARM64.Build.0 = Debug|Any CPU
-		{A689F173-278C-455B-9D14-A9803F2A698B}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{A689F173-278C-455B-9D14-A9803F2A698B}.Debug|x64.Build.0 = Debug|Any CPU
-		{A689F173-278C-455B-9D14-A9803F2A698B}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{A689F173-278C-455B-9D14-A9803F2A698B}.Debug|x86.Build.0 = Debug|Any CPU
-		{A689F173-278C-455B-9D14-A9803F2A698B}.Release|ARM64.ActiveCfg = Release|Any CPU
-		{A689F173-278C-455B-9D14-A9803F2A698B}.Release|ARM64.Build.0 = Release|Any CPU
-		{A689F173-278C-455B-9D14-A9803F2A698B}.Release|x64.ActiveCfg = Release|Any CPU
-		{A689F173-278C-455B-9D14-A9803F2A698B}.Release|x64.Build.0 = Release|Any CPU
-		{A689F173-278C-455B-9D14-A9803F2A698B}.Release|x86.ActiveCfg = Release|Any CPU
-		{A689F173-278C-455B-9D14-A9803F2A698B}.Release|x86.Build.0 = Release|Any CPU
 		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Debug|ARM64.ActiveCfg = Debug|Any CPU
 		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Debug|ARM64.Build.0 = Debug|Any CPU
 		{47FDEF01-6547-4936-8057-22AE5FA9A9CF}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -204,6 +192,18 @@ Global
 		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Release|x64.Build.0 = Release|Any CPU
 		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Release|x86.ActiveCfg = Release|Any CPU
 		{B97256F3-DFDD-4656-AF21-B6211D8405F3}.Release|x86.Build.0 = Release|Any CPU
+		{57B447E6-196E-4D38-A036-A6066AEFCC12}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{57B447E6-196E-4D38-A036-A6066AEFCC12}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{57B447E6-196E-4D38-A036-A6066AEFCC12}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{57B447E6-196E-4D38-A036-A6066AEFCC12}.Debug|x64.Build.0 = Debug|Any CPU
+		{57B447E6-196E-4D38-A036-A6066AEFCC12}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{57B447E6-196E-4D38-A036-A6066AEFCC12}.Debug|x86.Build.0 = Debug|Any CPU
+		{57B447E6-196E-4D38-A036-A6066AEFCC12}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{57B447E6-196E-4D38-A036-A6066AEFCC12}.Release|ARM64.Build.0 = Release|Any CPU
+		{57B447E6-196E-4D38-A036-A6066AEFCC12}.Release|x64.ActiveCfg = Release|Any CPU
+		{57B447E6-196E-4D38-A036-A6066AEFCC12}.Release|x64.Build.0 = Release|Any CPU
+		{57B447E6-196E-4D38-A036-A6066AEFCC12}.Release|x86.ActiveCfg = Release|Any CPU
+		{57B447E6-196E-4D38-A036-A6066AEFCC12}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

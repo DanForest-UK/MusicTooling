@@ -1,11 +1,8 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MusicTools.Logic;
-using MusicTools.Core;
-using System;
 using System.Linq;
-using static MusicTools.Core.Types;
-using System.Collections.Concurrent;
 using LanguageExt;
+using MusicTools.Domain;
 
 namespace MusicTools.Tests
 {
@@ -26,12 +23,12 @@ namespace MusicTools.Tests
             SpotifyStatus songStatus = SpotifyStatus.NotSearched)
         {
             return new SongInfo(
-                Id: id,
-                Name: name.IfNone($"Song {id}"),
-                Path: path.IfNone($"test/path{id}.mp3"),
-                Artist: artists.IfNone(new[] { $"Artist {id}" }),
-                Album: album.IfNone($"Album {id}"),
-                Rating: rating,
+                Id: new SongId(id),
+                Name: new SongName(name.IfNone($"Song {id}")),
+                Path: new SongPath(path.IfNone($"test/path{id}.mp3")),
+                Artist: artists.IfNone(new[] { $"Artist {id}" }).Select(a => new Artist(a)).ToArray(),
+                Album: new Album(album.IfNone($"Album {id}")),
+                Rating: new SongRating(rating),
                 ArtistStatus: artistStatus,
                 SongStatus: songStatus);
         }
@@ -40,33 +37,33 @@ namespace MusicTools.Tests
         /// Resets the application state before each test
         /// </summary>
         [TestInitialize]
-        public void TestInitialize() =>  
+        public void TestInitialize() =>
             ObservableState.Update(new AppModel(
-                Songs: new Map<int, SongInfo>(),
-                ChosenSongs: new int[0],
-                MinimumRating: 0));        
-              
+                Songs: new Map<SongId, SongInfo>(),
+                ChosenSongs: new SongId[0],
+                MinimumRating: new SongRating(0)));
+
         /// <summary>
         /// Verifies that FilteredSongs correctly applies rating filter and returns only songs above minimum rating
         /// </summary>
         [TestMethod]
         public void FilterMinimumRating()
         {
-            var songs = new Map<int, SongInfo>();
-            songs = songs.Add(1, CreateTestSong(id: 1, name: "Low Rating Song", rating: 2));
-            songs = songs.Add(2, CreateTestSong(id: 2, name: "High Rating Song", rating: 4));
+            var songs = new Map<SongId, SongInfo>();
+            songs = songs.Add(new SongId(1), CreateTestSong(id: 1, name: "Low Rating Song", rating: 2));
+            songs = songs.Add(new SongId(2), CreateTestSong(id: 2, name: "High Rating Song", rating: 4));
 
             var model = new AppModel(
                 Songs: songs,
-                ChosenSongs: new[] { 1, 2 },
-                MinimumRating: 3);
+                ChosenSongs: new[] { new SongId(1), new SongId(2) },
+                MinimumRating: new SongRating(3));
 
             ObservableState.Update(model);
 
             var filteredSongs = model.FilteredSongs();
 
             Assert.AreEqual(1, filteredSongs.Count(), "Should only return songs with rating >= 3");
-            Assert.AreEqual("High Rating Song", filteredSongs.First().Name, "Should return the high rating song");
+            Assert.AreEqual("High Rating Song", filteredSongs.First().Name.Value, "Should return the high rating song");
         }
 
         /// <summary>
@@ -75,14 +72,14 @@ namespace MusicTools.Tests
         [TestMethod]
         public void DistinctArtists()
         {
-            var songs = new Map<int, SongInfo>();
-            songs = songs.Add(1, CreateTestSong(id: 1, artists: new[] { "Artist 1", "Artist 2" }));
-            songs = songs.Add(2, CreateTestSong(id: 2, artists: new[] { "Artist 2", "Artist 3" }));
+            var songs = new Map<SongId, SongInfo>();
+            songs = songs.Add(new SongId(1), CreateTestSong(id: 1, artists: new[] { "Artist 1", "Artist 2" }));
+            songs = songs.Add(new SongId(2), CreateTestSong(id: 2, artists: new[] { "Artist 2", "Artist 3" }));
 
             var model = new AppModel(
                 Songs: songs,
-                ChosenSongs: new[] { 1, 2 },
-                MinimumRating: 0
+                ChosenSongs: new[] { new SongId(1), new SongId(2) },
+                MinimumRating: new SongRating(0)
             );
 
             ObservableState.Update(model);
@@ -90,9 +87,9 @@ namespace MusicTools.Tests
             var artists = model.DistinctArtists();
 
             Assert.AreEqual(3, artists.Count(), "Should return 3 unique artists");
-            Assert.IsTrue(artists.Contains("Artist 1"), "Should contain Artist 1");
-            Assert.IsTrue(artists.Contains("Artist 2"), "Should contain Artist 2");
-            Assert.IsTrue(artists.Contains("Artist 3"), "Should contain Artist 3");
+            Assert.IsTrue(artists.Any(a => a.Value == "Artist 1"), "Should contain Artist 1");
+            Assert.IsTrue(artists.Any(a => a.Value == "Artist 2"), "Should contain Artist 2");
+            Assert.IsTrue(artists.Any(a => a.Value == "Artist 3"), "Should contain Artist 3");
         }
 
         /// <summary>
@@ -101,26 +98,26 @@ namespace MusicTools.Tests
         [TestMethod]
         public void DistinctArtistsNotProcessed()
         {
-            var songs = new Map<int, SongInfo>();
-            songs = songs.Add(1, CreateTestSong(id: 1,
+            var songs = new Map<SongId, SongInfo>();
+            songs = songs.Add(new SongId(1), CreateTestSong(id: 1,
                 artists: new[] { "Processed Artist" },
                 artistStatus: SpotifyStatus.Found));
 
-            songs = songs.Add(2, CreateTestSong(id: 2,
+            songs = songs.Add(new SongId(2), CreateTestSong(id: 2,
                 artists: new[] { "Unprocessed Artist" }));
 
             var model = new AppModel(
                 Songs: songs,
-                ChosenSongs: new[] { 1, 2 },
-                MinimumRating: 0);
+                ChosenSongs: new[] { new SongId(1), new SongId(2) },
+                MinimumRating: new SongRating(0));
 
             ObservableState.Update(model);
 
             var artists = model.DistinctArtists(includeAlreadyProcessed: false);
 
             Assert.AreEqual(1, artists.Count(), "Should only return unprocessed artists");
-            Assert.IsTrue(artists.Contains("Unprocessed Artist"), "Should contain the unprocessed artist");
-            Assert.IsFalse(artists.Contains("Processed Artist"), "Should not contain the processed artist");
+            Assert.IsTrue(artists.Any(a => a.Value == "Unprocessed Artist"), "Should contain the unprocessed artist");
+            Assert.IsFalse(artists.Any(a => a.Value == "Processed Artist"), "Should not contain the processed artist");
         }
 
         /// <summary>
@@ -129,25 +126,25 @@ namespace MusicTools.Tests
         [TestMethod]
         public void FilteredSongsNotProcessed()
         {
-            var songs = new Map<int, SongInfo>();
-            songs = songs.Add(1, CreateTestSong(id: 1,
+            var songs = new Map<SongId, SongInfo>();
+            songs = songs.Add(new SongId(1), CreateTestSong(id: 1,
                 name: "Processed Song",
                 songStatus: SpotifyStatus.Found));
 
-            songs = songs.Add(2, CreateTestSong(id: 2,
+            songs = songs.Add(new SongId(2), CreateTestSong(id: 2,
                 name: "Unprocessed Song"));
 
             var model = new AppModel(
                 Songs: songs,
-                ChosenSongs: new[] { 1, 2 },
-                MinimumRating: 0);
+                ChosenSongs: new[] { new SongId(1), new SongId(2) },
+                MinimumRating: new SongRating(0));
 
             ObservableState.Update(model);
 
             var filteredSongs = model.FilteredSongs(includeAlreadyProcessed: false);
 
             Assert.AreEqual(1, filteredSongs.Count(), "Should only return unprocessed songs");
-            Assert.AreEqual("Unprocessed Song", filteredSongs.First().Name, "Should return the unprocessed song");
+            Assert.AreEqual("Unprocessed Song", filteredSongs.First().Name.Value, "Should return the unprocessed song");
         }
     }
 }

@@ -25,7 +25,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\MusicTools.Core\MusicTools.Core.csproj" />
+		<ProjectReference Include="..\MusicTools.Domain\MusicTools.Domain.csproj" />
 		<ProjectReference Include="..\MusicTools.Logic\MusicTools.Logic.csproj" />
 	</ItemGroup>
 

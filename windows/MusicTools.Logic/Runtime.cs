@@ -1,13 +1,12 @@
 ﻿using LanguageExt;
-using MusicTools.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using static MusicTools.Core.Types;
 using static LanguageExt.Prelude;
+using MusicTools.Domain;
 
 namespace MusicTools.Logic
 {

@@ -1,17 +1,13 @@
-﻿using LanguageExt;
-using MusicTools.Core;
-using MusicTools.Logic;
+﻿using MusicTools.Logic;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.Storage;
-using static MusicTools.Core.Types;
-using static LanguageExt.Prelude; 
+using MusicTools.Domain;
 
 namespace MusicTools.NativeModules
 {
@@ -112,7 +108,7 @@ namespace MusicTools.NativeModules
                 // Create a copy of the state with clean references to prevent serialization issues
                 var stateCopy = new StateDto
                 {
-                    Songs = state.Songs.Values.ToDictionary(s => s.Id),
+                    Songs = state.Songs.Values.ToDictionary(s => s.Id.Value),
                     ChosenSongs = state.ChosenSongs,
                     MinimumRating = state.MinimumRating
                 };
@@ -292,7 +288,7 @@ namespace MusicTools.NativeModules
     public class StateDto
     {
         public Dictionary<int, SongInfo> Songs { get; set; }
-        public int[] ChosenSongs { get; set; }
-        public int MinimumRating { get; set; }
+        public SongId[] ChosenSongs { get; set; }
+        public SongRating MinimumRating { get; set; }
     }
 }

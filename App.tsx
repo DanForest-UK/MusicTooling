@@ -73,7 +73,7 @@ const App = () => {
     const [appState, setAppState] = useState<AppModel>({
         Songs: {},
         ChosenSongs: [],
-        MinimumRating: 0,
+        MinimumRating: { Value: 0 },
     });
 
     // Get the initial folder path when the component mounts
@@ -273,7 +273,7 @@ const App = () => {
     const handleRatingChange = (rating: string) =>
         StateModule.SetMinimumRating(parseInt(rating, 10));
 
-    const toggleSongSelection = async (songId: string) => {
+    const toggleSongSelection = async (songId: number) => {
         await StateModule.ToggleSongSelection(songId);
     };
 
@@ -413,11 +413,11 @@ const App = () => {
                             // Add dynamic bottom padding based on whether Spotify panel is visible
                             showSpotify ? { paddingBottom: 270 } : { paddingBottom: 80 }
                         ]}
-                        keyExtractor={item => item.Id}
+                        keyExtractor={item => item.Id.Value.toString()}
                         renderItem={({ item }) => (
                             <SongItem
                                 item={item}
-                                isSelected={Array.isArray(appState?.ChosenSongs) && appState.ChosenSongs.includes(item.Id)}
+                                isSelected={Array.isArray(appState?.ChosenSongs) && appState.ChosenSongs.includes(item.Id.Value)}
                                 onToggle={toggleSongSelection}
                                 showSpotifyStatus={showSpotifyStatus}
                             />

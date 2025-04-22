@@ -1,18 +1,14 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MusicTools.Logic;
-using MusicTools.Core;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 using SpotifyAPI.Web;
-using SpotifyAPI.Web.Http;
 using Moq;
-using static MusicTools.Core.Types;
-using System.Net;
 using System.Linq;
-using static MusicTools.Core.SpotifyErrors;
 using static LanguageExt.Prelude;
 using LanguageExt;
+using MusicTools.Domain;
 
 namespace MusicTools.Tests
 {
@@ -236,9 +232,9 @@ namespace MusicTools.Tests
             )).ReturnsAsync(searchResponse);
 
             var result = await spotifyApi.SearchSongAsync(
-                1,
-                "Test Song",
-                new[] { "Test Artist" },
+                new SongId(1),
+                new SongName("Test Song"),
+                new[] { new Artist("Test Artist") },
                 CancellationToken.None
             );
 

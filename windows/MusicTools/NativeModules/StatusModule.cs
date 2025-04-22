@@ -4,10 +4,10 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using static MusicTools.Core.Types;
 using MusicTools.Logic;
 using LanguageExt;
 using static LanguageExt.Prelude;
+using MusicTools.Domain;
 
 namespace MusicTools.NativeModules
 {

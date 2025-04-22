@@ -2,18 +2,11 @@
 using LanguageExt;
 using System;
 using static LanguageExt.Prelude;
-using Windows.Security.Authorization.AppCapabilityAccess;
-using MusicTools.Core;
-using static MusicTools.Core.Types;
 using System.Threading.Tasks;
-using G = System.Collections.Generic;
 using System.Collections.Generic;
-using System.Diagnostics;
-using Windows.Storage.Streams;
-using Windows.Storage;
-using System.Linq;
 using System.Threading;
 using System.Collections.Concurrent;
+using MusicTools.Domain;
 
 namespace MusicTools.Logic
 {

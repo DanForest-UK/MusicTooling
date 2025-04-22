@@ -1,13 +1,9 @@
 ﻿using LanguageExt;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using static MusicTools.Core.Types;
-using static MusicTools.Core.Extensions;
 using System.Linq;
-using MusicTools.Logic;
 using static LanguageExt.Prelude;
+using MusicTools.Domain;
 
 namespace MusicTools.Logic
 {
@@ -54,12 +50,12 @@ namespace MusicTools.Logic
                 // This happens synchronously so ordering/duplication is not an issue
                 // although the order is reinforced in the state when a new set of songs is loaded
                 return new SongInfo(
-                    ObservableState.Current.Songs.Count(),
-                    tagFile.Tag.Title.ValueOrNone().IfNone("[No title]"),
-                    path,
-                    tagFile.Tag.AlbumArtists.Union(tagFile.Tag.Artists).ToArray(),
-                    tagFile.Tag.Album.ValueOrNone().IfNone("[No album]"),
-                    rating,
+                    new SongId(ObservableState.Current.Songs.Count()),
+                    new SongName(tagFile.Tag.Title.ValueOrNone().IfNone("[No title]")),
+                    new SongPath(path),
+                    tagFile.Tag.AlbumArtists.Union(tagFile.Tag.Artists).Select(a => new Artist(a)).ToArray(),
+                    new Album(tagFile.Tag.Album.ValueOrNone().IfNone("[No album]")),
+                    new SongRating(rating),
                     SpotifyStatus.NotSearched,
                     SpotifyStatus.NotSearched);
             }
@@ -67,14 +63,14 @@ namespace MusicTools.Logic
             {
                 Runtime.Error($"Error reading tag information from {path}", Some(ex));
 
-                // Return a placeholder song info with error indicators
+                // Return a placeholder song info with error indicators  
                 return new SongInfo(
-                    ObservableState.Current.Songs.Count(),
-                    "[Error reading file]",
-                    path,
-                    new[] { "[Error]" },
-                    "[Error]",
-                    0,
+                    new SongId(ObservableState.Current.Songs.Count()),
+                    new SongName("[Error reading file]"), // Fixed: Wrapped the string in a SongName instance
+                    new SongPath(path),
+                    new[] { new Artist("[Error]") }, // Fixed: Wrapped the string in an Artist instance
+                    new Album("[Error]"), // Fixed: Wrapped the string in an Album instance
+                    new SongRating(0),
                     SpotifyStatus.NotSearched,
                     SpotifyStatus.NotSearched);
             }

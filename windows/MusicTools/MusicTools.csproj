@@ -191,9 +191,9 @@
     <None Include="spotifySettingsExample.json" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\MusicTools.Core\MusicTools.Core.csproj">
-      <Project>{a689f173-278c-455b-9d14-a9803f2a698b}</Project>
-      <Name>MusicTools.Core</Name>
+    <ProjectReference Include="..\MusicTools.Domain\MusicTools.Domain.csproj">
+      <Project>{57B447E6-196E-4D38-A036-A6066AEFCC12}</Project>
+      <Name>MusicTools.Domain</Name>
     </ProjectReference>
     <ProjectReference Include="..\MusicTools.Logic\MusicTools.Logic.csproj">
       <Project>{47fdef01-6547-4936-8057-22ae5fa9a9cf}</Project>

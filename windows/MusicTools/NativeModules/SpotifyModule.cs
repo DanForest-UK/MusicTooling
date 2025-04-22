@@ -1,27 +1,17 @@
 ﻿using Microsoft.ReactNative.Managed;
-using MusicTools.Core;
 using MusicTools.Logic;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
-using static MusicTools.Core.Types;
-using LanguageExt.Common;
 using System.IO;
-using static MusicTools.Core.Extensions;
-using System.Net;
 using static LanguageExt.Prelude;
 using Windows.Storage;
-using LanguageExt.ClassInstances;
 using LanguageExt;
 using System.Threading;
-using System.Reflection.Metadata.Ecma335;
-using static MusicTools.Core.SpotifyErrors;
-using Windows.UI.Xaml.Shapes;
-using System.Collections.Concurrent;
+using MusicTools.Domain;
 
 namespace MusicTools.NativeModules
 {
@@ -157,7 +147,7 @@ namespace MusicTools.NativeModules
                         var response = result.Match(
                             Right: success => {
                                 isAuthenticated = true;
-                                return new { success = true, error = SpotifyErrors.Empty };
+                                return new { success = true, error = new SpotifyError("", "", "") };
                             },
                             Left: error => {
                                 Runtime.Error($"Spotify authentication failed", None);
@@ -304,12 +294,12 @@ namespace MusicTools.NativeModules
                     {
                         // Final results
                         var errors = new List<SpotifyError>();
-                        var foundArtists = new Dictionary<SpotifyArtistId, string>();// lookup of spotify artist id to name
+                        var foundArtists = new Dictionary<SpotifyArtistId, Artist>();// lookup of spotify artist id to name
 
                         // Artist array for processing in batches
                         var totalArtists = distinctArtists.Length;
                         var processedCount = 0;
-                        var artistUpdates = new List<(string ArtistName, SpotifyStatus Status)>();
+                        var artistUpdates = new List<(Artist ArtistName, SpotifyStatus Status)>();
 
                         // Process artists in batches
                         for (int index = 0; index < totalArtists; index += BATCH_SIZE)
@@ -321,7 +311,7 @@ namespace MusicTools.NativeModules
                             var artistsBatch = distinctArtists.Skip(index).Take(BATCH_SIZE);
 
                             // Process one batch: Search for artists
-                            var batchFoundArtists = new Dictionary<SpotifyArtistId, string>();
+                            var batchFoundArtists = new Dictionary<SpotifyArtistId, Artist>();
 
                             foreach (var artist in artistsBatch)
                             {
@@ -334,7 +324,7 @@ namespace MusicTools.NativeModules
                                     phase = "searching",
                                     totalArtists,
                                     processed = processedCount,
-                                    message = $"Searching for artist {processedCount} of {totalArtists}: {artist}"
+                                    message = $"Searching for artist {processedCount} of {totalArtists}: {artist.Value}"
                                 });
 
                                 var result = await SearchForArtist(artist, token);
@@ -479,7 +469,7 @@ namespace MusicTools.NativeModules
                 var token = cancelSource.Token;
 
                 // Start the operation in a background task
-                Task.Run(async () => await LikeSongsProcessAsync(token), token);
+                Task.Run(async () => await LikeSongsProcessAsync(filteredSongs, token), token);
 
                 // Return immediately, status will be sent via events
             }
@@ -494,30 +484,17 @@ namespace MusicTools.NativeModules
         /// Processes the like songs operation in batches of 50 songs
         /// For each batch: Search for songs -> Like found songs -> Move to next batch
         /// </summary>
-        private async Task LikeSongsProcessAsync(CancellationToken cancellationToken)
+        private async Task LikeSongsProcessAsync(Seq<SongInfo> songs, CancellationToken cancellationToken)
         {
             try
-            {
-                var filteredSongs = ObservableState.Current.FilteredSongs(includeAlreadyProcessed: false);
-
-                if (!filteredSongs.Any())
-                {
-                    EmitEvent(SPOTIFY_OPERATION_COMPLETE, new
-                    {
-                        success = false,
-                        message = "No songs available to like. All songs have been processed already.",
-                        noSongsToProcess = true
-                    });
-                    return;
-                }
-
+            {                            
                 // Overall tracking of errors and processed songs
                 var errors = new List<SpotifyError>();
                 var totalProcessed = 0;
                 var totalLiked = 0;
-                var totalCount = filteredSongs.Count();
+                var totalCount = songs.Count();
 
-                var songStatusUpdates = new List<(int SongId, SpotifyStatus Status)>();
+                var songStatusUpdates = new List<(SongId SongId, SpotifyStatus Status)>();
 
                 // Process songs in batches
                 for (int index = 0; index < totalCount; index += BATCH_SIZE)
@@ -525,10 +502,10 @@ namespace MusicTools.NativeModules
                     // Check for cancellation between batches
                     CheckForCancel(cancellationToken);
 
-                    var songsBatch = filteredSongs.Skip(index).Take(BATCH_SIZE);
+                    var songsBatch = songs.Skip(index).Take(BATCH_SIZE);
 
                     // Current batch tracking
-                    var foundSongs = new Dictionary<SpotifySongId, int>(); // Spotify ID to song ID lookup
+                    var foundSongs = new Dictionary<SpotifySongId, SongId>(); // Spotify ID to song ID lookup
                     var batchNumber = index / BATCH_SIZE + 1;
                     var totalBatches = (totalCount + BATCH_SIZE - 1) / BATCH_SIZE;
 
@@ -545,7 +522,7 @@ namespace MusicTools.NativeModules
                             processed = totalProcessed,
                             batchNumber,
                             totalBatches,
-                            message = $"Searching for song {totalProcessed}/{totalCount}: {song.Name}"
+                            message = $"Searching for song {totalProcessed}/{totalCount}: {song.Name.Value}"
                         });
 
                         // Pass the cancellation token to SearchForSong
@@ -603,7 +580,7 @@ namespace MusicTools.NativeModules
                         result.Errors.Iter(errors.Add);
 
                         // Convert Spotify liked song ID to our song ID
-                        var likedSongIds = result.LikedSongs.Select(id => foundSongs.ContainsKey(id) ? foundSongs[id] : 0).Where(id => id > 0);
+                        var likedSongIds = result.LikedSongs.Select(id => foundSongs.ValueOrNone(id)).Somes();
                         totalLiked += likedSongIds.Count();
 
                         if (likedSongIds.Count() != result.LikedSongs.Count())
@@ -701,7 +678,7 @@ namespace MusicTools.NativeModules
         /// <summary>
         /// Search for single artist with improved status reporting
         /// </summary>
-        async Task<Either<SpotifyError, SpotifyArtistId>> SearchForArtist(string artistName, CancellationToken cancellationToken)
+        async Task<Either<SpotifyError, SpotifyArtistId>> SearchForArtist(Artist artistName, CancellationToken cancellationToken)
         {
             try
             {

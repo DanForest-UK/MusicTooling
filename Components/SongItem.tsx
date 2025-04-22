@@ -1,8 +1,13 @@
+// SongItem.tsx (updated)
 import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, Platform, ViewProps } from 'react-native';
 import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
 import { styles } from '../styles';
-import { SongInfo, SpotifyStatus } from '../types';
+import {
+    SongInfo,
+    SpotifyStatus,
+  
+} from '../types';
 
 // Define the props type for TooltipView
 interface TooltipViewProps extends ViewProps {
@@ -25,28 +30,20 @@ const TooltipView = (props: TooltipViewProps) => {
 interface SongItemProps {
     item: SongInfo;
     isSelected: boolean;
-    onToggle: (id: string) => void;
+    onToggle: (id: number) => void;
     showSpotifyStatus?: boolean;
-}
-
-function formatArtists(artists: string[]): string {
-    if (!artists || artists.length === 0) {
-        return '[No artists]';
-    }
-
-    return artists.join(', ');
 }
 
 // Using memo to prevent unnecessary re-renders
 const SongItem = memo(({ item, isSelected, onToggle, showSpotifyStatus = false }: SongItemProps) => {
     // Defensive checks for item properties
     const safeItem = {
-        Id: item?.Id || '',
-        Name: item?.Name || '[No title]',
-        Path: item?.Path || '',
-        Artist: Array.isArray(item?.Artist) ? item.Artist : [], // Keep the original array structure
-        Album: item?.Album || '[No album]',
-        Rating: typeof item?.Rating === 'number' ? item.Rating : 0,
+        Id: item?.Id?.Value,
+        Name: item?.Name?.Value,
+        Path: item?.Path?.Value,
+        Artist: Array.isArray(item?.Artist) ? item.Artist.map(a => a.Value) : [],
+        Album: item?.Album?.Value,
+        Rating: item?.Rating?.Value,
         SongStatus: typeof item?.SongStatus === 'number' ? item.SongStatus : SpotifyStatus.NotSearched,
         ArtistStatus: typeof item?.ArtistStatus === 'number' ? item.ArtistStatus : SpotifyStatus.NotSearched,
     };
@@ -122,7 +119,7 @@ const SongItem = memo(({ item, isSelected, onToggle, showSpotifyStatus = false }
                 style={styles.tableArtistCell}
                 onPress={handleToggle}>
                 <Text style={styles.tableCellText} numberOfLines={1} ellipsizeMode="tail">
-                    {formatArtists(safeItem.Artist)}
+                    {safeItem.Artist.join(' ,')}
                 </Text>
             </TouchableOpacity>
 

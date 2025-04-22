@@ -1,6 +1,4 @@
 ﻿using LanguageExt;
-using LanguageExt.Common;
-using MusicTools.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,10 +6,9 @@ using System.Net;
 using System.Threading.Tasks;
 using SpotifyAPI.Web;
 using static LanguageExt.Prelude;
-using static MusicTools.Core.Types;
-using System.Diagnostics;
 using SpotifyAPI.Web.Http;
 using System.Threading;
+using MusicTools.Domain;
 
 namespace MusicTools.Logic
 {
@@ -77,10 +74,10 @@ namespace MusicTools.Logic
         /// <summary>
         /// Exchanges the authorization code for an access token
         /// </summary>
-        public async Task<Either<SpotifyErrors.SpotifyError, bool>> GetAccessTokenAsync(string code)
+        public async Task<Either<SpotifyError, bool>> GetAccessTokenAsync(string code)
         {
             if (spotifyClient.IsSome)
-                return new SpotifyErrors.AlreadyAuthenticated();
+                return new AlreadyAuthenticated();
 
             try
             {
@@ -114,24 +111,24 @@ namespace MusicTools.Logic
             catch (APIException ex)
             {
                 Runtime.Error($"API Error during authentication: {ex.Message}", ex as Exception);
-                return new SpotifyErrors.AuthenticationError(
+                return new AuthenticationError(
                     $"API Error: {ex.Message}, Status: {ex.Response?.StatusCode}, Body: {ex.Response?.Body}");
             }
             catch (Exception ex)
             {
                 Runtime.Error($"Authentication error: {ex.Message}", Some(ex));
-                return new SpotifyErrors.AuthenticationError(ex.Message);
+                return new AuthenticationError(ex.Message);
             }
         }
 
         /// <summary>
         /// Ensures the Spotify client has a valid token
         /// </summary>
-        Task<Either<SpotifyErrors.SpotifyError, bool>> EnsureValidTokenAsync() =>
+        Task<Either<SpotifyError, bool>> EnsureValidTokenAsync() =>
             spotifyClient.IsSome && DateTime.UtcNow < tokenExpiry
-                ? Task.FromResult<Either<SpotifyErrors.SpotifyError, bool>>(true)
-                : Task.FromResult<Either<SpotifyErrors.SpotifyError, bool>>(
-                    new SpotifyErrors.AuthenticationError("Token expired or not initialized"));
+                ? Task.FromResult<Either<SpotifyError, bool>>(true)
+                : Task.FromResult<Either<SpotifyError, bool>>(
+                    new AuthenticationError("Token expired or not initialized"));
 
         /// <summary>
         /// Executes an API operation with exponential backoff retry for rate limiting
@@ -142,8 +139,8 @@ namespace MusicTools.Logic
         /// <param name="itemName">Optional item name for detailed status reporting</param>
         /// <param name="cancellationToken">Cancellation token to cancel the operation</param>
         /// <returns>The result of the operation wrapped in Either</returns>
-        public async Task<Either<SpotifyErrors.SpotifyError, T>> WithBackoff<T>(
-            Func<Task<Either<SpotifyErrors.SpotifyError, T>>> operation,
+        public async Task<Either<SpotifyError, T>> WithBackoff<T>(
+            Func<Task<Either<SpotifyError, T>>> operation,
             string resourceName,
             string itemName = null,
             CancellationToken cancellationToken = default)
@@ -160,7 +157,7 @@ namespace MusicTools.Logic
                     {
                         // Check if it's a rate limit error
                         var error = result.LeftToList().First();
-                        if (error is SpotifyErrors.RateLimitError)
+                        if (error is RateLimitError)
                         {
                             attempt = attempt++;
 
@@ -174,7 +171,7 @@ namespace MusicTools.Logic
                             }
                             catch (TaskCanceledException)
                             {
-                                return new SpotifyErrors.ApiError(resourceName, 0, "Operation was canceled");
+                                return new ApiError(resourceName, 0, "Operation was canceled");
                             }
 
                             StatusHelper.Info($"Retrying {resourceName}{itemInfo} (attempt {attempt + 1}/{MAX_RETRY_ATTEMPTS})...");
@@ -187,7 +184,7 @@ namespace MusicTools.Logic
                 catch (TaskCanceledException)
                 {
                     // Handle cancellation explicitly
-                    return new SpotifyErrors.ApiError(resourceName, 0, "Operation was canceled");
+                    return new ApiError(resourceName, 0, "Operation was canceled");
                 }
                 catch (Exception ex)
                 {
@@ -204,38 +201,38 @@ namespace MusicTools.Logic
             // Check if we're here because of cancellation
             if (cancellationToken.IsCancellationRequested)
             {
-                return new SpotifyErrors.ApiError(resourceName, 0, "Operation was canceled");
+                return new ApiError(resourceName, 0, "Operation was canceled");
             }
 
             // If we reach here, all attempts failed due to rate limiting
-            return new SpotifyErrors.RateLimitError(resourceName);
+            return new RateLimitError(resourceName);
         }
 
         /// <summary>
         /// Searches for a song on Spotify with backoff retry for rate limits
         /// </summary>
-        public async Task<Either<SpotifyErrors.SpotifyError, SpotifyTrack>> SearchSongAsync(
-            int id,
-            string title,
-            string[] artists,
+        public async Task<Either<SpotifyError, SpotifyTrack>> SearchSongAsync(
+            SongId id,
+            SongName title,
+            Artist[] artists,
             CancellationToken cancellationToken = default)
         {
             var tokenCheck = await EnsureValidTokenAsync();
             if (tokenCheck.IsLeft)
                 return tokenCheck.LeftToList().First();
 
-            var itemName = $"{title} by {string.Join(", ", artists)}";
+            var itemName = $"{title.Value} by {string.Join(", ", artists.Select(i => i.Value))}";
 
             return await WithBackoff(async () =>
             {
                 try
                 {
-                    var query = $"track:{title} artist:{string.Join(" ", artists)}";
+                    var query = $"track:{title} artist:{string.Join(" ", artists.Select(i => i.Value))}";
                     var searchRequest = new SearchRequest(SearchRequest.Types.Track, query);
                     var searchResponse = await SpotifyClient.Search.Item(searchRequest, cancellationToken);
 
                     if (searchResponse.Tracks.Items == null || !searchResponse.Tracks.Items.Any())
-                        return new SpotifyErrors.SongNotFound(id, title, artists, "No tracks found matching criteria");
+                        return new SongNotFound(id, title, artists, "No tracks found matching criteria");
 
                     // Convert to our domain model
                     var spotifyTrack = searchResponse.Tracks.Items.First();
@@ -243,7 +240,7 @@ namespace MusicTools.Logic
                 }
                 catch (TaskCanceledException)
                 {
-                    return new SpotifyErrors.ApiError("search", 0, "Operation was canceled");
+                    return new ApiError("search", 0, "Operation was canceled");
                 }
                 catch (Exception ex)
                 {
@@ -255,8 +252,8 @@ namespace MusicTools.Logic
         /// <summary>
         /// Searches for an artist on Spotify with backoff retry for rate limits
         /// </summary>
-        public async Task<Either<SpotifyErrors.SpotifyError, SpotifyArtist>> SearchArtistAsync(
-            string artistName,
+        public async Task<Either<SpotifyError, SpotifyArtist>> SearchArtistAsync(
+            Artist artistName,
             CancellationToken cancellationToken = default)
         {
             var tokenCheck = await EnsureValidTokenAsync();
@@ -268,12 +265,12 @@ namespace MusicTools.Logic
             {
                 try
                 {
-                    var query = $"artist:{artistName}";
+                    var query = $"artist:{artistName.Value}";
                     var searchRequest = new SearchRequest(SearchRequest.Types.Artist, query);
                     var searchResponse = await SpotifyClient.Search.Item(searchRequest, cancellationToken);
 
                     if (searchResponse.Artists.Items == null || !searchResponse.Artists.Items.Any())
-                        return new SpotifyErrors.ArtistNotFound(artistName, "No artists found matching criteria");
+                        return new ArtistNotFound(artistName, "No artists found matching criteria");
 
                     // Convert to our domain model
                     var spotifyArtist = searchResponse.Artists.Items.First();
@@ -281,19 +278,19 @@ namespace MusicTools.Logic
                 }
                 catch (TaskCanceledException)
                 {
-                    return new SpotifyErrors.ApiError("search", 0, "Operation was canceled");
+                    return new ApiError("search", 0, "Operation was canceled");
                 }
                 catch (Exception ex)
                 {
                     return HandleApiException<SpotifyArtist>(ex, "search");
                 }
-            }, "artist search", artistName, cancellationToken);
+            }, "artist search", artistName.Value, cancellationToken);
         }
 
         /// <summary>
         /// Likes multiple songs on Spotify, processing in batches and handling errors with backoff
         /// </summary>
-        public async Task<(SpotifyErrors.SpotifyError[] Errors, SpotifySongId[] LikedSongs)> LikeSongsAsync(
+        public async Task<(SpotifyError[] Errors, SpotifySongId[] LikedSongs)> LikeSongsAsync(
             SpotifySongId[] spotifyTrackIds,
             CancellationToken cancellationToken = default)
         {
@@ -303,9 +300,9 @@ namespace MusicTools.Logic
                 return (Errors: tokenCheck.LeftToArray().ToArray(), new SpotifySongId[0]);
 
             if (spotifyTrackIds == null || !spotifyTrackIds.Any())
-                return (new SpotifyErrors.SpotifyError[0], new SpotifySongId[0]); // Nothing to do
+                return (new SpotifyError[0], new SpotifySongId[0]); // Nothing to do
 
-            var errors = new List<SpotifyErrors.SpotifyError>();
+            var errors = new List<SpotifyError>();
 
             try
             {
@@ -318,7 +315,7 @@ namespace MusicTools.Logic
                     // Check for cancellation
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        errors.Add(new SpotifyErrors.ApiError("like_songs", 0, "Operation was canceled"));
+                        errors.Add(new ApiError("like_songs", 0, "Operation was canceled"));
                         break;
                     }
 
@@ -331,7 +328,7 @@ namespace MusicTools.Logic
                         }
                         catch (TaskCanceledException)
                         {
-                            return new SpotifyErrors.ApiError("like_songs_batch", 0, "Operation was canceled");
+                            return new ApiError("like_songs_batch", 0, "Operation was canceled");
                         }
                         catch (Exception ex)
                         {
@@ -354,7 +351,7 @@ namespace MusicTools.Logic
             }
             catch (TaskCanceledException)
             {
-                errors.Add(new SpotifyErrors.ApiError("like_songs", 0, "Operation was canceled"));
+                errors.Add(new ApiError("like_songs", 0, "Operation was canceled"));
             }
             catch (Exception ex)
             {
@@ -374,7 +371,7 @@ namespace MusicTools.Logic
         /// <summary>
         /// Follows multiple artists on Spotify, processing in batches and handling errors with backoff
         /// </summary>
-        public async Task<(SpotifyErrors.SpotifyError[] Errors, SpotifyArtistId[] FollowedArtists)> FollowArtistsAsync(
+        public async Task<(SpotifyError[] Errors, SpotifyArtistId[] FollowedArtists)> FollowArtistsAsync(
             SpotifyArtistId[] spotifyArtistIds,
             CancellationToken cancellationToken = default)
         {
@@ -384,9 +381,9 @@ namespace MusicTools.Logic
                 return (Errors: tokenCheck.LeftToArray().ToArray(), new SpotifyArtistId[0]);
 
             if (spotifyArtistIds == null || !spotifyArtistIds.Any())
-                return (new SpotifyErrors.SpotifyError[0], new SpotifyArtistId[0]); // Nothing to do
+                return (new SpotifyError[0], new SpotifyArtistId[0]); // Nothing to do
 
-            var errors = new List<SpotifyErrors.SpotifyError>();
+            var errors = new List<SpotifyError>();
 
             try
             {
@@ -399,7 +396,7 @@ namespace MusicTools.Logic
                     // Check for cancellation
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        errors.Add(new SpotifyErrors.ApiError("follow_artists", 0, "Operation was canceled"));
+                        errors.Add(new ApiError("follow_artists", 0, "Operation was canceled"));
                         break;
                     }
 
@@ -414,7 +411,7 @@ namespace MusicTools.Logic
                         }
                         catch (TaskCanceledException)
                         {
-                            return new SpotifyErrors.ApiError("follow_artists_batch", 0, "Operation was canceled");
+                            return new ApiError("follow_artists_batch", 0, "Operation was canceled");
                         }
                         catch (Exception ex)
                         {
@@ -437,7 +434,7 @@ namespace MusicTools.Logic
             }
             catch (TaskCanceledException)
             {
-                errors.Add(new SpotifyErrors.ApiError("follow_artists", 0, "Operation was canceled"));
+                errors.Add(new ApiError("follow_artists", 0, "Operation was canceled"));
             }
             catch (Exception ex)
             {
@@ -457,20 +454,20 @@ namespace MusicTools.Logic
         /// <summary>
         /// Handles rate limit errors from Spotify API
         /// </summary>
-        SpotifyErrors.RateLimitError HandleRateLimitError(APIException ex, string resource)
+        RateLimitError HandleRateLimitError(APIException ex, string resource)
         {
             // Cast to Exception before wrapping in Option
             Runtime.Error($"Rate limit exceeded for {resource}", Some((Exception)ex));
-            return new SpotifyErrors.RateLimitError(resource);
+            return new RateLimitError(resource);
         }
 
         int GetStatusCode(IResponse response) => Optional(response).Map(r => (int)r.StatusCode).IfNone(500);
 
-        Either<SpotifyErrors.SpotifyError, T> HandleApiException<T>(Exception ex, string resource)
+        Either<SpotifyError, T> HandleApiException<T>(Exception ex, string resource)
         {
             if (ex is TaskCanceledException)
             {
-                return new SpotifyErrors.ApiError(resource, 0, "Operation was canceled");
+                return new ApiError(resource, 0, "Operation was canceled");
             }
             if (ex is APIException apiEx && Optional(apiEx.Response).Map(r => (int)r.StatusCode).IfNone(500) == TooManyRequests)
             {
@@ -481,12 +478,12 @@ namespace MusicTools.Logic
                 var statusCode = GetStatusCode(apiEx2.Response!);
                 // Cast to ensure type compatibility with Option<Exception>
                 Runtime.Error($"API error ({statusCode}): {ex.Message}", Some((Exception)ex));
-                return new SpotifyErrors.ApiError(resource, statusCode, ex.Message);
+                return new ApiError(resource, statusCode, ex.Message);
             }
             else
             {
                 Runtime.Error($"General error for {resource}: {ex.Message}", Some(ex));
-                return new SpotifyErrors.ApiError(resource, 500, ex.Message);
+                return new ApiError(resource, 500, ex.Message);
             }
         }
 
@@ -495,28 +492,26 @@ namespace MusicTools.Logic
         /// </summary>
         SpotifyTrack ToSpotifyTrack(FullTrack track) =>
             new SpotifyTrack(
-                SpotifySongId.New(track.Id),
+                new SpotifySongId(track.Id),
                 track.Name,
                 track.Artists.Select(artist => ToSpotifyArtist(artist)).ToArray(),
-                track.Uri
-            );
+                track.Uri);
 
         /// <summary>
         /// Maps SpotifyAPI.Web SimpleArtist to our domain model
         /// </summary>
         SpotifyArtist ToSpotifyArtist(SimpleArtist artist) =>
             new SpotifyArtist(
-                SpotifyArtistId.New(artist.Id),
+                new SpotifyArtistId(artist.Id),
                 artist.Name,
-                artist.Uri
-            );
+                artist.Uri);
 
         /// <summary>
         /// Maps SpotifyAPI.Web FullArtist to our domain model
         /// </summary>
         SpotifyArtist ToSpotifyArtist(FullArtist artist) =>
             new SpotifyArtist(
-                SpotifyArtistId.New(artist.Id),
+                new SpotifyArtistId(artist.Id),
                 artist.Name,
                 artist.Uri);
     }

@@ -1,14 +1,11 @@
 ﻿using Microsoft.ReactNative.Managed;
-using MusicTools.Core;
-using static MusicTools.Core.Types;
 using System;
 using Newtonsoft.Json;
 using System.Threading.Tasks;
-using Microsoft.ReactNative;
-using System.Diagnostics;
 using MusicTools.Logic;
-using MusicTools.NativeModules;
 using System.Linq;
+using MusicTools.Domain;
+using static LanguageExt.Prelude;
 
 namespace MusicTools.NativeModules
 {
@@ -116,22 +113,27 @@ namespace MusicTools.NativeModules
             }
         }
 
+
         object ConvertStateForFrontend(AppModel state)
         {
             // Convert Map to array of objects with Index and Song properties
             var songs = state.Songs.ToArray().Select(kvp => new
             {
-                Index = kvp.Key,
+                Index = kvp.Key.Value, // Send the Value property instead of the SongId object
                 Song = kvp.Value
             }).ToArray();
+
+            // Send ChosenSongs as primitive values
+            var chosenSongs = state.ChosenSongs.Select(id => id.Value).ToArray();
 
             return new
             {
                 Songs = songs,
-                state.ChosenSongs,
-                state.MinimumRating
+                ChosenSongs = chosenSongs, // Now sending just the values
+                MinimumRating = state.MinimumRating // Send the Value property
             };
-        }
+        }  
+        
 
         /// <summary>
         /// Returns the current application state as JSON
@@ -243,14 +245,14 @@ namespace MusicTools.NativeModules
         /// </summary>
         [ReactMethod("SetMinimumRating")]
         public void SetMinimumRating(int rating) =>
-            ObservableState.SetMinimumRating(rating);
+            ObservableState.SetMinimumRating(new SongRating(rating));
 
         /// <summary>
         /// Toggles the selection of a song
         /// </summary>
         [ReactMethod("ToggleSongSelection")]
         public void ToggleSongSelection(string songId) =>
-            ObservableState.ToggleSongSelection(int.Parse(songId));
+            ObservableState.ToggleSongSelection(new SongId(int.Parse(songId)));
 
         /// <summary>
         /// Sets all chosen songs
@@ -262,7 +264,7 @@ namespace MusicTools.NativeModules
             {
                 var songIds = JsonConvert.DeserializeObject<int[]>(chosenSongsJson);
                 if (songIds != null)
-                    ObservableState.SetChosenSongs(songIds);
+                    ObservableState.SetChosenSongs(toSeq(songIds.Select(s => new SongId(s))));
             }
             catch (Exception ex)
             {
