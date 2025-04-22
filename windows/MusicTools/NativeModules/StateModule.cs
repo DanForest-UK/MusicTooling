@@ -134,25 +134,6 @@ namespace MusicTools.NativeModules
             };
         }  
         
-
-        /// <summary>
-        /// Returns the current application state as JSON
-        /// This method is kept for backward compatibility
-        /// </summary>
-        [ReactMethod("GetCurrentState")]
-        public Task<string> GetCurrentState()
-        {
-            try
-            {
-                return Task.FromResult(JsonConvert.SerializeObject(ObservableState.Current));
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error getting state: {ex.Message}");
-                return Task.FromResult("{}"); // todo this breaks the UI need something better
-            }
-        }
-
         /// <summary>
         /// Registers a listener for state updates - implementing IReactPromise
         /// </summary>
